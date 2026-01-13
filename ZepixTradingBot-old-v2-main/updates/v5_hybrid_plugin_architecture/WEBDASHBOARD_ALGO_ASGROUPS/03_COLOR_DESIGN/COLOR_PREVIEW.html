@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>algo.asgroups - Color Preview (abhibots.com Inspired)</title>
+    <style>
+        /* Import Google Font */
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+        /* Color Variables (From abhibots.com) */
+        :root {
+            /* Background */
+            --bg-primary: #0A0A0F;
+            --bg-secondary: rgba(0, 0, 0, 0.2);
+            --bg-glow-blue: rgba(59, 130, 246, 0.15);
+
+            /* Text */
+            --text-primary: #F8FAFC;
+            --text-secondary: #9CA3AF;
+            --text-tertiary: #6B7280;
+
+            /* Brand (abhibots.com) */
+            --electric-blue: #3B82F6;
+            --vibrant-purple: #9333EA;
+            --cyan-teal: #22D3EE;
+            --rose-pink: #EC4899;
+
+            /* Trading */
+            --color-profit: #10B981;
+            --color-loss: #EF4444;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.6;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        /* Header with Gradient Text */
+        .header {
+            background: rgba(0, 0, 0, 0.2);
+            backdrop-filter: blur(12px);
+            padding: 32px;
+            border-radius: 16px;
+            border: 0.8px solid rgba(59, 130, 246, 0.2);
+            margin-bottom: 24px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.37);
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+            background: linear-gradient(90deg, #60A5FA 0%, #22D3EE 50%, #C084FC 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 8px;
+        }
+
+        .header p {
+            color: var(--text-secondary);
+            font-size: 16px;
+        }
+
+        /* Glassmorphism Section */
+        .section {
+            background: rgba(0, 0, 0, 0.2);
+            backdrop-filter: blur(12px);
+            padding: 24px;
+            border-radius: 16px;
+            border: 0.8px solid rgba(59, 130, 246, 0.2);
+            margin-bottom: 24px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.37);
+            transition: all 0.3s ease;
+        }
+
+        .section:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 0 20px rgba(59, 130, 246, 0.3);
+        }
+
+        .section-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 16px;
+            color: var(--text-primary);
+        }
+
+        /* Color Grid */
+        .color-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+        }
+
+        .color-swatch {
+            padding: 24px;
+            border-radius: 12px;
+            text-align: center;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            border: 0.8px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .color-swatch:hover {
+            transform: scale(1.05);
+        }
+
+        .color-name {
+            font-size: 14px;
+            margin-bottom: 4px;
+            font-weight: 600;
+        }
+
+        .color-value {
+            font-size: 12px;
+            opacity: 0.7;
+            font-family: 'Courier New', monospace;
+        }
+
+        /* Gradient Buttons (abhibots.com style) */
+        .buttons {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border-radius: 8px;
+            border: none;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 14px;
+            font-family: 'Inter', sans-serif;
+        }
+
+        .btn-gradient {
+            background: linear-gradient(to right, #3B82F6, #9333EA);
+            color: white;
+        }
+
+        .btn-gradient:hover {
+            box-shadow: 0 0 20px rgba(59, 130, 246, 0.5);
+            transform: translateY(-2px);
+        }
+
+        .btn-glass {
+            background: transparent;
+            border: 0.8px solid rgba(59, 130, 246, 0.3);
+            color: var(--electric-blue);
+        }
+
+        .btn-glass:hover {
+            background: rgba(59, 130, 246, 0.1);
+        }
+
+        .btn-success {
+            background: var(--color-profit);
+            color: white;
+        }
+
+        .btn-success:hover {
+            box-shadow: 0 0 15px rgba(16, 185, 129, 0.4);
+            transform: translateY(-2px);
+        }
+
+        .btn-danger {
+            background: var(--color-loss);
+            color: white;
+        }
+
+        .btn-danger:hover {
+            box-shadow: 0 0 15px rgba(239, 68, 68, 0.4);
+            transform: translateY(-2px);
+        }
+
+        /* Status Badges with Pulse */
+        .status-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+        }
+
+        .status-card {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 20px;
+            border-radius: 12px;
+            border: 0.8px solid;
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+
+        .status-card:hover {
+            transform: scale(1.05);
+        }
+
+        .status-icon {
+            font-size: 32px;
+            margin-bottom: 8px;
+        }
+
+        .status-label {
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        .status-active {
+            border-color: var(--cyan-teal);
+            color: var(--cyan-teal);
+            animation: glow-pulse-cyan 2s infinite;
+        }
+
+        .status-warning {
+            border-color: var(--rose-pink);
+            color: var(--rose-pink);
+        }
+
+        @keyframes glow-pulse-cyan {
+
+            0%,
+            100% {
+                box-shadow: 0 0 10px rgba(34, 211, 238, 0.3);
+            }
+
+            50% {
+                box-shadow: 0 0 20px rgba(34, 211, 238, 0.6);
+            }
+        }
+
+        /* Dashboard Preview */
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 16px;
+        }
+
+        .stat-card {
+            background: rgba(0, 0, 0, 0.2);
+            backdrop-filter: blur(12px);
+            padding: 24px;
+            border-radius: 12px;
+            border-left: 4px solid;
+            transition: all 0.3s ease;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 0 20px rgba(59, 130, 246, 0.3);
+        }
+
+        .stat-card.profit {
+            border-left-color: var(--color-profit);
+        }
+
+        .stat-card.loss {
+            border-left-color: var(--color-loss);
+        }
+
+        .stat-card.primary {
+            border-left-color: var(--electric-blue);
+        }
+
+        .stat-label {
+            color: var(--text-secondary);
+            font-size: 14px;
+            margin-bottom: 8px;
+        }
+
+        .stat-value {
+            font-size: 32px;
+            font-weight: 700;
+        }
+
+        .stat-value.profit {
+            color: var(--color-profit);
+        }
+
+        .stat-value.loss {
+            color: var(--color-loss);
+        }
+
+        /* Gradient Examples */
+        .gradient-showcase {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 16px;
+        }
+
+        .gradient-box {
+            height: 120px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            color: white;
+            transition: all 0.3s ease;
+        }
+
+        .gradient-box:hover {
+            transform: scale(1.05);
+        }
+
+        .gradient-primary {
+            background: linear-gradient(to right, #3B82F6, #9333EA);
+        }
+
+        .gradient-success {
+            background: linear-gradient(to right, #10B981, #34D399);
+        }
+
+        .gradient-danger {
+            background: linear-gradient(to right, #EF4444, #F87171);
+        }
+
+        /* Legend */
+        .legend {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .legend-color {
+            width: 20px;
+            height: 20px;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <h1>🚀 algo.asgroups Color Preview</h1>
+            <p>Dark Ecosystem Design - Inspired by abhibots.com</p>
+        </div>
+
+        <!-- Brand Colors -->
+        <div class="section">
+            <div class="section-title">🎨 Brand Colors (From abhibots.com)</div>
+            <div class="color-grid">
+                <div class="color-swatch" style="background: #0A0A0F; border: 1px solid #3B82F6;">
+                    <div class="color-name">Deep Background</div>
+                    <div class="color-value">#0A0A0F</div>
+                </div>
+                <div class="color-swatch" style="background: #3B82F6; color: white;">
+                    <div class="color-name">Electric Blue</div>
+                    <div class="color-value">#3B82F6</div>
+                </div>
+                <div class="color-swatch" style="background: #9333EA; color: white;">
+                    <div class="color-name">Vibrant Purple</div>
+                    <div class="color-value">#9333EA</div>
+                </div>
+                <div class="color-swatch" style="background: #22D3EE; color: white;">
+                    <div class="color-name">Cyan Teal</div>
+                    <div class="color-value">#22D3EE</div>
+                </div>
+                <div class="color-swatch" style="background: #EC4899; color: white;">
+                    <div class="color-name">Rose Pink</div>
+                    <div class="color-value">#EC4899</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Trading Colors -->
+        <div class="section">
+            <div class="section-title">📈 Trading Colors</div>
+            <div class="color-grid">
+                <div class="color-swatch" style="background: #10B981; color: white;">
+                    <div class="color-name">Profit Green</div>
+                    <div class="color-value">#10B981</div>
+                </div>
+                <div class="color-swatch" style="background: #EF4444; color: white;">
+                    <div class="color-name">Loss Red</div>
+                    <div class="color-value">#EF4444</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Gradient Buttons -->
+        <div class="section">
+            <div class="section-title">🔘 Button Styles</div>
+            <div class="buttons">
+                <button class="btn btn-gradient">Start Bot</button>
+                <button class="btn btn-glass">View Analytics</button>
+                <button class="btn btn-success">Open Position</button>
+                <button class="btn btn-danger">Emergency Stop</button>
+            </div>
+        </div>
+
+        <!-- Status Indicators -->
+        <div class="section">
+            <div class="section-title">🟢 Status Indicators</div>
+            <div class="status-grid">
+                <div class="status-card status-active">
+                    <div class="status-icon">●</div>
+                    <div class="status-label">Bot Active</div>
+                </div>
+                <div class="status-card status-warning">
+                    <div class="status-icon">⚠</div>
+                    <div class="status-label">Alert</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Dashboard Preview -->
+        <div class="section">
+            <div class="section-title">📊 Dashboard Preview</div>
+            <div class="dashboard-grid">
+                <div class="stat-card profit">
+                    <div class="stat-label">Total P&L</div>
+                    <div class="stat-value profit">+$2,450.50</div>
+                </div>
+                <div class="stat-card primary">
+                    <div class="stat-label">Active Trades</div>
+                    <div class="stat-value">12</div>
+                </div>
+                <div class="stat-card profit">
+                    <div class="stat-label">Win Rate</div>
+                    <div class="stat-value profit">67.5%</div>
+                </div>
+                <div class="stat-card loss">
+                    <div class="stat-label">Today's Loss</div>
+                    <div class="stat-value loss">-$125.00</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Gradients -->
+        <div class="section">
+            <div class="section-title">🌈 Gradient Examples</div>
+            <div class="gradient-showcase">
+                <div class="gradient-box gradient-primary">Blue → Purple</div>
+                <div class="gradient-box gradient-success">Green Gradient</div>
+                <div class="gradient-box gradient-danger">Red Gradient</div>
+            </div>
+        </div>
+
+        <!-- Logic Legend -->
+        <div class="section">
+            <div class="section-title">📈 Logic Colors</div>
+            <div class="legend">
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #3B82F6;"></div>
+                    <span>V3 Combined</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #22D3EE;"></div>
+                    <span>V6 1M</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #9333EA;"></div>
+                    <span>V6 5M</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #F59E0B;"></div>
+                    <span>V6 15M</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #EC4899;"></div>
+                    <span>V6 1H</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="section">
+            <p style="text-align: center; color: var(--text-secondary);">
+                <strong>algo.asgroups</strong> - Premium Trading Bot Dashboard<br>
+                Design Inspired by abhibots.com | Created 2026-01-13
+            </p>
+        </div>
+    </div>
+</body>
+
+</html>

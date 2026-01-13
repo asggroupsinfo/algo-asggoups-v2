@@ -1,0 +1,1818 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🚀 algo.asggroups | AI Trading Dashboard</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        /* ====== ROOT VARIABLES ====== */
+        :root {
+            /* Core Backgrounds */
+            --bg-deep: #0B0B15;
+            --bg-card: #131622;
+            --bg-glow: rgba(64, 86, 235, 0.1);
+            
+            /* Brand Accents */
+            --brand-primary: #4056EB;
+            --brand-secondary: #763CED;
+            --accent-teal: #22D3EE;
+            
+            /* Trading & Status */
+            --profit: #00D1A7;
+            --profit-glow: rgba(0, 209, 167, 0.3);
+            --loss: #F75555;
+            --loss-glow: rgba(247, 85, 85, 0.3);
+            --warning: #FFB443;
+            
+            /* Text */
+            --text-primary: #FFFFFF;
+            --text-secondary: #A0AEC0;
+            --text-muted: #718096;
+            
+            /* Glass Effects */
+            --glass-bg: rgba(19, 22, 34, 0.7);
+            --glass-border: rgba(64, 86, 235, 0.2);
+            --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.37);
+            
+            /* Transitions */
+            --transition-fast: 0.2s ease;
+            --transition-normal: 0.3s ease;
+        }
+        
+        /* ====== BASE STYLES ====== */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+        }
+        
+        body {
+            background: var(--bg-deep);
+            color: var(--text-primary);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+        
+        /* ====== LAYOUT CONTAINER ====== */
+        .dashboard-container {
+            display: flex;
+            min-height: 100vh;
+        }
+        
+        /* ====== SIDEBAR ====== */
+        .sidebar {
+            width: 260px;
+            background: var(--bg-card);
+            backdrop-filter: blur(12px);
+            border-right: 1px solid var(--glass-border);
+            padding: 24px 0;
+            display: flex;
+            flex-direction: column;
+            position: fixed;
+            height: 100vh;
+            z-index: 100;
+        }
+        
+        .logo-container {
+            padding: 0 24px 32px;
+            border-bottom: 1px solid var(--glass-border);
+        }
+        
+        .logo {
+            font-size: 24px;
+            font-weight: 800;
+            background: linear-gradient(90deg, var(--brand-primary), var(--brand-secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .logo i {
+            background: linear-gradient(90deg, var(--brand-primary), var(--brand-secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
+        .nav-menu {
+            flex: 1;
+            padding: 24px 0;
+        }
+        
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 14px 24px;
+            color: var(--text-secondary);
+            text-decoration: none;
+            transition: all var(--transition-normal);
+            border-left: 3px solid transparent;
+        }
+        
+        .nav-item:hover, .nav-item.active {
+            background: var(--glass-bg);
+            color: var(--text-primary);
+            border-left-color: var(--brand-primary);
+        }
+        
+        .nav-item i {
+            width: 20px;
+            text-align: center;
+        }
+        
+        .user-profile {
+            padding: 20px 24px;
+            border-top: 1px solid var(--glass-border);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--brand-primary), var(--brand-secondary));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+        }
+        
+        /* ====== MAIN CONTENT ====== */
+        .main-content {
+            flex: 1;
+            margin-left: 260px;
+            padding: 24px;
+        }
+        
+        /* ====== HEADER ====== */
+        .page-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 32px;
+        }
+        
+        .header-title h1 {
+            font-size: 28px;
+            margin-bottom: 8px;
+        }
+        
+        .header-title p {
+            color: var(--text-secondary);
+        }
+        
+        .header-actions {
+            display: flex;
+            gap: 12px;
+        }
+        
+        .btn {
+            padding: 10px 20px;
+            border-radius: 8px;
+            border: none;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all var(--transition-normal);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(90deg, var(--brand-primary), var(--brand-secondary));
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(64, 86, 235, 0.3);
+        }
+        
+        .btn-outline {
+            background: transparent;
+            border: 1px solid var(--glass-border);
+            color: var(--text-secondary);
+        }
+        
+        .btn-outline:hover {
+            background: var(--glass-bg);
+            color: var(--text-primary);
+        }
+        
+        /* ====== GLASS CARD ====== */
+        .glass-card {
+            background: var(--glass-bg);
+            backdrop-filter: blur(12px);
+            border: 1px solid var(--glass-border);
+            border-radius: 16px;
+            box-shadow: var(--glass-shadow);
+            transition: all var(--transition-normal);
+        }
+        
+        .glass-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+        }
+        
+        /* ====== DASHBOARD SECTION ====== */
+        .section-title {
+            font-size: 20px;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 20px;
+            margin-bottom: 32px;
+        }
+        
+        .metric-card {
+            padding: 24px;
+        }
+        
+        .metric-label {
+            color: var(--text-secondary);
+            font-size: 14px;
+            margin-bottom: 8px;
+        }
+        
+        .metric-value {
+            font-size: 32px;
+            font-weight: 700;
+        }
+        
+        .metric-change {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin-top: 8px;
+            font-size: 14px;
+        }
+        
+        .change-positive {
+            color: var(--profit);
+        }
+        
+        .change-negative {
+            color: var(--loss);
+        }
+        
+        /* ====== BOT CONTROL CENTER ====== */
+        .bot-controls-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        
+        .search-box {
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid var(--glass-border);
+            border-radius: 8px;
+            padding: 10px 16px;
+            color: var(--text-primary);
+            width: 300px;
+        }
+        
+        .bot-filters {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .filter-btn {
+            padding: 8px 16px;
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid var(--glass-border);
+            border-radius: 8px;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all var(--transition-fast);
+        }
+        
+        .filter-btn.active, .filter-btn:hover {
+            background: var(--glass-bg);
+            color: var(--text-primary);
+            border-color: var(--brand-primary);
+        }
+        
+        .bot-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 20px;
+            margin-bottom: 32px;
+        }
+        
+        .bot-card {
+            padding: 20px;
+        }
+        
+        .bot-card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+        
+        .bot-name {
+            font-weight: 600;
+            font-size: 16px;
+        }
+        
+        .bot-status {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 12px;
+            padding: 4px 10px;
+            border-radius: 20px;
+            background: rgba(0, 209, 167, 0.1);
+            color: var(--profit);
+        }
+        
+        .bot-status.inactive {
+            background: rgba(119, 119, 119, 0.1);
+            color: var(--text-muted);
+        }
+        
+        .bot-stats {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 16px;
+        }
+        
+        .stat-item {
+            text-align: center;
+        }
+        
+        .stat-value {
+            font-size: 18px;
+            font-weight: 700;
+        }
+        
+        .stat-label {
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+        
+        .bot-actions {
+            display: flex;
+            gap: 8px;
+        }
+        
+        .action-btn {
+            flex: 1;
+            padding: 8px 12px;
+            text-align: center;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all var(--transition-fast);
+        }
+        
+        .start-btn {
+            background: var(--profit);
+            color: white;
+        }
+        
+        .stop-btn {
+            background: var(--loss);
+            color: white;
+        }
+        
+        .settings-btn {
+            background: transparent;
+            border: 1px solid var(--glass-border);
+            color: var(--text-secondary);
+        }
+        
+        .bulk-operations {
+            padding: 24px;
+            margin-top: 20px;
+        }
+        
+        .bulk-title {
+            margin-bottom: 16px;
+            color: var(--text-secondary);
+        }
+        
+        .bulk-buttons {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+        
+        /* ====== STRATEGY ANALYTICS ====== */
+        .strategy-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        
+        .timeframe-selector {
+            display: flex;
+            gap: 8px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 8px;
+            padding: 4px;
+        }
+        
+        .timeframe-btn {
+            padding: 6px 16px;
+            border-radius: 6px;
+            border: none;
+            background: transparent;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all var(--transition-fast);
+        }
+        
+        .timeframe-btn.active, .timeframe-btn:hover {
+            background: var(--glass-bg);
+            color: var(--text-primary);
+        }
+        
+        .charts-container {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 20px;
+            margin-bottom: 32px;
+        }
+        
+        @media (max-width: 1200px) {
+            .charts-container {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        .main-chart, .performance-table {
+            padding: 24px;
+        }
+        
+        .chart-container {
+            height: 400px;
+            position: relative;
+        }
+        
+        .strategy-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        
+        .strategy-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 12px;
+            border-left: 4px solid var(--brand-primary);
+            transition: all var(--transition-fast);
+        }
+        
+        .strategy-item:hover {
+            background: rgba(0, 0, 0, 0.3);
+        }
+        
+        .strategy-info h4 {
+            margin-bottom: 4px;
+        }
+        
+        .strategy-info p {
+            color: var(--text-secondary);
+            font-size: 14px;
+        }
+        
+        .strategy-performance {
+            text-align: right;
+        }
+        
+        .performance-value {
+            font-size: 20px;
+            font-weight: 700;
+            margin-bottom: 4px;
+        }
+        
+        /* ====== LIVE TRADING ====== */
+        .live-trading-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 32px;
+        }
+        
+        @media (max-width: 1200px) {
+            .live-trading-container {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        .notifications-panel, .positions-panel {
+            padding: 24px;
+        }
+        
+        .notifications-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        
+        .notifications-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            max-height: 500px;
+            overflow-y: auto;
+            padding-right: 8px;
+        }
+        
+        .notification {
+            padding: 16px;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 12px;
+            border-left: 4px solid;
+            animation: fadeIn 0.5s ease;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .notification.buy {
+            border-left-color: var(--profit);
+        }
+        
+        .notification.sell {
+            border-left-color: var(--loss);
+        }
+        
+        .notification.info {
+            border-left-color: var(--accent-teal);
+        }
+        
+        .notification-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+        
+        .notification-title {
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .notification-time {
+            color: var(--text-muted);
+            font-size: 12px;
+        }
+        
+        .notification-message {
+            color: var(--text-secondary);
+            font-size: 14px;
+            line-height: 1.5;
+        }
+        
+        .positions-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        
+        .position-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 12px;
+            border-left: 4px solid var(--profit);
+        }
+        
+        .position-item.loss {
+            border-left-color: var(--loss);
+        }
+        
+        .position-pair {
+            font-weight: 600;
+        }
+        
+        .position-details {
+            color: var(--text-secondary);
+            font-size: 14px;
+        }
+        
+        .position-pnl {
+            text-align: right;
+            font-weight: 700;
+            font-size: 18px;
+        }
+        
+        .position-pnl.positive {
+            color: var(--profit);
+        }
+        
+        .position-pnl.negative {
+            color: var(--loss);
+        }
+        
+        /* ====== ADVANCED ANALYTICS ====== */
+        .analytics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 32px;
+        }
+        
+        .report-actions {
+            display: flex;
+            gap: 12px;
+            margin-top: 20px;
+        }
+        
+        /* ====== RESPONSIVE ====== */
+        @media (max-width: 1024px) {
+            .sidebar {
+                width: 80px;
+                padding: 20px 0;
+            }
+            
+            .logo span, .nav-item span, .user-profile .user-info {
+                display: none;
+            }
+            
+            .logo-container, .user-profile {
+                justify-content: center;
+                padding: 20px 10px;
+            }
+            
+            .nav-item {
+                justify-content: center;
+                padding: 16px 10px;
+            }
+            
+            .main-content {
+                margin-left: 80px;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            .metrics-grid, .bot-grid, .charts-container, .live-trading-container {
+                grid-template-columns: 1fr;
+            }
+            
+            .header-actions {
+                flex-direction: column;
+                width: 100%;
+            }
+            
+            .btn {
+                width: 100%;
+                justify-content: center;
+            }
+            
+            .search-box {
+                width: 100%;
+            }
+        }
+        
+        /* ====== UTILITY ====== */
+        .hidden {
+            display: none !important;
+        }
+        
+        .fade-in {
+            animation: fadeIn 0.5s ease;
+        }
+        
+        .pulse {
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(0, 209, 167, 0.7); }
+            70% { box-shadow: 0 0 0 10px rgba(0, 209, 167, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(0, 209, 167, 0); }
+        }
+        
+        .scrollbar::-webkit-scrollbar {
+            width: 6px;
+        }
+        
+        .scrollbar::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.1);
+            border-radius: 10px;
+        }
+        
+        .scrollbar::-webkit-scrollbar-thumb {
+            background: var(--brand-primary);
+            border-radius: 10px;
+        }
+        
+        .scrollbar::-webkit-scrollbar-thumb:hover {
+            background: var(--brand-secondary);
+        }
+        
+        .divider {
+            height: 1px;
+            background: var(--glass-border);
+            margin: 24px 0;
+        }
+        
+        .tag {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        
+        .tag-success {
+            background: rgba(0, 209, 167, 0.1);
+            color: var(--profit);
+        }
+        
+        .tag-warning {
+            background: rgba(255, 180, 67, 0.1);
+            color: var(--warning);
+        }
+        
+        .tag-danger {
+            background: rgba(247, 85, 85, 0.1);
+            color: var(--loss);
+        }
+        
+        .text-center {
+            text-align: center;
+        }
+        
+        .mt-20 { margin-top: 20px; }
+        .mb-20 { margin-bottom: 20px; }
+        .mb-30 { margin-bottom: 30px; }
+    </style>
+</head>
+<body>
+    <!-- Main Dashboard Container -->
+    <div class="dashboard-container">
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar">
+            <div class="logo-container">
+                <div class="logo">
+                    <i class="fas fa-robot"></i>
+                    <span>algo.asggroups</span>
+                </div>
+            </div>
+            
+            <nav class="nav-menu">
+                <a href="#dashboard" class="nav-item active" data-section="dashboard">
+                    <i class="fas fa-chart-line"></i>
+                    <span>Dashboard</span>
+                </a>
+                <a href="#bot-control" class="nav-item" data-section="bot-control">
+                    <i class="fas fa-cogs"></i>
+                    <span>Bot Control</span>
+                </a>
+                <a href="#strategy" class="nav-item" data-section="strategy">
+                    <i class="fas fa-chart-bar"></i>
+                    <span>Strategy Analytics</span>
+                </a>
+                <a href="#live-trading" class="nav-item" data-section="live-trading">
+                    <i class="fas fa-bolt"></i>
+                    <span>Live Trading</span>
+                </a>
+                <a href="#analytics" class="nav-item" data-section="analytics">
+                    <i class="fas fa-chart-pie"></i>
+                    <span>Advanced Analytics</span>
+                </a>
+                <a href="#settings" class="nav-item" data-section="settings">
+                    <i class="fas fa-sliders-h"></i>
+                    <span>Settings</span>
+                </a>
+            </nav>
+            
+            <div class="user-profile">
+                <div class="avatar">AG</div>
+                <div class="user-info">
+                    <div class="user-name">Algo Master</div>
+                    <div class="user-role">Premium Trader</div>
+                </div>
+            </div>
+        </aside>
+        
+        <!-- Main Content Area -->
+        <main class="main-content">
+            <!-- Dashboard Header -->
+            <header class="page-header">
+                <div class="header-title">
+                    <h1 id="page-title">Dashboard Overview</h1>
+                    <p id="page-description">Monitor your trading bots and strategies in real-time</p>
+                </div>
+                <div class="header-actions">
+                    <button class="btn btn-primary" id="quick-start">
+                        <i class="fas fa-play-circle"></i>
+                        Quick Start
+                    </button>
+                    <button class="btn btn-outline" id="refresh-data">
+                        <i class="fas fa-sync-alt"></i>
+                        Refresh
+                    </button>
+                </div>
+            </header>
+            
+            <!-- Dashboard Section (Default View) -->
+            <section id="dashboard-section" class="dashboard-section">
+                <!-- Key Metrics -->
+                <div class="metrics-grid">
+                    <div class="glass-card metric-card">
+                        <div class="metric-label">Total Portfolio Value</div>
+                        <div class="metric-value">$124,850.75</div>
+                        <div class="metric-change change-positive">
+                            <i class="fas fa-arrow-up"></i>
+                            <span>+2.4% today</span>
+                        </div>
+                    </div>
+                    
+                    <div class="glass-card metric-card">
+                        <div class="metric-label">Active Bots</div>
+                        <div class="metric-value">47</div>
+                        <div class="metric-change change-positive">
+                            <i class="fas fa-arrow-up"></i>
+                            <span>+5 this week</span>
+                        </div>
+                    </div>
+                    
+                    <div class="glass-card metric-card">
+                        <div class="metric-label">24h Profit/Loss</div>
+                        <div class="metric-value">+$2,450.50</div>
+                        <div class="metric-change change-positive">
+                            <i class="fas fa-arrow-up"></i>
+                            <span>+3.2%</span>
+                        </div>
+                    </div>
+                    
+                    <div class="glass-card metric-card">
+                        <div class="metric-label">Win Rate</div>
+                        <div class="metric-value">67.5%</div>
+                        <div class="metric-change change-negative">
+                            <i class="fas fa-arrow-down"></i>
+                            <span>-1.2% this week</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Quick Actions -->
+                <div class="glass-card bulk-operations">
+                    <h3 class="bulk-title">Quick Actions</h3>
+                    <div class="bulk-buttons">
+                        <button class="btn btn-primary">
+                            <i class="fas fa-play"></i>
+                            Start All Bots
+                        </button>
+                        <button class="btn btn-outline">
+                            <i class="fas fa-stop"></i>
+                            Stop All Bots
+                        </button>
+                        <button class="btn btn-outline">
+                            <i class="fas fa-download"></i>
+                            Export Reports
+                        </button>
+                        <button class="btn btn-outline">
+                            <i class="fas fa-cog"></i>
+                            Global Settings
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Recent Activity -->
+                <div class="glass-card" style="padding: 24px; margin-top: 30px;">
+                    <h3 class="section-title">
+                        <i class="fas fa-history"></i>
+                        Recent Activity
+                    </h3>
+                    <div class="notifications-list scrollbar" style="max-height: 300px;">
+                        <!-- Recent activity notifications will appear here -->
+                    </div>
+                </div>
+            </section>
+            
+            <!-- Bot Control Center Section (Hidden by Default) -->
+            <section id="bot-control-section" class="dashboard-section hidden">
+                <div class="bot-controls-header">
+                    <h2 class="section-title">
+                        <i class="fas fa-cogs"></i>
+                        Bot Control Center
+                    </h2>
+                    <input type="text" class="search-box" placeholder="Search bots by name or pair...">
+                </div>
+                
+                <div class="bot-filters">
+                    <button class="filter-btn active">All Bots (127)</button>
+                    <button class="filter-btn">Active (47)</button>
+                    <button class="filter-btn">Inactive (80)</button>
+                    <button class="filter-btn">Profitable (92)</button>
+                    <button class="filter-btn">Grid Bots (24)</button>
+                </div>
+                
+                <!-- Bot Grid - 100+ Bots -->
+                <div class="bot-grid" id="bot-grid-container">
+                    <!-- Bot cards will be dynamically generated here -->
+                </div>
+                
+                <!-- Bulk Operations -->
+                <div class="glass-card bulk-operations">
+                    <h3 class="bulk-title">Bulk Operations</h3>
+                    <div class="bulk-buttons">
+                        <button class="btn btn-primary" id="bulk-start">
+                            <i class="fas fa-play"></i>
+                            Start Selected (0)
+                        </button>
+                        <button class="btn btn-outline" id="bulk-stop">
+                            <i class="fas fa-stop"></i>
+                            Stop Selected (0)
+                        </button>
+                        <button class="btn btn-outline" id="bulk-settings">
+                            <i class="fas fa-cog"></i>
+                            Edit Selected
+                        </button>
+                        <button class="btn btn-outline" id="bulk-export">
+                            <i class="fas fa-file-export"></i>
+                            Export Data
+                        </button>
+                    </div>
+                </div>
+            </section>
+            
+            <!-- Strategy Analytics Section (Hidden by Default) -->
+            <section id="strategy-section" class="dashboard-section hidden">
+                <div class="strategy-header">
+                    <h2 class="section-title">
+                        <i class="fas fa-chart-bar"></i>
+                        Strategy Performance Analytics
+                    </h2>
+                    <div class="timeframe-selector">
+                        <button class="timeframe-btn active" data-timeframe="1m">1M</button>
+                        <button class="timeframe-btn" data-timeframe="5m">5M</button>
+                        <button class="timeframe-btn" data-timeframe="15m">15M</button>
+                        <button class="timeframe-btn" data-timeframe="1h">1H</button>
+                        <button class="timeframe-btn" data-timeframe="4h">4H</button>
+                        <button class="timeframe-btn" data-timeframe="1d">1D</button>
+                    </div>
+                </div>
+                
+                <!-- Charts Container -->
+                <div class="charts-container">
+                    <div class="glass-card main-chart">
+                        <h3 class="mb-20">Pine Logic Performance Comparison</h3>
+                        <div class="chart-container">
+                            <canvas id="strategyChart"></canvas>
+                        </div>
+                    </div>
+                    
+                    <div class="glass-card performance-table">
+                        <h3 class="mb-20">Top Performing Strategies</h3>
+                        <div class="strategy-list">
+                            <!-- Strategy items will be dynamically generated here -->
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Strategy Details -->
+                <div class="glass-card" style="padding: 24px;">
+                    <h3 class="section-title mb-20">
+                        <i class="fas fa-list-alt"></i>
+                        Strategy Details
+                    </h3>
+                    <div class="analytics-grid">
+                        <div class="stat-item">
+                            <div class="stat-value">V3 Combined</div>
+                            <div class="stat-label">Most Profitable</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value">V6 1H</div>
+                            <div class="stat-label">Highest Win Rate</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value">V6 15M</div>
+                            <div class="stat-label">Best Risk/Reward</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value">$12,450</div>
+                            <div class="stat-label">Total Strategy Profit</div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+            
+            <!-- Live Trading Section (Hidden by Default) -->
+            <section id="live-trading-section" class="dashboard-section hidden">
+                <h2 class="section-title">
+                    <i class="fas fa-bolt"></i>
+                    Live Trading Activity
+                </h2>
+                
+                <div class="live-trading-container">
+                    <!-- Notifications Panel -->
+                    <div class="glass-card notifications-panel">
+                        <div class="notifications-header">
+                            <h3>Live Trade Notifications</h3>
+                            <div class="tag tag-success pulse">
+                                <i class="fas fa-circle"></i>
+                                LIVE
+                            </div>
+                        </div>
+                        <div class="notifications-list scrollbar" id="notifications-list">
+                            <!-- Notifications will be dynamically added here -->
+                        </div>
+                    </div>
+                    
+                    <!-- Positions Panel -->
+                    <div class="glass-card positions-panel">
+                        <h3 class="mb-20">Open Positions</h3>
+                        <div class="positions-list" id="positions-list">
+                            <!-- Position items will be dynamically generated here -->
+                        </div>
+                        
+                        <div class="divider"></div>
+                        
+                        <!-- Execution Log -->
+                        <h3 class="mb-20">Recent Executions</h3>
+                        <div class="notifications-list scrollbar" style="max-height: 250px;" id="executions-list">
+                            <!-- Execution log items will be dynamically generated here -->
+                        </div>
+                    </div>
+                </div>
+            </section>
+            
+            <!-- Advanced Analytics Section (Hidden by Default) -->
+            <section id="analytics-section" class="dashboard-section hidden">
+                <h2 class="section-title">
+                    <i class="fas fa-chart-pie"></i>
+                    Advanced Analytics & Reports
+                </h2>
+                
+                <div class="analytics-grid">
+                    <div class="glass-card" style="padding: 24px;">
+                        <h3 class="mb-20">Performance Metrics</h3>
+                        <div class="chart-container">
+                            <canvas id="analyticsChart1"></canvas>
+                        </div>
+                    </div>
+                    
+                    <div class="glass-card" style="padding: 24px;">
+                        <h3 class="mb-20">Risk Analysis</h3>
+                        <div class="chart-container">
+                            <canvas id="analyticsChart2"></canvas>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Report Generation -->
+                <div class="glass-card" style="padding: 24px; margin-top: 30px;">
+                    <h3 class="section-title mb-20">
+                        <i class="fas fa-file-alt"></i>
+                        Report Generation
+                    </h3>
+                    <p class="mb-20">Generate detailed performance reports for any date range or strategy.</p>
+                    
+                    <div class="report-actions">
+                        <button class="btn btn-primary">
+                            <i class="fas fa-calendar-alt"></i>
+                            Daily Report
+                        </button>
+                        <button class="btn btn-outline">
+                            <i class="fas fa-chart-line"></i>
+                            Weekly Analysis
+                        </button>
+                        <button class="btn btn-outline">
+                            <i class="fas fa-file-pdf"></i>
+                            Export PDF
+                        </button>
+                        <button class="btn btn-outline">
+                            <i class="fas fa-file-csv"></i>
+                            Export CSV
+                        </button>
+                    </div>
+                </div>
+            </section>
+            
+            <!-- Settings Section (Hidden by Default) -->
+            <section id="settings-section" class="dashboard-section hidden">
+                <h2 class="section-title">
+                    <i class="fas fa-sliders-h"></i>
+                    Dashboard Settings
+                </h2>
+                <p>Configure your dashboard preferences, notification settings, and API connections.</p>
+                
+                <!-- Settings will be added here in future updates -->
+            </section>
+        </main>
+    </div>
+
+    <script>
+        // ========== GLOBAL VARIABLES ==========
+        let selectedBots = new Set();
+        let notificationInterval;
+        let strategyChart, analyticsChart1, analyticsChart2;
+        
+        // ========== DOM ELEMENTS ==========
+        const sections = {
+            dashboard: document.getElementById('dashboard-section'),
+            botControl: document.getElementById('bot-control-section'),
+            strategy: document.getElementById('strategy-section'),
+            liveTrading: document.getElementById('live-trading-section'),
+            analytics: document.getElementById('analytics-section'),
+            settings: document.getElementById('settings-section')
+        };
+        
+        const navItems = document.querySelectorAll('.nav-item');
+        const pageTitle = document.getElementById('page-title');
+        const pageDescription = document.getElementById('page-description');
+        const botGridContainer = document.getElementById('bot-grid-container');
+        const notificationsList = document.getElementById('notifications-list');
+        const positionsList = document.getElementById('positions-list');
+        const executionsList = document.getElementById('executions-list');
+        const strategyList = document.querySelector('.strategy-list');
+        
+        // ========== PAGE INITIALIZATION ==========
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeDashboard();
+            generateBotCards();
+            generateStrategyList();
+            startLiveNotifications();
+            initializeCharts();
+            setupEventListeners();
+        });
+        
+        // ========== DASHBOARD INITIALIZATION ==========
+        function initializeDashboard() {
+            // Set initial active section
+            switchSection('dashboard');
+            
+            // Add recent activity notifications
+            addRecentActivity();
+        }
+        
+        // ========== SECTION SWITCHING ==========
+        function switchSection(sectionId) {
+            // Hide all sections
+            Object.values(sections).forEach(section => {
+                if (section) section.classList.add('hidden');
+            });
+            
+            // Remove active class from all nav items
+            navItems.forEach(item => item.classList.remove('active'));
+            
+            // Show selected section
+            if (sections[sectionId]) {
+                sections[sectionId].classList.remove('hidden');
+            }
+            
+            // Set active nav item
+            const activeNav = document.querySelector(`.nav-item[data-section="${sectionId}"]`);
+            if (activeNav) activeNav.classList.add('active');
+            
+            // Update page title and description
+            updatePageTitle(sectionId);
+            
+            // Refresh section-specific content
+            refreshSectionContent(sectionId);
+        }
+        
+        function updatePageTitle(sectionId) {
+            const titles = {
+                dashboard: { title: 'Dashboard Overview', desc: 'Monitor your trading bots and strategies in real-time' },
+                botControl: { title: 'Bot Control Center', desc: 'Manage 100+ trading bots with precision controls' },
+                strategy: { title: 'Strategy Analytics', desc: 'Analyze performance of 5-6 Pine Logic strategies across timeframes' },
+                liveTrading: { title: 'Live Trading', desc: 'Real-time trade notifications and position monitoring' },
+                analytics: { title: 'Advanced Analytics', desc: 'Generate detailed reports and performance insights' },
+                settings: { title: 'Settings', desc: 'Configure your dashboard preferences and connections' }
+            };
+            
+            if (titles[sectionId]) {
+                pageTitle.textContent = titles[sectionId].title;
+                pageDescription.textContent = titles[sectionId].desc;
+            }
+        }
+        
+        function refreshSectionContent(sectionId) {
+            switch(sectionId) {
+                case 'botControl':
+                    updateBulkButtons();
+                    break;
+                case 'liveTrading':
+                    updateLivePositions();
+                    break;
+                case 'strategy':
+                    updateStrategyChart('1m');
+                    break;
+            }
+        }
+        
+        // ========== BOT CONTROL CENTER ==========
+        function generateBotCards() {
+            const botCount = 127; // 100+ bots as requested
+            
+            for (let i = 1; i <= botCount; i++) {
+                const isActive = i % 3 !== 0;
+                const isProfitable = i % 5 !== 0;
+                const profit = (Math.random() * 500 + 50).toFixed(2);
+                const loss = (Math.random() * 200).toFixed(2);
+                
+                const botCard = document.createElement('div');
+                botCard.className = 'glass-card bot-card';
+                botCard.innerHTML = `
+                    <div class="bot-card-header">
+                        <div class="bot-name">Bot #${i.toString().padStart(3, '0')}</div>
+                        <div class="bot-status ${isActive ? '' : 'inactive'}">
+                            <i class="fas fa-circle"></i>
+                            ${isActive ? 'Active' : 'Inactive'}
+                        </div>
+                    </div>
+                    <div class="bot-stats">
+                        <div class="stat-item">
+                            <div class="stat-value">${isProfitable ? '+' : '-'}$${profit}</div>
+                            <div class="stat-label">Profit</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value">$${loss}</div>
+                            <div class="stat-label">Loss</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value">${Math.floor(Math.random() * 50) + 50}%</div>
+                            <div class="stat-label">Win Rate</div>
+                        </div>
+                    </div>
+                    <div class="bot-actions">
+                        <button class="action-btn ${isActive ? 'stop-btn' : 'start-btn'}" data-bot-id="${i}">
+                            ${isActive ? 'Stop' : 'Start'}
+                        </button>
+                        <button class="action-btn settings-btn" data-bot-id="${i}">
+                            <i class="fas fa-cog"></i>
+                        </button>
+                        <div class="checkbox-container">
+                            <input type="checkbox" class="bot-checkbox" id="bot-${i}" data-bot-id="${i}">
+                            <label for="bot-${i}"></label>
+                        </div>
+                    </div>
+                `;
+                
+                botGridContainer.appendChild(botCard);
+            }
+            
+            // Add event listeners to bot controls
+            document.querySelectorAll('.action-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const botId = this.getAttribute('data-bot-id');
+                    const isStartStopBtn = this.classList.contains('start-btn') || this.classList.contains('stop-btn');
+                    
+                    if (isStartStopBtn) {
+                        toggleBotState(botId, this);
+                    } else {
+                        openBotSettings(botId);
+                    }
+                });
+            });
+            
+            // Add event listeners to checkboxes
+            document.querySelectorAll('.bot-checkbox').forEach(checkbox => {
+                checkbox.addEventListener('change', function() {
+                    const botId = this.getAttribute('data-bot-id');
+                    
+                    if (this.checked) {
+                        selectedBots.add(botId);
+                    } else {
+                        selectedBots.delete(botId);
+                    }
+                    
+                    updateBulkButtons();
+                });
+            });
+        }
+        
+        function toggleBotState(botId, button) {
+            const botCard = button.closest('.bot-card');
+            const statusElement = botCard.querySelector('.bot-status');
+            const isCurrentlyActive = !button.classList.contains('start-btn');
+            
+            // Toggle button state
+            if (isCurrentlyActive) {
+                // Currently active, stopping
+                button.classList.remove('stop-btn');
+                button.classList.add('start-btn');
+                button.textContent = 'Start';
+                
+                statusElement.classList.add('inactive');
+                statusElement.innerHTML = '<i class="fas fa-circle"></i> Inactive';
+            } else {
+                // Currently inactive, starting
+                button.classList.remove('start-btn');
+                button.classList.add('stop-btn');
+                button.textContent = 'Stop';
+                
+                statusElement.classList.remove('inactive');
+                statusElement.innerHTML = '<i class="fas fa-circle"></i> Active';
+            }
+            
+            // Add notification
+            const action = isCurrentlyActive ? 'stopped' : 'started';
+            addNotification(
+                'Bot Status Changed',
+                `Bot #${botId.toString().padStart(3, '0')} has been ${action}`,
+                isCurrentlyActive ? 'info' : 'buy'
+            );
+        }
+        
+        function openBotSettings(botId) {
+            addNotification(
+                'Bot Settings',
+                `Opening settings for Bot #${botId.toString().padStart(3, '0')}`,
+                'info'
+            );
+            
+            // In a real app, this would open a settings modal
+            alert(`Settings for Bot #${botId.toString().padStart(3, '0')} would open here.`);
+        }
+        
+        function updateBulkButtons() {
+            const count = selectedBots.size;
+            document.getElementById('bulk-start').textContent = `Start Selected (${count})`;
+            document.getElementById('bulk-stop').textContent = `Stop Selected (${count})`;
+        }
+        
+        // ========== STRATEGY ANALYTICS ==========
+        function generateStrategyList() {
+            const strategies = [
+                { name: 'V3 Combined', timeframe: 'Multi', profit: '+$4,250', change: '+12.5%', color: '#4056EB' },
+                { name: 'V6 1M', timeframe: '1 Minute', profit: '+$2,890', change: '+8.2%', color: '#22D3EE' },
+                { name: 'V6 5M', timeframe: '5 Minute', profit: '+$3,450', change: '+10.1%', color: '#763CED' },
+                { name: 'V6 15M', timeframe: '15 Minute', profit: '+$1,980', change: '+5.7%', color: '#FFB443' },
+                { name: 'V6 1H', timeframe: '1 Hour', profit: '+$5,120', change: '+14.3%', color: '#EC4899' },
+                { name: 'V6 4H', timeframe: '4 Hour', profit: '+$2,340', change: '+6.8%', color: '#00D1A7' }
+            ];
+            
+            strategyList.innerHTML = '';
+            
+            strategies.forEach(strategy => {
+                const item = document.createElement('div');
+                item.className = 'strategy-item';
+                item.style.borderLeftColor = strategy.color;
+                
+                item.innerHTML = `
+                    <div class="strategy-info">
+                        <h4>${strategy.name}</h4>
+                        <p>${strategy.timeframe} • 67-82% Win Rate</p>
+                    </div>
+                    <div class="strategy-performance">
+                        <div class="performance-value" style="color: ${strategy.color}">${strategy.profit}</div>
+                        <div class="change-positive">${strategy.change}</div>
+                    </div>
+                `;
+                
+                strategyList.appendChild(item);
+            });
+        }
+        
+        function initializeCharts() {
+            const strategyCtx = document.getElementById('strategyChart').getContext('2d');
+            const analytics1Ctx = document.getElementById('analyticsChart1').getContext('2d');
+            const analytics2Ctx = document.getElementById('analyticsChart2').getContext('2d');
+            
+            // Strategy Performance Chart
+            strategyChart = new Chart(strategyCtx, {
+                type: 'line',
+                data: {
+                    labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul'],
+                    datasets: [
+                        {
+                            label: 'V3 Combined',
+                            data: [6500, 8100, 9200, 10500, 12500, 13800, 14250],
+                            borderColor: '#4056EB',
+                            backgroundColor: 'rgba(64, 86, 235, 0.1)',
+                            fill: true,
+                            tension: 0.4
+                        },
+                        {
+                            label: 'V6 1H',
+                            data: [4200, 5100, 6200, 7800, 9200, 11200, 12500],
+                            borderColor: '#EC4899',
+                            backgroundColor: 'rgba(236, 72, 153, 0.1)',
+                            fill: true,
+                            tension: 0.4
+                        },
+                        {
+                            label: 'V6 15M',
+                            data: [3200, 4100, 4800, 5200, 6100, 6900, 7200],
+                            borderColor: '#FFB443',
+                            backgroundColor: 'rgba(255, 180, 67, 0.1)',
+                            fill: true,
+                            tension: 0.4
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            labels: {
+                                color: '#A0AEC0'
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            grid: {
+                                color: 'rgba(255, 255, 255, 0.05)'
+                            },
+                            ticks: {
+                                color: '#718096'
+                            }
+                        },
+                        y: {
+                            grid: {
+                                color: 'rgba(255, 255, 255, 0.05)'
+                            },
+                            ticks: {
+                                color: '#718096',
+                                callback: function(value) {
+                                    return '$' + value.toLocaleString();
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+            
+            // Analytics Chart 1
+            analyticsChart1 = new Chart(analytics1Ctx, {
+                type: 'bar',
+                data: {
+                    labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+                    datasets: [{
+                        label: 'Daily Profit',
+                        data: [1250, 1890, 2150, 2400, 1890, 3100, 2450],
+                        backgroundColor: [
+                            'rgba(64, 86, 235, 0.7)',
+                            'rgba(64, 86, 235, 0.7)',
+                            'rgba(64, 86, 235, 0.7)',
+                            'rgba(64, 86, 235, 0.7)',
+                            'rgba(64, 86, 235, 0.7)',
+                            'rgba(0, 209, 167, 0.7)',
+                            'rgba(64, 86, 235, 0.7)'
+                        ]
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        x: {
+                            grid: {
+                                color: 'rgba(255, 255, 255, 0.05)'
+                            },
+                            ticks: {
+                                color: '#718096'
+                            }
+                        },
+                        y: {
+                            grid: {
+                                color: 'rgba(255, 255, 255, 0.05)'
+                            },
+                            ticks: {
+                                color: '#718096',
+                                callback: function(value) {
+                                    return '$' + value;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+            
+            // Analytics Chart 2
+            analyticsChart2 = new Chart(analytics2Ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['V3 Combined', 'V6 1H', 'V6 15M', 'V6 5M', 'V6 1M', 'V6 4H'],
+                    datasets: [{
+                        data: [28, 22, 18, 15, 10, 7],
+                        backgroundColor: [
+                            '#4056EB',
+                            '#EC4899',
+                            '#FFB443',
+                            '#763CED',
+                            '#22D3EE',
+                            '#00D1A7'
+                        ],
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    cutout: '70%',
+                    plugins: {
+                        legend: {
+                            position: 'right',
+                            labels: {
+                                color: '#A0AEC0',
+                                padding: 20
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        function updateStrategyChart(timeframe) {
+            // This function would update the chart data based on selected timeframe
+            // For now, we'll just simulate with random data
+            const newData = strategyChart.data.datasets.map(dataset => {
+                return {
+                    ...dataset,
+                    data: dataset.data.map(value => {
+                        const change = timeframe === '1m' ? 0.1 : 
+                                      timeframe === '5m' ? 0.2 :
+                                      timeframe === '15m' ? 0.3 :
+                                      timeframe === '1h' ? 0.4 :
+                                      timeframe === '4h' ? 0.5 : 0.6;
+                        return Math.floor(value * (1 + change));
+                    })
+                };
+            });
+            
+            strategyChart.data.datasets = newData;
+            strategyChart.update();
+            
+            // Update timeframe buttons
+            document.querySelectorAll('.timeframe-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            document.querySelector(`.timeframe-btn[data-timeframe="${timeframe}"]`).classList.add('active');
+        }
+        
+        // ========== LIVE TRADING ==========
+        function startLiveNotifications() {
+            // Initial notifications
+            addNotification('System', 'Trading dashboard initialized successfully', 'info');
+            addNotification('BTC/USDT', 'Buy signal detected at $42,150', 'buy');
+            addNotification('ETH/USDT', 'Position closed with +2.4% profit', 'buy');
+            
+            // Start interval for new notifications
+            notificationInterval = setInterval(() => {
+                if (Math.random() > 0.7) {
+                    const pairs = ['BTC/USDT', 'ETH/USDT', 'SOL/USDT', 'ADA/USDT', 'DOT/USDT'];
+                    const actions = ['buy', 'sell'];
+                    const pair = pairs[Math.floor(Math.random() * pairs.length)];
+                    const action = actions[Math.floor(Math.random() * actions.length)];
+                    const price = (Math.random() * 50000 + 30000).toFixed(0);
+                    
+                    addNotification(
+                        pair,
+                        `${action === 'buy' ? 'Buy' : 'Sell'} signal at $${price}`,
+                        action
+                    );
+                }
+            }, 5000);
+        }
+        
+        function addNotification(title, message, type = 'info') {
+            const notification = document.createElement('div');
+            notification.className = `notification ${type}`;
+            
+            const time = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+            
+            notification.innerHTML = `
+                <div class="notification-header">
+                    <div class="notification-title">
+                        <i class="fas fa-${type === 'buy' ? 'arrow-up' : type === 'sell' ? 'arrow-down' : 'info-circle'}"></i>
+                        ${title}
+                    </div>
+                    <div class="notification-time">${time}</div>
+                </div>
+                <div class="notification-message">${message}</div>
+            `;
+            
+            // Add to notifications list
+            if (notificationsList) {
+                notificationsList.insertBefore(notification, notificationsList.firstChild);
+                
+                // Limit to 20 notifications
+                if (notificationsList.children.length > 20) {
+                    notificationsList.removeChild(notificationsList.lastChild);
+                }
+            }
+            
+            // Also add to recent activity in dashboard
+            if (document.querySelector('#dashboard-section .notifications-list')) {
+                const recentActivity = notification.cloneNode(true);
+                document.querySelector('#dashboard-section .notifications-list').insertBefore(recentActivity, 
+                    document.querySelector('#dashboard-section .notifications-list').firstChild);
+                
+                // Limit to 10 in recent activity
+                const dashboardList = document.querySelector('#dashboard-section .notifications-list');
+                if (dashboardList.children.length > 10) {
+                    dashboardList.removeChild(dashboardList.lastChild);
+                }
+            }
+            
+            // Add to execution log if it's a trade
+            if (type === 'buy' || type === 'sell') {
+                addExecutionLog(title, message, type, time);
+            }
+        }
+        
+        function addExecutionLog(pair, message, type, time) {
+            const execution = document.createElement('div');
+            execution.className = 'notification info';
+            
+            execution.innerHTML = `
+                <div class="notification-header">
+                    <div class="notification-title">
+                        <i class="fas fa-${type === 'buy' ? 'arrow-up' : 'arrow-down'}"></i>
+                        ${pair} Execution
+                    </div>
+                    <div class="notification-time">${time}</div>
+                </div>
+                <div class="notification-message">${message}</div>
+            `;
+            
+            if (executionsList) {
+                executionsList.insertBefore(execution, executionsList.firstChild);
+                
+                // Limit to 15 executions
+                if (executionsList.children.length > 15) {
+                    executionsList.removeChild(executionsList.lastChild);
+                }
+            }
+        }
+        
+        function updateLivePositions() {
+            if (!positionsList) return;
+            
+            positionsList.innerHTML = '';
+            
+            const positions = [
+                { pair: 'BTC/USDT', type: 'Long', entry: '42,150', current: '42,580', pnl: '+430', pnlPercent: '+1.02%' },
+                { pair: 'ETH/USDT', type: 'Short', entry: '2,850', current: '2,810', pnl: '+40', pnlPercent: '+1.40%' },
+                { pair: 'SOL/USDT', type: 'Long', entry: '98.50', current: '96.20', pnl: '-2.30', pnlPercent: '-2.34%' },
+                { pair: 'ADA/USDT', type: 'Long', entry: '0.485', current: '0.492', pnl: '+0.007', pnlPercent: '+1.44%' }
+            ];
+            
+            positions.forEach(pos => {
+                const isProfit = !pos.pnl.startsWith('-');
+                
+                const position = document.createElement('div');
+                position.className = `position-item ${isProfit ? '' : 'loss'}`;
+                
+                position.innerHTML = `
+                    <div>
+                        <div class="position-pair">${pos.pair} • ${pos.type}</div>
+                        <div class="position-details">Entry: $${pos.entry} | Current: $${pos.current}</div>
+                    </div>
+                    <div class="position-pnl ${isProfit ? 'positive' : 'negative'}">
+                        ${isProfit ? '+' : ''}$${pos.pnl}<br>
+                        <small>${pos.pnlPercent}</small>
+                    </div>
+                `;
+                
+                positionsList.appendChild(position);
+            });
+        }
+        
+        function addRecentActivity() {
+            const activities = [
+                { title: 'System Update', message: 'Dashboard updated to version 2.1.0', type: 'info' },
+                { title: 'New Bot Added', message: 'Grid Bot #128 configured for BTC/USDT', type: 'buy' },
+                { title: 'Weekly Report', message: 'Weekly performance report generated', type: 'info' },
+                { title: 'ETH/USDT', message: 'Take profit triggered at $2,920', type: 'buy' }
+            ];
+            
+            activities.forEach(activity => {
+                addNotification(activity.title, activity.message, activity.type);
+            });
+        }
+        
+        // ========== EVENT LISTENERS ==========
+        function setupEventListeners() {
+            // Navigation
+            navItems.forEach(item => {
+                item.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    const sectionId = this.getAttribute('data-section');
+                    switchSection(sectionId);
+                });
+            });
+            
+            // Quick Start button
+            document.getElementById('quick-start')?.addEventListener('click', function() {
+                addNotification('Quick Start', 'Starting all profitable bots...', 'buy');
+                
+                // Simulate starting bots
+                setTimeout(() => {
+                    addNotification('System', '15 bots started successfully', 'info');
+                }, 1500);
+            });
+            
+            // Refresh button
+            document.getElementById('refresh-data')?.addEventListener('click', function() {
+                this.classList.add('fa-spin');
+                
+                setTimeout(() => {
+                    this.classList.remove('fa-spin');
+                    addNotification('System', 'Data refreshed successfully', 'info');
+                }, 1000);
+            });
+            
+            // Bulk operations
+            document.getElementById('bulk-start')?.addEventListener('click', function() {
+                if (selectedBots.size === 0) {
+                    alert('Please select bots first');
+                    return;
+                }
+                
+                addNotification('Bulk Operation', `Starting ${selectedBots.size} selected bots...`, 'info');
+                selectedBots.clear();
+                updateBulkButtons();
+                
+                // Uncheck all checkboxes
+                document.querySelectorAll('.bot-checkbox:checked').forEach(cb => {
+                    cb.checked = false;
+                });
+            });
+            
+            document.getElementById('bulk-stop')?.addEventListener('click', function() {
+                if (selectedBots.size === 0) {
+                    alert('Please select bots first');
+                    return;
+                }
+                
+                addNotification('Bulk Operation', `Stopping ${selectedBots.size} selected bots...`, 'info');
+                selectedBots.clear();
+                updateBulkButtons();
+                
+                // Uncheck all checkboxes
+                document.querySelectorAll('.bot-checkbox:checked').forEach(cb => {
+                    cb.checked = false;
+                });
+            });
+            
+            // Timeframe buttons
+            document.querySelectorAll('.timeframe-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const timeframe = this.getAttribute('data-timeframe');
+                    updateStrategyChart(timeframe);
+                });
+            });
+            
+            // Filter buttons
+            document.querySelectorAll('.filter-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+                    this.classList.add('active');
+                    
+                    // In a real app, this would filter the bot grid
+                    const filterType = this.textContent.split(' ')[0].toLowerCase();
+                    addNotification('Filter Applied', `Showing ${this.textContent}`, 'info');
+                });
+            });
+        }
+        
+        // ========== UTILITY FUNCTIONS ==========
+        function formatCurrency(amount) {
+            return '$' + amount.toLocaleString('en-US', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            });
+        }
+        
+        function getRandomColor() {
+            const colors = ['#4056EB', '#763CED', '#22D3EE', '#00D1A7', '#FFB443', '#EC4899'];
+            return colors[Math.floor(Math.random() * colors.length)];
+        }
+    </script>
+</body>
+</html>
