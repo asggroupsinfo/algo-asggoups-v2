@@ -19,7 +19,7 @@
 | 06 | Sticky Header & Notification Router | PASSED | [x] | [x] | [x] | [x] |
 | 07 | Shared Service API Layer | PASSED | [x] | [x] | [x] | [x] |
 | 08 | V3 Combined Logic Plugin | PASSED | [x] | [x] | [x] | [x] |
-| 09 | Config Hot-Reload & DB Isolation | PENDING | [ ] | [ ] | [ ] | [ ] |
+| 09 | Config Hot-Reload & DB Isolation | PASSED | [x] | [x] | [x] | [x] |
 | 10 | V6 Price Action Plugin Foundation | PENDING | [ ] | [ ] | [ ] | [ ] |
 | 11 | Plugin Health & Versioning | PENDING | [ ] | [ ] | [ ] | [ ] |
 | 12 | Data Migration & Developer Docs | PENDING | [ ] | [ ] | [ ] | [ ] |
@@ -462,10 +462,55 @@
 - Manual sync trigger tests
 
 **Validation Checklist:**
-- [ ] Config changes apply without restart
-- [ ] Each plugin uses isolated database
-- [ ] Sync retries on failure
-- [ ] /sync_manual command works
+- [x] Config changes apply without restart
+- [x] Each plugin uses isolated database
+- [x] Sync retries on failure
+- [x] /sync_manual command works
+
+**Implementation Notes (Batch 09 - COMPLETED 2026-01-14):**
+- Created 3 new files in `src/core/`:
+  - `config_manager.py` - Dynamic configuration hot-reload system (600+ lines)
+    - ConfigManager class with file watching (polling-based, 2s interval)
+    - JSON schema validation before applying changes
+    - Observer pattern for notifying plugins of config changes
+    - Thread-safe config access with RLock
+    - Atomic config updates using temp file + rename
+    - Dot notation support for nested config access (e.g., "risk_tiers.5000.per_trade_cap")
+    - Plugin-specific config loading from config/plugins/ directory
+    - Change history tracking (last 100 changes)
+    - ConfigChange dataclass with key, change_type, old_value, new_value, timestamp
+  - `plugin_database.py` - Isolated SQLite database for each plugin (650+ lines)
+    - PluginDatabase class with connection pooling (default 5 connections)
+    - Thread-safe operations using Queue-based pool
+    - WAL mode for better concurrency
+    - Automatic schema creation (plugin_info, trades, daily_stats, signals_log tables)
+    - CRUD operations: save_trade, update_trade, close_trade, get_trade, get_open_trades
+    - Signal logging and daily statistics tracking
+    - PluginDatabaseManager for managing multiple plugin databases
+    - Database statistics tracking (queries, inserts, updates, errors)
+  - `database_sync_manager.py` - Synchronization with error recovery (700+ lines)
+    - DatabaseSyncManager class with automatic sync every 5 minutes
+    - Retry logic with exponential backoff (5s, 10s, 20s) and max 3 retries
+    - Manual sync trigger via trigger_manual_sync() for /sync_manual command
+    - Health monitoring with get_sync_health() method
+    - Alert callback for persistent failures (threshold: 3 consecutive)
+    - Syncs trades from plugin DBs (V3/V6) to central aggregated_trades table
+    - SyncResult dataclass with status, records_synced, error_message, duration_ms
+    - SyncConfig for customizable sync parameters
+- Key Features Implemented:
+  - Config Hot-Reload: File watching with automatic reload on changes
+  - Observer Pattern: Plugins notified of config changes via callbacks
+  - Database Isolation: Each plugin gets its own SQLite database (zepix_{plugin_id}.db)
+  - Connection Pooling: Thread-safe database access with configurable pool size
+  - Sync with Retry: Exponential backoff retry logic for failed syncs
+  - Health Monitoring: Track consecutive failures and alert on threshold
+  - Manual Sync: Trigger immediate sync bypassing interval wait
+- Backward Compatibility:
+  - Existing config.py and database.py files NOT modified
+  - New system works alongside existing infrastructure
+  - Plugins can opt-in to new config/database system
+- Created comprehensive unit tests: `tests/test_batch_09_config_db.py` (45 tests, all passing)
+- Test categories: ConfigManager (12), PluginConfigHotReload (3), PluginDatabase (11), PluginDatabaseManager (3), DatabaseSyncManager (9), SyncRetryLogic (2), Integration (2), FactoryFunctions (3)
 
 ---
 
