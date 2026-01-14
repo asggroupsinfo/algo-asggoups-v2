@@ -20,7 +20,7 @@
 | 07 | Shared Service API Layer | PASSED | [x] | [x] | [x] | [x] |
 | 08 | V3 Combined Logic Plugin | PASSED | [x] | [x] | [x] | [x] |
 | 09 | Config Hot-Reload & DB Isolation | PASSED | [x] | [x] | [x] | [x] |
-| 10 | V6 Price Action Plugin Foundation | PENDING | [ ] | [ ] | [ ] | [ ] |
+| 10 | V6 Price Action Plugin Foundation | PASSED | [x] | [x] | [x] | [x] |
 | 11 | Plugin Health & Versioning | PENDING | [ ] | [ ] | [ ] | [ ] |
 | 12 | Data Migration & Developer Docs | PENDING | [ ] | [ ] | [ ] | [ ] |
 | 13 | Code Quality & User Docs | PENDING | [ ] | [ ] | [ ] | [ ] |
@@ -536,11 +536,67 @@
 - Conditional order tests
 
 **Validation Checklist:**
-- [ ] All 4 V6 plugins load correctly
-- [ ] TrendPulseManager works
-- [ ] Spread filtering prevents bad entries
-- [ ] Order B conditional logic correct
-- [ ] No conflicts with V3 plugin
+- [x] All 4 V6 plugins load correctly
+- [x] TrendPulseManager works
+- [x] Spread filtering prevents bad entries
+- [x] Order B conditional logic correct
+- [x] No conflicts with V3 plugin
+
+**Implementation Notes (Batch 10 - COMPLETED 2026-01-14):**
+- Created 2 new core files in `src/core/`:
+  - `trend_pulse_manager.py` - Trend Pulse tracking system (482 lines)
+    - TrendPulseData dataclass with bull_count, bear_count, market_state, timestamp
+    - MarketState enum: TRENDING_BULLISH, TRENDING_BEARISH, SIDEWAYS, CHOPPY, UNKNOWN
+    - TrendPulseManager class with async methods for pulse updates and alignment checks
+    - net_direction property returns int (1 for bullish, -1 for bearish, 0 for neutral)
+    - strength property returns float (0.0 to 1.0) representing trend strength
+    - Database integration for market_trends table updates
+    - Caching with _pulse_cache for performance
+  - `zepix_v6_alert.py` - V6 Alert parsing system (538 lines)
+    - V6AlertType enum: BULLISH_ENTRY, BEARISH_ENTRY, EXIT_BULLISH, EXIT_BEARISH, TREND_PULSE, etc.
+    - ADXStrength enum: STRONG, MODERATE, WEAK, NONE
+    - ConfidenceLevel enum: HIGH, MODERATE, LOW
+    - ZepixV6Alert dataclass with all V6 alert fields (default conf_score=50)
+    - TrendPulseAlert dataclass with tf field for timeframe
+    - parse_v6_from_dict(), parse_v6_payload(), parse_trend_pulse() functions
+    - validate_v6_alert() returns dict with valid flag and issues list
+    - V6AlertFactory class for creating alerts programmatically
+- Created 4 V6 Price Action plugins in `src/logic_plugins/`:
+  - `price_action_1m/plugin.py` - 1M Scalping Logic (600+ lines)
+    - ORDER_B_ONLY routing targeting TP1
+    - RISK_MULTIPLIER: 0.5x (conservative for scalping)
+    - Filters: ADX > 20, Confidence >= 80, Spread < 2 pips
+    - Shadow mode enabled by default
+  - `price_action_5m/plugin.py` - 5M Momentum Logic (600+ lines)
+    - DUAL_ORDERS routing (Order A targets TP2, Order B targets TP1)
+    - RISK_MULTIPLIER: 1.0x (standard)
+    - Filters: ADX >= 25, Confidence >= 70, 15M Alignment required
+    - Shadow mode enabled by default
+  - `price_action_15m/plugin.py` - 15M Intraday Logic (600+ lines)
+    - ORDER_A_ONLY routing targeting TP2
+    - RISK_MULTIPLIER: 1.0x class default (config can override to 1.25)
+    - Filters: Market State check, Trend Pulse alignment, Confidence >= 60
+    - Shadow mode enabled by default
+  - `price_action_1h/plugin.py` - 1H Swing Logic (600+ lines)
+    - ORDER_A_ONLY routing targeting TP3 or TP2
+    - RISK_MULTIPLIER: 0.6x class default (config can override to 1.5)
+    - Filters: 4H Alignment required, Confidence >= 60
+    - Shadow mode enabled by default
+- Key Features Implemented:
+  - Trend Pulse System: Separate from V3, tracks bull/bear counts across timeframes
+  - Conditional Order Routing: Different order types per timeframe (ORDER A, ORDER B, DUAL ORDERS)
+  - ADX Filters: Minimum ADX thresholds per timeframe (1M: 20, 5M: 25)
+  - Spread Filters: Maximum spread constraints (1M: 2 pips critical for scalping)
+  - Confidence Scoring: Minimum confidence levels per timeframe (1M: 80, 5M: 70, 15M/1H: 60)
+  - Shadow Mode: All plugins run in shadow mode by default (no real orders until enabled)
+  - Database Isolation: V6 plugins use zepix_price_action.db (separate from V3)
+- Backward Compatibility:
+  - V6 plugins run parallel to V3 Combined Logic plugin
+  - No modifications to existing V3 plugin or trading_engine.py
+  - V6 alerts use similar structure to V3 for consistency
+  - All plugins inherit from BaseLogicPlugin
+- Created comprehensive unit tests: `tests/test_batch_10_v6_foundation.py` (70 tests, all passing)
+- Test categories: TrendPulseData (4), MarketState (2), TrendPulseManager (7), V6AlertType (2), ADXStrength (2), ConfidenceLevel (2), ZepixV6Alert (3), ParseV6FromDict (2), ParseV6Payload (2), ParseTrendPulse (1), ValidateV6Alert (2), V6AlertFactory (2), PriceAction1MPlugin (8), PriceAction5MPlugin (5), PriceAction15MPlugin (4), PriceAction1HPlugin (4), OrderRoutingMatrix (4), RiskMultipliers (4), TimeframeFilters (4), ShadowMode (2), BackwardCompatibility (2), Integration (2)
 
 ---
 
