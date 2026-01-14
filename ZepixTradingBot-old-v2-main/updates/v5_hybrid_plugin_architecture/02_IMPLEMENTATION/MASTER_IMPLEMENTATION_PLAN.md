@@ -22,7 +22,7 @@
 | 09 | Config Hot-Reload & DB Isolation | PASSED | [x] | [x] | [x] | [x] |
 | 10 | V6 Price Action Plugin Foundation | PASSED | [x] | [x] | [x] | [x] |
 | 11 | Plugin Health & Versioning | PASSED | [x] | [x] | [x] | [x] |
-| 12 | Data Migration & Developer Docs | PENDING | [ ] | [ ] | [ ] | [ ] |
+| 12 | Data Migration & Developer Docs | PASSED | [x] | [x] | [x] | [x] |
 | 13 | Code Quality & User Docs | PENDING | [ ] | [ ] | [ ] | [ ] |
 | 14 | Dashboard Specification (Optional) | PENDING | [ ] | [ ] | [ ] | [ ] |
 
@@ -707,10 +707,69 @@
 - Schema verification tests
 
 **Validation Checklist:**
-- [ ] Migrations apply cleanly
-- [ ] Rollbacks work correctly
-- [ ] Developer guide is complete
-- [ ] /migration_status command works
+- [x] Migrations apply cleanly
+- [x] Rollbacks work correctly
+- [x] Developer guide is complete
+- [x] /migration_status command works
+
+**Implementation Notes (Batch 12 - COMPLETED 2026-01-14):**
+- Created `src/utils/data_migration_tool.py` - Data migration from V4 to V5 (802 lines)
+  - MigrationStatus enum: PENDING, IN_PROGRESS, COMPLETED, FAILED, ROLLED_BACK
+  - MigrationResult dataclass: status, source_db, target_db, records_migrated/failed/skipped, P&L integrity
+  - ColumnMapping dataclass: V4 to V5 column mapping with transforms and defaults
+  - DataMigrationTool class with comprehensive migration functionality:
+    - V4_TO_V5_COLUMN_MAPPING: 17 column mappings (trade_id→mt5_ticket, pnl→profit_dollars, etc.)
+    - _transform_status(): Convert V4 status to V5 format
+    - _map_v4_to_v5(): Full row transformation with signal_data JSON for legacy fields
+    - _ensure_v5_schema(): Create V5 tables (plugin_info, trades, daily_stats, signals_log, migration_log)
+    - get_v4_trades(): Retrieve trades with optional strategy filter
+    - get_v4_summary(): Database summary with trade counts and P&L totals
+    - migrate_to_plugin(): Core migration with dry_run support, backup creation, integrity checks
+    - migrate_to_v3_plugin(): Convenience method for V3 Combined Logic
+    - migrate_to_v6_plugin(): Convenience method for V6 Price Action (by timeframe)
+    - verify_integrity(): Post-migration checks (record count, P&L match, no duplicates, required fields)
+    - rollback_migration(): Remove migrated records by migrated_from='v4' marker
+    - get_migration_history(): Track all migrations performed
+    - format_migration_report(): Human-readable migration summary
+  - create_migration_tool() factory function
+- Created `src/utils/doc_generator.py` - Auto-generate API docs from docstrings (600+ lines)
+  - DocstringParser class: Parse Google-style and NumPy-style docstrings
+    - SECTIONS list: Args, Parameters, Returns, Raises, Examples, Notes, Attributes
+    - parse(): Extract description, params, returns from docstring
+    - _parse_params(): Parse parameter documentation
+    - _parse_returns(): Parse return documentation
+  - ParameterDoc, ReturnDoc, FunctionDoc, ClassDoc, ModuleDoc dataclasses
+  - PythonDocExtractor class: Extract documentation from Python source files
+    - extract_from_file(): Parse Python file using AST
+    - _extract_class(): Extract class documentation with methods
+    - _extract_function(): Extract function documentation with parameters and returns
+    - _get_annotation_string(): Convert AST annotations to strings
+    - _get_default_string(): Convert AST default values to strings
+  - DocGenerator class: Generate Markdown documentation
+    - generate_file(): Generate docs for single file
+    - generate_directory(): Generate docs for all files in directory
+    - generate_service_api_docs(): Generate combined service API documentation
+    - generate_all(): Generate all documentation (services, core, utils, telegram)
+    - _generate_header(), _generate_toc(), _generate_footer(): Formatting helpers
+  - create_doc_generator() and generate_service_api_docs() factory functions
+- Key Features Implemented:
+  - V4 to V5 Migration: Safe migration from trading_bot.db to plugin-isolated databases
+  - Schema Transformation: 17 column mappings with type conversion and defaults
+  - Integrity Verification: P&L matching, duplicate detection, required field validation
+  - Dry Run Mode: Simulate migration without writing to database
+  - Rollback Support: Remove migrated records using marker field
+  - Backup Creation: Automatic backup before migration
+  - Migration History: Track all migrations with timestamps and results
+  - API Documentation: Auto-generate Markdown from Python docstrings
+  - Docstring Parsing: Support for Google-style and NumPy-style formats
+  - AST-based Extraction: Parse Python source files for classes, functions, parameters
+- Backward Compatibility:
+  - Migration tool works with existing trading_bot.db schema
+  - Doc generator works with existing service files
+  - No modifications to existing database.py or plugin_database.py
+  - All new files are additive (no existing files modified)
+- Created comprehensive unit tests: `tests/test_batch_12_migration.py` (42 tests, all passing)
+- Test categories: MigrationStatus (1), MigrationResult (3), ColumnMapping (2), DataMigrationTool (11), FactoryFunction (1), DocstringParser (3), ParameterDoc (1), ReturnDoc (1), FunctionDoc (2), ClassDoc (2), ModuleDoc (2), PythonDocExtractor (4), DocGenerator (4), DocGeneratorFactory (1), Integration (2), BackwardCompatibility (2)
 
 ---
 
