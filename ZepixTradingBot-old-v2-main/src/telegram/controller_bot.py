@@ -4,12 +4,15 @@ Controller Bot - Handles system commands and admin functions
 This bot handles all slash commands and system control.
 It delegates to the existing telegram_bot_fixed.py for command handling.
 
-Version: 1.0.0
+Version: 1.1.0
 Date: 2026-01-14
+
+Updates:
+- v1.1.0: Added /health and /version commands for plugin monitoring
 """
 
 import logging
-from typing import Dict, Any, Optional, Callable
+from typing import Dict, Any, Optional, Callable, List
 from datetime import datetime
 
 from .base_telegram_bot import BaseTelegramBot
@@ -37,9 +40,20 @@ class ControllerBot(BaseTelegramBot):
         self._risk_manager = None
         self._legacy_bot = None
         
+        # Health monitoring and versioning (Batch 11)
+        self._health_monitor = None
+        self._version_registry = None
+        
         logger.info("[ControllerBot] Initialized")
     
-    def set_dependencies(self, trading_engine=None, risk_manager=None, legacy_bot=None):
+    def set_dependencies(
+        self,
+        trading_engine=None,
+        risk_manager=None,
+        legacy_bot=None,
+        health_monitor=None,
+        version_registry=None
+    ):
         """
         Set dependencies for command handling
         
@@ -47,13 +61,23 @@ class ControllerBot(BaseTelegramBot):
             trading_engine: TradingEngine instance
             risk_manager: RiskManager instance
             legacy_bot: Legacy TelegramBot instance for command delegation
+            health_monitor: PluginHealthMonitor instance (Batch 11)
+            version_registry: VersionedPluginRegistry instance (Batch 11)
         """
         self._trading_engine = trading_engine
         self._risk_manager = risk_manager
         self._legacy_bot = legacy_bot
+        self._health_monitor = health_monitor
+        self._version_registry = version_registry
         
         if legacy_bot:
             logger.info("[ControllerBot] Legacy bot connected for command delegation")
+        
+        if health_monitor:
+            logger.info("[ControllerBot] Health monitor connected")
+        
+        if version_registry:
+            logger.info("[ControllerBot] Version registry connected")
     
     def register_command(self, command: str, handler: Callable):
         """
@@ -188,3 +212,168 @@ class ControllerBot(BaseTelegramBot):
         )
         
         return self.send_message(message, reply_markup={"inline_keyboard": keyboard})
+    
+    # ========================================
+    # Health Monitoring Commands (Batch 11)
+    # ========================================
+    
+    def handle_health_command(self, message: Dict = None) -> Optional[int]:
+        """
+        Handle /health command - Show plugin health dashboard
+        
+        Args:
+            message: Telegram message dict (optional)
+        
+        Returns:
+            Message ID if successful
+        """
+        if not self._health_monitor:
+            return self.send_message(
+                "🏥 <b>Health Monitor</b>\n\n"
+                "Health monitoring is not configured.\n"
+                "Please initialize PluginHealthMonitor first."
+            )
+        
+        try:
+            # Get formatted health dashboard
+            dashboard_text = self._health_monitor.format_health_dashboard()
+            return self.send_message(dashboard_text)
+            
+        except Exception as e:
+            logger.error(f"[ControllerBot] Health command error: {e}")
+            return self.send_error_response(f"Failed to get health status: {str(e)}")
+    
+    def handle_version_command(self, message: Dict = None) -> Optional[int]:
+        """
+        Handle /version command - Show active plugin versions
+        
+        Args:
+            message: Telegram message dict (optional)
+        
+        Returns:
+            Message ID if successful
+        """
+        if not self._version_registry:
+            return self.send_message(
+                "📦 <b>Version Registry</b>\n\n"
+                "Version registry is not configured.\n"
+                "Please initialize VersionedPluginRegistry first."
+            )
+        
+        try:
+            # Get formatted version dashboard
+            version_text = self._version_registry.format_version_dashboard()
+            return self.send_message(version_text)
+            
+        except Exception as e:
+            logger.error(f"[ControllerBot] Version command error: {e}")
+            return self.send_error_response(f"Failed to get version info: {str(e)}")
+    
+    def handle_upgrade_command(self, message: Dict, args: List[str] = None) -> Optional[int]:
+        """
+        Handle /upgrade command - Upgrade plugin to specific version
+        
+        Usage: /upgrade <plugin_id> <version>
+        Example: /upgrade combined_v3 3.2.0
+        
+        Args:
+            message: Telegram message dict
+            args: Command arguments [plugin_id, version]
+        
+        Returns:
+            Message ID if successful
+        """
+        if not self._version_registry:
+            return self.send_error_response("Version registry not configured")
+        
+        if not args or len(args) != 2:
+            return self.send_message(
+                "📦 <b>Upgrade Plugin</b>\n\n"
+                "Usage: <code>/upgrade &lt;plugin_id&gt; &lt;version&gt;</code>\n"
+                "Example: <code>/upgrade combined_v3 3.2.0</code>"
+            )
+        
+        plugin_id = args[0]
+        target_version = args[1]
+        
+        try:
+            success, result_message = self._version_registry.upgrade_plugin(plugin_id, target_version)
+            
+            if success:
+                return self.send_message(f"✅ {result_message}")
+            else:
+                return self.send_error_response(result_message)
+                
+        except Exception as e:
+            logger.error(f"[ControllerBot] Upgrade command error: {e}")
+            return self.send_error_response(f"Upgrade failed: {str(e)}")
+    
+    def handle_rollback_command(self, message: Dict, args: List[str] = None) -> Optional[int]:
+        """
+        Handle /rollback command - Rollback plugin to previous version
+        
+        Usage: /rollback <plugin_id>
+        Example: /rollback combined_v3
+        
+        Args:
+            message: Telegram message dict
+            args: Command arguments [plugin_id]
+        
+        Returns:
+            Message ID if successful
+        """
+        if not self._version_registry:
+            return self.send_error_response("Version registry not configured")
+        
+        if not args or len(args) != 1:
+            return self.send_message(
+                "📦 <b>Rollback Plugin</b>\n\n"
+                "Usage: <code>/rollback &lt;plugin_id&gt;</code>\n"
+                "Example: <code>/rollback combined_v3</code>"
+            )
+        
+        plugin_id = args[0]
+        
+        try:
+            success, result_message = self._version_registry.rollback_plugin(plugin_id)
+            
+            if success:
+                return self.send_message(f"✅ {result_message}")
+            else:
+                return self.send_error_response(result_message)
+                
+        except Exception as e:
+            logger.error(f"[ControllerBot] Rollback command error: {e}")
+            return self.send_error_response(f"Rollback failed: {str(e)}")
+    
+    def get_health_summary(self) -> Dict[str, Any]:
+        """
+        Get health summary data (for programmatic access)
+        
+        Returns:
+            Dict with health summary or empty dict if not configured
+        """
+        if not self._health_monitor:
+            return {}
+        
+        try:
+            return self._health_monitor.get_health_summary()
+        except Exception as e:
+            logger.error(f"[ControllerBot] Get health summary error: {e}")
+            return {}
+    
+    def get_version_summary(self) -> Dict[str, Any]:
+        """
+        Get version summary data (for programmatic access)
+        
+        Returns:
+            Dict with version summary or empty dict if not configured
+        """
+        if not self._version_registry:
+            return {}
+        
+        try:
+            return self._version_registry.get_version_summary()
+        except Exception as e:
+            logger.error(f"[ControllerBot] Get version summary error: {e}")
+            return {}

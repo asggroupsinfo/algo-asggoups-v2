@@ -21,7 +21,7 @@
 | 08 | V3 Combined Logic Plugin | PASSED | [x] | [x] | [x] | [x] |
 | 09 | Config Hot-Reload & DB Isolation | PASSED | [x] | [x] | [x] | [x] |
 | 10 | V6 Price Action Plugin Foundation | PASSED | [x] | [x] | [x] | [x] |
-| 11 | Plugin Health & Versioning | PENDING | [ ] | [ ] | [ ] | [ ] |
+| 11 | Plugin Health & Versioning | PASSED | [x] | [x] | [x] | [x] |
 | 12 | Data Migration & Developer Docs | PENDING | [ ] | [ ] | [ ] | [ ] |
 | 13 | Code Quality & User Docs | PENDING | [ ] | [ ] | [ ] | [ ] |
 | 14 | Dashboard Specification (Optional) | PENDING | [ ] | [ ] | [ ] | [ ] |
@@ -618,10 +618,73 @@
 - Upgrade/rollback tests
 
 **Validation Checklist:**
-- [ ] Health metrics collected every 30s
-- [ ] Alerts trigger on threshold breach
-- [ ] Version compatibility checks work
-- [ ] /health and /version commands work
+- [x] Health metrics collected every 30s
+- [x] Alerts trigger on threshold breach
+- [x] Version compatibility checks work
+- [x] /health and /version commands work
+
+**Implementation Notes (Batch 11 - COMPLETED 2026-01-14):**
+- Created `src/monitoring/` module with 2 files:
+  - `__init__.py` - Module exports for monitoring system
+  - `plugin_health_monitor.py` - Core health monitoring system (1000+ lines)
+    - HealthStatus enum: HEALTHY, STALE, HUNG, DEAD, UNKNOWN
+    - AlertLevel enum: CRITICAL, HIGH, WARNING, INFO
+    - PluginAvailabilityMetrics dataclass: is_running, is_responsive, last_heartbeat, uptime_seconds
+    - PluginPerformanceMetrics dataclass: execution times, signals processed, win rate, record_execution_time()
+    - PluginResourceMetrics dataclass: memory, CPU, DB connections
+    - PluginErrorMetrics dataclass: error counts, error rate, record_error()
+    - HealthSnapshot dataclass: combines all 4 metrics, health_status property, is_healthy property
+    - HealthAlert dataclass: alert records with id, plugin_id, level, message, timestamp, resolved status
+    - PluginHealthMonitor class with async monitoring loop (30s interval)
+    - Metrics collection: availability, performance, resources, errors
+    - Anomaly detection with configurable thresholds
+    - Zombie plugin detection and auto-restart (max 3 attempts)
+    - Alert throttling with 5-minute cooldown between identical alerts
+    - Database persistence for snapshots and alerts (zepix_health.db)
+    - Telegram integration for notifications
+    - Callback system for alerts and restarts
+    - Health dashboard formatting for Telegram display
+    - Thread-safe operations using RLock
+- Created `src/core/versioned_plugin_registry.py` - Semantic versioning system (700+ lines)
+  - PluginVersion dataclass: plugin_id, major, minor, patch, build_date, commit_hash
+  - version_string property returns "MAJOR.MINOR.PATCH" format
+  - from_string() class method for parsing version strings
+  - is_compatible_with() checks MAJOR version compatibility
+  - is_newer_than() for version comparison
+  - VersionHistoryEntry dataclass for tracking version activations
+  - VersionedPluginRegistry class with database persistence (zepix_versions.db)
+  - register_version() stores version in database
+  - activate_plugin() with compatibility checking
+  - upgrade_plugin() with MAJOR version compatibility enforcement
+  - rollback_plugin() to previous stable version
+  - deprecate_version() marks version as deprecated
+  - get_version_history() returns activation history
+  - format_version_dashboard() for Telegram display
+  - create_default_plugin_versions() factory for V3 and V6 plugins
+- Updated `src/telegram/controller_bot.py` (v1.1.0) with health and version commands:
+  - Added _health_monitor and _version_registry dependencies
+  - Updated set_dependencies() to accept health_monitor and version_registry
+  - handle_health_command() - /health command shows plugin health dashboard
+  - handle_version_command() - /version command shows active plugin versions
+  - handle_upgrade_command() - /upgrade <plugin_id> <version> for upgrades
+  - handle_rollback_command() - /rollback <plugin_id> for rollbacks
+  - get_health_summary() and get_version_summary() for programmatic access
+- Key Features Implemented:
+  - Health Monitoring: 4 metrics dimensions (availability, performance, resources, errors)
+  - Zombie Detection: Identify frozen/unresponsive plugins and auto-restart
+  - Alert Throttling: 5-minute cooldown prevents alert spam
+  - Auto-Restart: Automatic recovery of crashed plugins (max 3 attempts)
+  - Semantic Versioning: MAJOR.MINOR.PATCH format with compatibility rules
+  - Compatibility Checking: Same MAJOR version = compatible, different MAJOR = incompatible
+  - Upgrade/Rollback: Safe version transitions with history tracking
+  - Telegram Commands: /health, /version, /upgrade, /rollback
+- Backward Compatibility:
+  - New monitoring system works alongside existing infrastructure
+  - Controller Bot maintains all existing functionality
+  - Health monitor and version registry are optional dependencies
+  - No modifications to existing plugin files
+- Created comprehensive unit tests: `tests/test_batch_11_health.py` (60 tests, all passing)
+- Test categories: PluginAvailabilityMetrics (5), PluginPerformanceMetrics (2), PluginResourceMetrics (1), PluginErrorMetrics (2), HealthSnapshot (1), HealthAlert (1), PluginHealthMonitor (9), HealthMonitorAsync (2), PluginVersion (9), VersionedPluginRegistry (9), VersionUpgradeRollback (4), VersionDeprecation (1), ControllerBotHealthCommands (8), ControllerBotDependencies (1), DefaultPluginVersions (1), Integration (2), BackwardCompatibility (2)
 
 ---
 
