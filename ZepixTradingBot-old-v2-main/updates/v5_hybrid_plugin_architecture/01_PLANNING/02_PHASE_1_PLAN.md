@@ -1,3 +1,21 @@
+> **IMPLEMENTATION REMINDER (READ THIS BEFORE IMPLEMENTING)**
+>
+> DO NOT IMPLEMENT THIS DOCUMENT AS-IS WITHOUT VALIDATION
+>
+> Before implementing anything from this document:
+> 1. Cross-reference with actual bot code in `src/`
+> 2. Check current bot documentation in `docs/`
+> 3. Validate against current Telegram docs (just updated)
+> 4. Use your reasoning: Does this make sense for the actual bot?
+> 5. Identify gaps: What's missing that should be here?
+> 6. Improve if needed: Add missing features, correct errors
+> 7. Create YOUR implementation plan based on validated requirements
+>
+> This document is a GUIDE, not a COMMAND. Think critically.
+
+---
+
+
 # 📘 PHASE 1 DETAILED PLAN - CORE PLUGIN SYSTEM FOUNDATION
 
 **Phase:** 1 of 6  
