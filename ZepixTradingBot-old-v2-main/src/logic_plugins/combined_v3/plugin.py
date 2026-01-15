@@ -29,6 +29,9 @@ from src.core.plugin_system.profit_booking_interface import (
 from src.core.plugin_system.autonomous_interface import (
     IAutonomousCapable, SafetyCheckResult, ReverseShieldStatus
 )
+from src.core.plugin_system.database_interface import (
+    IDatabaseCapable, DatabaseConfig
+)
 from src.core.services.reentry_service import ReentryService
 from src.core.services.dual_order_service import DualOrderService
 from src.core.services.profit_booking_service import ProfitBookingService
@@ -40,7 +43,7 @@ from .trend_validator import V3TrendValidator
 logger = logging.getLogger(__name__)
 
 
-class CombinedV3Plugin(BaseLogicPlugin, ISignalProcessor, IOrderExecutor, IReentryCapable, IDualOrderCapable, IProfitBookingCapable, IAutonomousCapable):
+class CombinedV3Plugin(BaseLogicPlugin, ISignalProcessor, IOrderExecutor, IReentryCapable, IDualOrderCapable, IProfitBookingCapable, IAutonomousCapable, IDatabaseCapable):
     """
     V3 Combined Logic Plugin - Handles all 12 V3 signal types.
     
@@ -1689,3 +1692,144 @@ class CombinedV3Plugin(BaseLogicPlugin, ISignalProcessor, IOrderExecutor, IReent
             int: Maximum chain level (5 for V3)
         """
         return self.plugin_config.get("max_chain_level", 5)
+    
+    # ==================== IDatabaseCapable Implementation (Plan 09) ====================
+    
+    def get_database_config(self) -> DatabaseConfig:
+        """
+        Get database configuration for V3 plugin.
+        
+        V3 plugin uses isolated database: data/zepix_combined_v3.db
+        
+        Returns:
+            DatabaseConfig with V3 database settings
+        """
+        return DatabaseConfig(
+            plugin_id=self.plugin_id,
+            db_path='data/zepix_combined_v3.db',
+            schema_version='1.0.0',
+            tables=['combined_v3_trades', 'v3_profit_bookings', 'v3_signals_log', 'v3_daily_stats']
+        )
+    
+    async def initialize_database(self) -> bool:
+        """
+        Initialize V3 plugin's database with schema.
+        
+        Creates tables if they don't exist using the V3 schema file.
+        
+        Returns:
+            True if initialization successful
+        """
+        if not hasattr(self, '_service_api') or not self._service_api:
+            self.logger.warning("ServiceAPI not available for database initialization")
+            return False
+        
+        try:
+            db_service = self._service_api.database_service
+            if db_service:
+                return await db_service.initialize_database(self.plugin_id)
+            return False
+        except Exception as e:
+            self.logger.error(f"Database initialization failed: {e}")
+            return False
+    
+    async def execute_query(self, query: str, params: tuple = ()) -> List[Dict]:
+        """
+        Execute a query on V3 plugin's database.
+        
+        Args:
+            query: SQL query string
+            params: Query parameters
+            
+        Returns:
+            List of result rows as dictionaries
+        """
+        if not hasattr(self, '_service_api') or not self._service_api:
+            return []
+        
+        try:
+            db_service = self._service_api.database_service
+            if db_service:
+                return await db_service.execute_query(self.plugin_id, query, params)
+            return []
+        except Exception as e:
+            self.logger.error(f"Query execution failed: {e}")
+            return []
+    
+    async def insert_record(self, table: str, data: Dict[str, Any]) -> int:
+        """
+        Insert a record into V3 plugin's database.
+        
+        Args:
+            table: Table name
+            data: Record data as dictionary
+            
+        Returns:
+            ID of inserted record
+        """
+        if not hasattr(self, '_service_api') or not self._service_api:
+            return -1
+        
+        try:
+            db_service = self._service_api.database_service
+            if db_service:
+                return await db_service.insert_record(self.plugin_id, table, data)
+            return -1
+        except Exception as e:
+            self.logger.error(f"Insert failed: {e}")
+            return -1
+    
+    async def update_record(self, table: str, data: Dict[str, Any], where: Dict[str, Any]) -> int:
+        """
+        Update records in V3 plugin's database.
+        
+        Args:
+            table: Table name
+            data: Fields to update
+            where: Conditions for update
+            
+        Returns:
+            Number of records updated
+        """
+        if not hasattr(self, '_service_api') or not self._service_api:
+            return 0
+        
+        try:
+            db_service = self._service_api.database_service
+            if db_service:
+                return await db_service.update_record(self.plugin_id, table, data, where)
+            return 0
+        except Exception as e:
+            self.logger.error(f"Update failed: {e}")
+            return 0
+    
+    async def save_trade(self, trade_data: Dict[str, Any]) -> int:
+        """
+        Save a trade to V3 database.
+        
+        Convenience method for saving trades with proper field mapping.
+        
+        Args:
+            trade_data: Trade data dictionary
+            
+        Returns:
+            ID of saved trade
+        """
+        return await self.insert_record('combined_v3_trades', trade_data)
+    
+    async def get_trades(self, status: str = None) -> List[Dict]:
+        """
+        Get trades from V3 database.
+        
+        Args:
+            status: Optional status filter (OPEN, PARTIAL, CLOSED)
+            
+        Returns:
+            List of trade records
+        """
+        if status:
+            return await self.execute_query(
+                "SELECT * FROM combined_v3_trades WHERE status = ?",
+                (status,)
+            )
+        return await self.execute_query("SELECT * FROM combined_v3_trades")
