@@ -618,6 +618,79 @@ class CombinedV3Plugin(BaseLogicPlugin, ISignalProcessor, IOrderExecutor, IReent
         """
         return list(self._active_shields.values())
     
+    # ==================== Plan 07: Notification Methods ====================
+    
+    async def _send_notification(self, notification_type: str, message: str, **kwargs):
+        """
+        Send notification through ServiceAPI to 3-bot Telegram system.
+        
+        Args:
+            notification_type: Type of notification (e.g., 'trade_opened', 'sl_hit')
+            message: Notification message
+            **kwargs: Additional arguments
+        """
+        if hasattr(self, '_service_api') and self._service_api:
+            try:
+                await self._service_api.send_notification(notification_type, message, **kwargs)
+            except Exception as e:
+                self.logger.warning(f"Failed to send notification: {e}")
+    
+    async def on_trade_opened(self, order_id: str, order_type: str, details: Dict[str, Any]):
+        """
+        Notify when trade is opened through 3-bot system.
+        
+        Args:
+            order_id: MT5 order ID
+            order_type: 'order_a' or 'order_b'
+            details: Trade details (symbol, direction, price, etc.)
+        """
+        notification_type = 'order_a_opened' if order_type == 'order_a' else 'order_b_opened'
+        message = f"{order_type.upper()} opened: {details.get('symbol')} {details.get('direction')}"
+        await self._send_notification(notification_type, message, order_id=order_id, **details)
+    
+    async def on_trade_closed(self, order_id: str, reason: str, details: Dict[str, Any]):
+        """
+        Notify when trade is closed through 3-bot system.
+        
+        Args:
+            order_id: MT5 order ID
+            reason: Close reason (SL_HIT, TP_HIT, MANUAL, etc.)
+            details: Trade details including profit
+        """
+        notification_type = 'sl_hit' if reason == 'SL_HIT' else 'tp_hit' if reason == 'TP_HIT' else 'trade_closed'
+        message = f"Trade closed ({reason}): {details.get('symbol')} P/L: ${details.get('profit', 0):.2f}"
+        await self._send_notification(notification_type, message, order_id=order_id, reason=reason, **details)
+    
+    async def on_recovery_started(self, trade_id: str, recovery_type: str, details: Dict[str, Any]):
+        """
+        Notify when recovery starts through 3-bot system.
+        
+        Args:
+            trade_id: Original trade ID
+            recovery_type: Type of recovery (sl_hunt, tp_continuation, etc.)
+            details: Recovery details
+        """
+        notification_type = f'{recovery_type}_started'
+        message = f"Recovery started: {recovery_type} for {details.get('symbol')}"
+        await self._send_notification(notification_type, message, trade_id=trade_id, **details)
+    
+    async def on_recovery_completed(self, trade_id: str, recovery_type: str, success: bool, details: Dict[str, Any]):
+        """
+        Notify when recovery completes through 3-bot system.
+        
+        Args:
+            trade_id: Original trade ID
+            recovery_type: Type of recovery
+            success: Whether recovery was successful
+            details: Recovery result details
+        """
+        notification_type = f'{recovery_type}_success' if success else f'{recovery_type}_failed'
+        status = "SUCCESS" if success else "FAILED"
+        message = f"Recovery {status}: {recovery_type} for {details.get('symbol')}"
+        await self._send_notification(notification_type, message, trade_id=trade_id, success=success, **details)
+    
+    # ==================== End Plan 07 Notification Methods ====================
+    
     async def _create_level_orders(self, chain_id: str, level: int):
         """
         Create orders for a new pyramid level.

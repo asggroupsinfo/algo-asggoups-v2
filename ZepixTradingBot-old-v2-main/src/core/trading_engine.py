@@ -1,6 +1,6 @@
 import asyncio
 from datetime import datetime, timedelta
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
 import time
 from src.models import Alert, Trade, ReEntryChain, ProfitBookingChain
 from src.v3_alert_models import ZepixV3Alert, V3AlertResponse
@@ -22,6 +22,7 @@ from src.managers.autonomous_system_manager import AutonomousSystemManager
 from src.utils.optimized_logger import logger
 from src.core.plugin_system.plugin_registry import PluginRegistry
 from src.core.plugin_system.service_api import ServiceAPI
+from src.telegram.multi_telegram_manager import MultiTelegramManager
 import json
 import uuid
 
@@ -109,6 +110,77 @@ class TradingEngine:
             config=self.config,
             service_api=self.service_api
         )
+        
+        # Plan 07: Initialize Multi-Telegram Manager (3-Bot System)
+        self.telegram_manager: Optional[MultiTelegramManager] = None
+        self._init_telegram_manager()
+    
+    def _init_telegram_manager(self):
+        """Initialize the 3-bot Telegram system if config available"""
+        telegram_config = self.config.get("telegram", {})
+        if telegram_config:
+            try:
+                self.telegram_manager = MultiTelegramManager(telegram_config)
+                # Connect legacy bot for backward compatibility
+                if self.telegram_bot:
+                    self.telegram_manager.set_legacy_bot(self.telegram_bot)
+                logger.info("3-bot Telegram system initialized")
+            except Exception as e:
+                logger.warning(f"Failed to initialize 3-bot Telegram system: {e}")
+                self.telegram_manager = None
+    
+    # ==================== Plan 07: Notification Methods ====================
+    
+    async def send_notification(self, notification_type: str, message: str, **kwargs):
+        """
+        Send notification through Telegram system (3-bot or legacy)
+        
+        Args:
+            notification_type: Type of notification (e.g., 'trade_opened', 'sl_hit')
+            message: Notification message
+            **kwargs: Additional arguments
+        """
+        if self.telegram_manager:
+            await self.telegram_manager.send_notification_async(notification_type, message, **kwargs)
+        elif self.telegram_bot:
+            # Fallback to legacy bot
+            self.telegram_bot.send_message(message)
+    
+    async def on_trade_opened(self, trade_data: Dict[str, Any]):
+        """
+        Called when a trade is opened - sends notification through 3-bot system
+        
+        Args:
+            trade_data: Dict with trade details
+        """
+        if self.telegram_manager:
+            await self.telegram_manager.send_trade_notification({
+                'type': 'trade_opened',
+                **trade_data
+            })
+        elif self.telegram_bot:
+            symbol = trade_data.get('symbol', 'UNKNOWN')
+            direction = trade_data.get('direction', 'UNKNOWN')
+            self.telegram_bot.send_message(f"Trade Opened: {direction} {symbol}")
+    
+    async def on_trade_closed(self, trade_data: Dict[str, Any]):
+        """
+        Called when a trade is closed - sends notification through 3-bot system
+        
+        Args:
+            trade_data: Dict with trade details
+        """
+        if self.telegram_manager:
+            await self.telegram_manager.send_trade_notification({
+                'type': 'trade_closed',
+                **trade_data
+            })
+        elif self.telegram_bot:
+            symbol = trade_data.get('symbol', 'UNKNOWN')
+            profit = trade_data.get('profit', 0)
+            self.telegram_bot.send_message(f"Trade Closed: {symbol} P/L: ${profit:.2f}")
+    
+    # ==================== End Plan 07 Notification Methods ====================
     
     def get_open_trades(self) -> List[Trade]:
         """Get list of currently open trades"""

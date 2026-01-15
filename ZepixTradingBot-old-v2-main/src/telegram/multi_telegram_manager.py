@@ -2,14 +2,19 @@
 Multi-Telegram Manager - Orchestrates multiple Telegram bots
 
 Manages the 3-bot system:
-1. Controller Bot: Commands and Admin
-2. Notification Bot: Trade Alerts
-3. Analytics Bot: Reports
+1. Controller Bot: Commands and Admin (72 commands)
+2. Notification Bot: Trade Alerts (42 notifications)
+3. Analytics Bot: Reports (8 commands + 6 notifications)
 
 Supports graceful degradation to single bot mode if only 1 token provided.
 
-Version: 2.0.0
-Date: 2026-01-14
+Plan 07: 3-Bot Telegram Migration
+- Unified interface for all Telegram operations
+- Async routing for commands and notifications
+- Legacy bot preserved as fallback
+
+Version: 3.0.0
+Date: 2026-01-15
 """
 
 from typing import Dict, Any, Optional
@@ -312,6 +317,125 @@ class MultiTelegramManager:
         if self.controller_bot:
             return self.controller_bot.send_status_response(status_data)
         return None
+    
+    # ==================== Plan 07: Async Routing Methods ====================
+    
+    async def initialize(self):
+        """Initialize all bots (async)"""
+        logger.info("Initializing 3-bot Telegram system...")
+        
+        if self.controller_bot and hasattr(self.controller_bot, 'initialize'):
+            await self.controller_bot.initialize()
+        if self.notification_bot and hasattr(self.notification_bot, 'initialize'):
+            await self.notification_bot.initialize()
+        if self.analytics_bot and hasattr(self.analytics_bot, 'initialize'):
+            await self.analytics_bot.initialize()
+        
+        if self._legacy_bot and hasattr(self._legacy_bot, 'initialize'):
+            await self._legacy_bot.initialize()
+        
+        logger.info("3-bot Telegram system initialized")
+    
+    async def shutdown(self):
+        """Shutdown all bots (async)"""
+        logger.info("Shutting down 3-bot Telegram system...")
+        
+        if self.controller_bot and hasattr(self.controller_bot, 'shutdown'):
+            await self.controller_bot.shutdown()
+        if self.notification_bot and hasattr(self.notification_bot, 'shutdown'):
+            await self.notification_bot.shutdown()
+        if self.analytics_bot and hasattr(self.analytics_bot, 'shutdown'):
+            await self.analytics_bot.shutdown()
+        
+        if self._legacy_bot and hasattr(self._legacy_bot, 'shutdown'):
+            await self._legacy_bot.shutdown()
+        
+        logger.info("3-bot Telegram system shutdown complete")
+    
+    async def send_notification_async(self, notification_type: str, message: str, **kwargs):
+        """
+        Send notification through router (async)
+        
+        Args:
+            notification_type: Type of notification (e.g., 'trade_opened', 'sl_hit')
+            message: Notification message
+            **kwargs: Additional arguments
+        """
+        if self.router:
+            return await self.router.route_notification(notification_type, message, **kwargs)
+        return None
+    
+    async def handle_command_async(self, command: str, *args, **kwargs):
+        """
+        Handle command through router (async)
+        
+        Args:
+            command: Command name
+            *args: Command arguments
+            **kwargs: Additional keyword arguments
+            
+        Returns:
+            Command result
+        """
+        if self.router:
+            return await self.router.route_command(command, *args, **kwargs)
+        return None
+    
+    async def send_trade_notification(self, trade_data: Dict[str, Any]):
+        """
+        Send trade notification (async)
+        
+        Args:
+            trade_data: Dict with trade details including 'type' key
+        """
+        notification_type = trade_data.get('type', 'trade_opened')
+        message = self._format_trade_message(trade_data)
+        await self.send_notification_async(notification_type, message, trade_data=trade_data)
+    
+    async def send_system_alert_async(self, alert_type: str, message: str):
+        """
+        Send system alert (async)
+        
+        Args:
+            alert_type: Type of system alert
+            message: Alert message
+        """
+        await self.send_notification_async(alert_type, message)
+    
+    async def send_daily_summary_async(self, summary_data: Dict[str, Any]):
+        """
+        Send daily summary (async)
+        
+        Args:
+            summary_data: Dict with summary data
+        """
+        message = self._format_summary_message(summary_data)
+        await self.send_notification_async('daily_summary', message, summary_data=summary_data)
+    
+    def _format_trade_message(self, trade_data: Dict[str, Any]) -> str:
+        """Format trade notification message"""
+        symbol = trade_data.get('symbol', 'UNKNOWN')
+        direction = trade_data.get('direction', 'UNKNOWN')
+        price = trade_data.get('price', 0)
+        order_type = trade_data.get('order_type', '')
+        profit = trade_data.get('profit', None)
+        
+        if profit is not None:
+            return f"Trade: {direction} {symbol} @ {price} | P/L: ${profit:.2f}"
+        elif order_type:
+            return f"Trade: {order_type} {direction} {symbol} @ {price}"
+        else:
+            return f"Trade: {direction} {symbol} @ {price}"
+    
+    def _format_summary_message(self, summary_data: Dict[str, Any]) -> str:
+        """Format summary message"""
+        profit = summary_data.get('profit', 0)
+        trades = summary_data.get('trades', 0)
+        winrate = summary_data.get('winrate', 0)
+        
+        return f"Daily Summary: ${profit:.2f} | {trades} trades | {winrate:.1f}% winrate"
+    
+    # ==================== End Plan 07 Async Routing Methods ====================
     
     def get_stats(self) -> Dict[str, Any]:
         """
