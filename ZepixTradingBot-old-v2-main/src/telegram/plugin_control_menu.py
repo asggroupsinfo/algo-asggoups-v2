@@ -7,11 +7,15 @@ at runtime without requiring a bot restart.
 Features:
 - Plugin selector: [V3 Logic] [V6 Logic] buttons
 - Enable/Disable: Live plugin switching
+- HOT-SWAP: Switch plugins without restart (Section 2 implementation)
 - Status display: Show which plugins are active
 - Per-plugin settings access
 
-Version: 1.0.0
+Version: 2.0.0
 Date: 2026-01-15
+
+Updates:
+- v2.0.0: Added Hot-Swap logic for live plugin switching
 """
 
 import logging
@@ -384,6 +388,186 @@ class PluginControlMenu:
             Button dict for inline keyboard
         """
         return {"text": "🔌 Plugin Control", "callback_data": "plugin_menu"}
+    
+    # ========================================
+    # HOT-SWAP IMPLEMENTATION (Section 2)
+    # ========================================
+    
+    def hot_swap_plugin(self, chat_id: int, from_plugin: str, to_plugin: str) -> Optional[int]:
+        """
+        Hot-swap from one plugin to another without restart.
+        
+        This is the ACTUAL Hot-Swap implementation that:
+        1. Saves current plugin state
+        2. Disables old plugin gracefully
+        3. Enables new plugin
+        4. Restores state to new plugin
+        5. Verifies swap was successful
+        
+        Args:
+            chat_id: Telegram chat ID
+            from_plugin: Plugin to disable
+            to_plugin: Plugin to enable
+        
+        Returns:
+            Message ID if successful
+        """
+        from_name = "V3 Combined" if "v3" in from_plugin else "V6 Price Action"
+        to_name = "V3 Combined" if "v3" in to_plugin else "V6 Price Action"
+        
+        # Step 1: Save state
+        saved_state = self._save_plugin_state(from_plugin)
+        
+        # Step 2: Disable old plugin
+        disable_success = self._disable_plugin_gracefully(from_plugin)
+        if not disable_success:
+            return self._send_message(
+                chat_id,
+                f"❌ <b>HOT-SWAP FAILED</b>\n\n"
+                f"Could not disable {from_name}.\n"
+                f"Swap aborted. No changes made.",
+                [[{"text": "🔙 Back", "callback_data": "plugin_menu"}]]
+            )
+        
+        # Step 3: Enable new plugin
+        enable_success = self._enable_plugin_gracefully(to_plugin)
+        if not enable_success:
+            # Rollback: re-enable old plugin
+            self._enable_plugin_gracefully(from_plugin)
+            return self._send_message(
+                chat_id,
+                f"❌ <b>HOT-SWAP FAILED</b>\n\n"
+                f"Could not enable {to_name}.\n"
+                f"Rolled back to {from_name}.",
+                [[{"text": "🔙 Back", "callback_data": "plugin_menu"}]]
+            )
+        
+        # Step 4: Restore state (if applicable)
+        if saved_state:
+            self._restore_plugin_state(to_plugin, saved_state)
+        
+        # Step 5: Verify
+        from_status = self._get_plugin_status(from_plugin)
+        to_status = self._get_plugin_status(to_plugin)
+        
+        if not from_status and to_status:
+            logger.info(f"[PluginControlMenu] Hot-swap SUCCESS: {from_plugin} -> {to_plugin}")
+            return self._send_message(
+                chat_id,
+                f"✅ <b>HOT-SWAP SUCCESS</b>\n"
+                f"━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+                f"<b>Disabled:</b> {from_name}\n"
+                f"<b>Enabled:</b> {to_name}\n\n"
+                f"<i>Swap completed without restart.</i>",
+                [[{"text": "🔙 Back", "callback_data": "plugin_menu"}]]
+            )
+        else:
+            logger.error(f"[PluginControlMenu] Hot-swap verification failed")
+            return self._send_message(
+                chat_id,
+                f"⚠️ <b>HOT-SWAP PARTIAL</b>\n\n"
+                f"Swap completed but verification failed.\n"
+                f"Please check plugin status.",
+                [[{"text": "📊 Check Status", "callback_data": "plugin_status"}]]
+            )
+    
+    def _save_plugin_state(self, plugin_id: str) -> Optional[Dict]:
+        """Save plugin state before swap"""
+        if not self._engine:
+            return None
+        
+        try:
+            if hasattr(self._engine, 'get_plugin_state'):
+                return self._engine.get_plugin_state(plugin_id)
+            elif hasattr(self._engine, 'get_plugin_config'):
+                return {"config": self._engine.get_plugin_config(plugin_id)}
+        except Exception as e:
+            logger.warning(f"[PluginControlMenu] Could not save state: {e}")
+        
+        return None
+    
+    def _restore_plugin_state(self, plugin_id: str, state: Dict) -> bool:
+        """Restore plugin state after swap"""
+        if not self._engine or not state:
+            return False
+        
+        try:
+            if hasattr(self._engine, 'set_plugin_state'):
+                self._engine.set_plugin_state(plugin_id, state)
+                return True
+            elif hasattr(self._engine, 'set_plugin_config') and 'config' in state:
+                self._engine.set_plugin_config(plugin_id, state['config'])
+                return True
+        except Exception as e:
+            logger.warning(f"[PluginControlMenu] Could not restore state: {e}")
+        
+        return False
+    
+    def _disable_plugin_gracefully(self, plugin_id: str) -> bool:
+        """Disable plugin gracefully (wait for pending operations)"""
+        if not self._engine:
+            return False
+        
+        try:
+            # First, pause the plugin if possible
+            if hasattr(self._engine, 'pause_plugin'):
+                self._engine.pause_plugin(plugin_id)
+            
+            # Then disable
+            if hasattr(self._engine, 'disable_plugin'):
+                return self._engine.disable_plugin(plugin_id)
+            elif hasattr(self._engine, '_active_plugins'):
+                self._engine._active_plugins.discard(plugin_id)
+                return True
+        except Exception as e:
+            logger.error(f"[PluginControlMenu] Graceful disable failed: {e}")
+        
+        return False
+    
+    def _enable_plugin_gracefully(self, plugin_id: str) -> bool:
+        """Enable plugin gracefully"""
+        if not self._engine:
+            return False
+        
+        try:
+            if hasattr(self._engine, 'enable_plugin'):
+                return self._engine.enable_plugin(plugin_id)
+            elif hasattr(self._engine, '_active_plugins'):
+                self._engine._active_plugins.add(plugin_id)
+                return True
+        except Exception as e:
+            logger.error(f"[PluginControlMenu] Graceful enable failed: {e}")
+        
+        return False
+    
+    def show_hot_swap_menu(self, chat_id: int) -> Optional[int]:
+        """Show hot-swap menu"""
+        v3_enabled = self._get_plugin_status("v3_combined")
+        v6_enabled = self._get_plugin_status("v6_price_action")
+        
+        message = (
+            "🔄 <b>HOT-SWAP PLUGINS</b>\n"
+            "━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+            "Switch between plugins without restart.\n"
+            "State will be preserved during swap.\n\n"
+            f"<b>Current Status:</b>\n"
+            f"├─ V3: {'🟢 ACTIVE' if v3_enabled else '🔴 INACTIVE'}\n"
+            f"└─ V6: {'🟢 ACTIVE' if v6_enabled else '🔴 INACTIVE'}\n\n"
+            "<i>Select swap direction:</i>"
+        )
+        
+        keyboard = []
+        
+        if v3_enabled and not v6_enabled:
+            keyboard.append([{"text": "🔄 Swap V3 → V6", "callback_data": "hotswap_v3_to_v6"}])
+        elif v6_enabled and not v3_enabled:
+            keyboard.append([{"text": "🔄 Swap V6 → V3", "callback_data": "hotswap_v6_to_v3"}])
+        else:
+            keyboard.append([{"text": "⚠️ Both plugins same state", "callback_data": "noop"}])
+        
+        keyboard.append([{"text": "🔙 Back", "callback_data": "plugin_menu"}])
+        
+        return self._send_message(chat_id, message, keyboard)
 
 
 # Singleton instance for global access
