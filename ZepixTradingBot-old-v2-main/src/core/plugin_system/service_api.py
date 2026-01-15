@@ -7,21 +7,88 @@ to access bot functionality through a single, controlled interface.
 The ServiceAPI is the SINGLE point of entry for plugins. Plugins should ONLY
 talk to ServiceAPI, never directly to MT5, RiskManager, or other managers.
 
-Version: 2.0.0 (Batch 07 - Full Service Integration)
-Date: 2026-01-14
+Plan 08: Service API Integration
+- All services registered with ServiceAPI
+- Plugins use ServiceAPI exclusively
+- Service discovery works
+- Service metrics collected
+- Service health checks work
+
+Version: 3.0.0 (Plan 08 - Complete Service Integration)
+Date: 2026-01-15
 
 Services Integrated:
 - OrderExecutionService: V3 dual orders, V6 conditional orders
 - RiskManagementService: Lot size calculation, ATR-based SL/TP, daily limits
 - TrendManagementService: V3 4-pillar trends, V6 Trend Pulse
 - MarketDataService: Spread checks, price data, volatility analysis
+- ReentryService: SL Hunt, TP Continuation, Exit Continuation (Plan 03)
+- DualOrderService: Order A/B management (Plan 04)
+- ProfitBookingService: Profit chains, pyramid levels (Plan 05)
+- AutonomousService: Safety checks, Reverse Shield (Plan 06)
+- TelegramService: 3-Bot notification routing (Plan 07)
 """
 
-from typing import Dict, Any, List, Optional, Tuple
+from typing import Dict, Any, List, Optional, Tuple, Callable
 import logging
+import asyncio
 from datetime import datetime
+from dataclasses import dataclass, field
 
 logger = logging.getLogger(__name__)
+
+
+# ==================== Plan 08: Service Metrics ====================
+
+@dataclass
+class ServiceMetrics:
+    """Metrics for tracking service calls"""
+    calls: int = 0
+    errors: int = 0
+    total_time_ms: float = 0.0
+    last_call: Optional[datetime] = None
+    last_error: Optional[str] = None
+    
+    @property
+    def avg_time_ms(self) -> float:
+        """Calculate average call time"""
+        return self.total_time_ms / self.calls if self.calls > 0 else 0.0
+    
+    @property
+    def error_rate(self) -> float:
+        """Calculate error rate percentage"""
+        return (self.errors / self.calls * 100) if self.calls > 0 else 0.0
+    
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert to dictionary"""
+        return {
+            'calls': self.calls,
+            'errors': self.errors,
+            'avg_time_ms': self.avg_time_ms,
+            'error_rate': self.error_rate,
+            'last_call': self.last_call.isoformat() if self.last_call else None,
+            'last_error': self.last_error
+        }
+
+
+@dataclass
+class ServiceRegistration:
+    """Service registration info"""
+    name: str
+    service: Any
+    health_check: Optional[Callable] = None
+    is_healthy: bool = True
+    registered_at: datetime = field(default_factory=datetime.now)
+    
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert to dictionary"""
+        return {
+            'name': self.name,
+            'is_healthy': self.is_healthy,
+            'registered_at': self.registered_at.isoformat()
+        }
+
+# ==================== End Plan 08: Service Metrics ====================
 
 
 class ServiceAPI:
@@ -47,6 +114,8 @@ class ServiceAPI:
         price = api.get_price("XAUUSD")
     """
     
+    VERSION = "3.0.0"
+    
     def __init__(self, trading_engine, plugin_id: str = "core"):
         """
         Initialize ServiceAPI with trading engine and optional plugin_id.
@@ -67,6 +136,10 @@ class ServiceAPI:
         self._risk_service = None
         self._trend_service = None
         self._market_service = None
+        
+        # Plan 08: Service Registry
+        self._service_registry: Dict[str, ServiceRegistration] = {}
+        self._service_metrics: Dict[str, ServiceMetrics] = {}
         
         self._services_initialized = False
         self._init_services()
@@ -157,6 +230,247 @@ class ServiceAPI:
     def services_available(self) -> bool:
         """Check if services are properly initialized"""
         return self._services_initialized
+
+    # =========================================================================
+    # PLAN 08: SERVICE REGISTRATION & DISCOVERY
+    # =========================================================================
+    
+    def register_service(self, name: str, service: Any, health_check: Optional[Callable] = None) -> None:
+        """
+        Register a service with the API.
+        
+        Args:
+            name: Service name (e.g., 'order_execution', 'reentry', 'dual_order')
+            service: Service instance
+            health_check: Optional health check function
+        """
+        registration = ServiceRegistration(
+            name=name,
+            service=service,
+            health_check=health_check
+        )
+        self._service_registry[name] = registration
+        self._service_metrics[name] = ServiceMetrics()
+        self._logger.info(f"[ServiceAPI] Service registered: {name}")
+    
+    def get_service(self, name: str) -> Optional[Any]:
+        """
+        Get a registered service by name.
+        
+        Args:
+            name: Service name
+        
+        Returns:
+            Service instance or None if not found
+        """
+        registration = self._service_registry.get(name)
+        return registration.service if registration else None
+    
+    def has_service(self, name: str) -> bool:
+        """Check if a service is registered"""
+        return name in self._service_registry
+    
+    def list_services(self) -> List[str]:
+        """List all registered service names"""
+        return list(self._service_registry.keys())
+    
+    def discover_services(self) -> Dict[str, Dict[str, Any]]:
+        """
+        Discover all registered services with their info.
+        
+        Returns:
+            Dict of service name -> service info
+        """
+        return {
+            name: reg.to_dict()
+            for name, reg in self._service_registry.items()
+        }
+    
+    # =========================================================================
+    # PLAN 08: SERVICE PROPERTIES (Convenience Access)
+    # =========================================================================
+    
+    @property
+    def reentry_service(self):
+        """Get re-entry service (Plan 03)"""
+        return self.get_service('reentry')
+    
+    @property
+    def dual_order_service(self):
+        """Get dual order service (Plan 04)"""
+        return self.get_service('dual_order')
+    
+    @property
+    def profit_booking_service(self):
+        """Get profit booking service (Plan 05)"""
+        return self.get_service('profit_booking')
+    
+    @property
+    def autonomous_service(self):
+        """Get autonomous service (Plan 06)"""
+        return self.get_service('autonomous')
+    
+    @property
+    def telegram_service(self):
+        """Get telegram service (Plan 07)"""
+        return self.get_service('telegram')
+    
+    @property
+    def database_service(self):
+        """Get database service (Plan 09)"""
+        return self.get_service('database')
+    
+    # =========================================================================
+    # PLAN 08: SERVICE CALL WRAPPER WITH METRICS
+    # =========================================================================
+    
+    async def call_service(self, service_name: str, method_name: str, *args, **kwargs) -> Any:
+        """
+        Call a service method with metrics tracking.
+        
+        Args:
+            service_name: Name of the registered service
+            method_name: Method to call on the service
+            *args, **kwargs: Arguments to pass to the method
+        
+        Returns:
+            Result from the service method
+        """
+        service = self.get_service(service_name)
+        if not service:
+            self._logger.error(f"[ServiceAPI] Service not found: {service_name}")
+            return None
+        
+        method = getattr(service, method_name, None)
+        if not method:
+            self._logger.error(f"[ServiceAPI] Method not found: {service_name}.{method_name}")
+            return None
+        
+        # Track metrics
+        metrics = self._service_metrics.get(service_name)
+        if metrics:
+            metrics.calls += 1
+            metrics.last_call = datetime.now()
+        
+        start_time = datetime.now()
+        try:
+            if asyncio.iscoroutinefunction(method):
+                result = await method(*args, **kwargs)
+            else:
+                result = method(*args, **kwargs)
+            
+            if metrics:
+                elapsed = (datetime.now() - start_time).total_seconds() * 1000
+                metrics.total_time_ms += elapsed
+            
+            return result
+        except Exception as e:
+            if metrics:
+                metrics.errors += 1
+                metrics.last_error = str(e)
+            self._logger.error(f"[ServiceAPI] Service call failed: {service_name}.{method_name}: {e}")
+            raise
+    
+    # =========================================================================
+    # PLAN 08: SERVICE HEALTH CHECKS
+    # =========================================================================
+    
+    async def check_health(self) -> Dict[str, bool]:
+        """
+        Check health of all registered services.
+        
+        Returns:
+            Dict of service name -> health status
+        """
+        results = {}
+        
+        for name, registration in self._service_registry.items():
+            if registration.health_check:
+                try:
+                    if asyncio.iscoroutinefunction(registration.health_check):
+                        results[name] = await registration.health_check()
+                    else:
+                        results[name] = registration.health_check()
+                    registration.is_healthy = results[name]
+                except Exception as e:
+                    self._logger.error(f"[ServiceAPI] Health check failed for {name}: {e}")
+                    results[name] = False
+                    registration.is_healthy = False
+            else:
+                # No health check defined, assume healthy
+                results[name] = True
+        
+        return results
+    
+    def get_service_status(self) -> Dict[str, bool]:
+        """Get health status of all services"""
+        return {
+            name: reg.is_healthy
+            for name, reg in self._service_registry.items()
+        }
+    
+    # =========================================================================
+    # PLAN 08: SERVICE METRICS
+    # =========================================================================
+    
+    def get_metrics(self) -> Dict[str, Dict[str, Any]]:
+        """
+        Get metrics for all services.
+        
+        Returns:
+            Dict of service name -> metrics dict
+        """
+        return {
+            name: metrics.to_dict()
+            for name, metrics in self._service_metrics.items()
+        }
+    
+    def get_service_metrics(self, service_name: str) -> Optional[Dict[str, Any]]:
+        """Get metrics for a specific service"""
+        metrics = self._service_metrics.get(service_name)
+        return metrics.to_dict() if metrics else None
+    
+    def reset_metrics(self, service_name: str = None) -> None:
+        """
+        Reset metrics for a service or all services.
+        
+        Args:
+            service_name: Service to reset, or None for all
+        """
+        if service_name:
+            if service_name in self._service_metrics:
+                self._service_metrics[service_name] = ServiceMetrics()
+        else:
+            for name in self._service_metrics:
+                self._service_metrics[name] = ServiceMetrics()
+    
+    # =========================================================================
+    # PLAN 08: SERVICE OPERATIONS (Via ServiceAPI)
+    # =========================================================================
+    
+    async def execute_order(self, order_params: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+        """Execute an order through order service"""
+        return await self.call_service('order_execution', 'execute_order', order_params)
+    
+    async def start_recovery(self, event: Any) -> bool:
+        """Start recovery through reentry service"""
+        return await self.call_service('reentry', 'start_sl_hunt_recovery', event)
+    
+    async def create_dual_orders(self, signal: Dict, config_a: Any, config_b: Any) -> Any:
+        """Create dual orders through dual order service"""
+        return await self.call_service('dual_order', 'create_dual_orders', signal, config_a, config_b)
+    
+    async def create_profit_chain(self, plugin_id: str, order_b_id: str, symbol: str, direction: str) -> Any:
+        """Create profit chain through profit booking service"""
+        return await self.call_service('profit_booking', 'create_chain', plugin_id, order_b_id, symbol, direction)
+    
+    async def check_safety(self, plugin_id: str) -> Any:
+        """Check safety through autonomous service"""
+        return await self.call_service('autonomous', 'check_recovery_allowed', plugin_id)
+    
+    async def send_telegram_notification(self, notification_type: str, message: str, **kwargs) -> Any:
+        """Send notification through telegram service"""
+        return await self.call_service('telegram', 'send_notification', notification_type, message, **kwargs)
 
     # =========================================================================
     # MARKET DATA METHODS (MarketDataService)

@@ -146,6 +146,119 @@ class CombinedV3Plugin(BaseLogicPlugin, ISignalProcessor, IOrderExecutor, IReent
         self._autonomous_service = service
         self.logger.info(f"AutonomousService injected into {self.plugin_id}")
     
+    # ==================== Plan 08: ServiceAPI Integration ====================
+    
+    def set_service_api(self, service_api) -> None:
+        """
+        Inject ServiceAPI - the UNIFIED way to access all core services.
+        
+        This method replaces individual service setters by providing
+        access to all services through a single ServiceAPI instance.
+        Plugins should use ServiceAPI for ALL operations.
+        
+        Args:
+            service_api: ServiceAPI instance with all services registered
+        """
+        self._service_api = service_api
+        
+        # Also set individual services for backward compatibility
+        if service_api.reentry_service:
+            self._reentry_service = service_api.reentry_service
+            if hasattr(service_api.reentry_service, 'register_recovery_callback'):
+                service_api.reentry_service.register_recovery_callback(
+                    self.plugin_id, self._on_recovery_callback
+                )
+        
+        if service_api.dual_order_service:
+            self._dual_order_service = service_api.dual_order_service
+        
+        if service_api.profit_booking_service:
+            self._profit_booking_service = service_api.profit_booking_service
+        
+        if service_api.autonomous_service:
+            self._autonomous_service = service_api.autonomous_service
+        
+        self.logger.info(f"ServiceAPI injected into {self.plugin_id} (Plan 08)")
+    
+    async def process_signal_via_service_api(self, signal: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+        """
+        Process signal using ServiceAPI exclusively (Plan 08).
+        
+        This method demonstrates the recommended way to process signals
+        using ServiceAPI for all operations.
+        
+        Args:
+            signal: Trading signal dictionary
+            
+        Returns:
+            Result dictionary or None if processing failed
+        """
+        if not hasattr(self, '_service_api') or not self._service_api:
+            self.logger.error("ServiceAPI not initialized")
+            return None
+        
+        # Check safety via ServiceAPI
+        safety_check = await self._service_api.check_safety(self.plugin_id)
+        if safety_check and hasattr(safety_check, 'allowed') and not safety_check.allowed:
+            self.logger.info(f"Signal blocked by safety check: {getattr(safety_check, 'reason', 'Unknown')}")
+            return None
+        
+        # Create dual orders via ServiceAPI
+        order_a_config = await self.get_order_a_config(signal)
+        order_b_config = await self.get_order_b_config(signal)
+        
+        result = await self._service_api.create_dual_orders(
+            signal, order_a_config, order_b_config
+        )
+        
+        if result and hasattr(result, 'error') and result.error:
+            self.logger.error(f"Order creation failed: {result.error}")
+            return None
+        
+        # Create profit chain via ServiceAPI
+        if result and hasattr(result, 'order_b_id') and result.order_b_id:
+            await self._service_api.create_profit_chain(
+                self.plugin_id,
+                result.order_b_id,
+                signal.get('symbol', ''),
+                signal.get('signal_type', '')
+            )
+        
+        # Send notification via ServiceAPI
+        await self._service_api.send_telegram_notification(
+            'trade_opened',
+            f"Trade opened: {signal.get('symbol', '')} {signal.get('signal_type', '')}",
+            order_a_id=getattr(result, 'order_a_id', None) if result else None,
+            order_b_id=getattr(result, 'order_b_id', None) if result else None
+        )
+        
+        return {
+            'status': 'executed',
+            'order_a_id': getattr(result, 'order_a_id', None) if result else None,
+            'order_b_id': getattr(result, 'order_b_id', None) if result else None
+        }
+    
+    async def on_sl_hit_via_service_api(self, event: ReentryEvent) -> bool:
+        """
+        Handle SL hit via ServiceAPI (Plan 08).
+        
+        Args:
+            event: ReentryEvent with trade details
+            
+        Returns:
+            True if recovery started successfully
+        """
+        if not hasattr(self, '_service_api') or not self._service_api:
+            return False
+        
+        # Check safety via ServiceAPI
+        safety_check = await self._service_api.check_safety(self.plugin_id)
+        if safety_check and hasattr(safety_check, 'allowed') and not safety_check.allowed:
+            return False
+        
+        # Start recovery via ServiceAPI
+        return await self._service_api.start_recovery(event)
+    
     # ==================== IDualOrderCapable Implementation (Plan 04) ====================
     
     async def create_dual_orders(self, signal: Dict[str, Any]) -> DualOrderResult:
