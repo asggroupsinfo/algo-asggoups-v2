@@ -5,7 +5,7 @@ The user has invoked the **"WRATH OF GOD TEST"**. This is a **Zero Tolerance Aud
 
 **Core Premise:** The V5 transformation split the Telegram bot into 3 (Controller, Notification, Analytics), but the user suspects **massive functionality loss** (`Command Loss`, `UI Regression`, `Config Gaps`, `Missing Controls`).
 
-## 🎯 AUDIT SENSORS (WHAT TO CHEK)
+## 🎯 AUDIT SENSORS (WHAT TO CHECK)
 
 ### 1. Telegram Connection & Configuration Integrity
 - **The Issue:** "Maine tokens nahi diye, to ye complete kaise hai?"
@@ -40,7 +40,7 @@ The user has invoked the **"WRATH OF GOD TEST"**. This is a **Zero Tolerance Aud
 ### 6. The Missing V5 Control Layer
 - **The Issue:** "Mujhe ek hi pine pe trade karna hua to ek ko band karna hua to wo kaha se hoga?"
 - **Check:** Is there a `/enable_plugin [v3|v6]` or `/disable_plugin` command?
-- **Check:** Is there a `/shadow_mode [v3|v6]` toggle?
+- **Check:** Does the bot allow **Live logic switching** without restart?
 
 ### 7. Deep Feature Audit (FineTune, Logging, Profit Protection)
 - **Source of Truth:**
@@ -48,28 +48,47 @@ The user has invoked the **"WRATH OF GOD TEST"**. This is a **Zero Tolerance Aud
   - `docs/developer_notes/LOGGING_SYSTEM_IMPLEMENTATION_REPORT.md`
 - **Check:** Are `FineTuneMenu` and `ProfitProtectionManager` wired to the `ControllerBot` menus?
 
-## 🚀 YOUR MISSION: AUTONOMOUS DEEP SCAN
+---
 
-You must act as a **Hostile Auditor**. Assume everything is broken until code proves otherwise.
+## � THE "FUTURE CONTROL" SUGGESTIONS (USER REQUEST)
+The user demands not just an audit, but **Innovation**.
+Based on the V5 Architecture (Plugins/Service API), what **NEW CONTROLS** can we build?
+
+### **Requirement:** Live Control Without Restart
+Every suggestion must work strictly **LIVE**.
+
+### **Areas for Suggestions:**
+1.  **Plugin Controls:**
+    - Live Reloading of logic modules?
+    - Hot-swapping risk parameters per plugin?
+    - "Isolation Mode" (Pause one logic if drawdown hits X%)?
+2.  **3-Bot Enhancements:**
+    - Can `AnalyticsBot` give live charts?
+    - Can `NotificationBot` have "Do Not Disturb" mode?
+3.  **Advanced Toggles:**
+    - Temporary "News Filter Override"?
+    - "Panic Button" specific to just ONE logic?
+
+## 🚀 YOUR MISSION: AUTONOMOUS DEEP SCAN & INNOVATION
+
+You must act as a **Hostile Auditor** AND a **Creative Architect**.
 
 ### Step 1: Deep Code Scan
-- Scan `src/telegram/` comprehensively.
+- Scan `src/telegram/`.
 - Scan `src/core/plugin_system/`.
 - Scan `src/managers/`.
 
 ### Step 2: Gap Analysis Matrix
 Map every item in `TELEGRAM_COMMAND_STRUCTURE.md` to `src/telegram/controller_bot.py`.
 - If missing -> **FAIL**.
-- If present but generic (not plugin aware) -> **FAIL**.
 
-### Step 3: The "Wrath of God" Plan
-Create a **Recovery Plan** if gaps are found.
-- If Plugin Selection Layer is missing, we must design it.
-- If Config Tokens are hardcoded/missing, we must fix `config_manager.py`.
+### Step 3: Innovation Report
+Create a section "V5 Control Possibilities".
+- List controls that are *technically possible* in V5 but not yet implemented.
 
 ## 📤 DELIVERABLE
 Create `updates/v5_hybrid_plugin_architecture/10_WRATH_OF_GOD_AUDIT/01_AUDIT_REPORT.md`.
-- Be brutal. List every missing command.
-- Propose the **V5 Ultimate Telegram UI** structure.
+- **Part A:** The Brutal Audit (What is broken/missing).
+- **Part B:** The Innovation Plan (Better controls, Live Updates).
 
 **START NOW.**
