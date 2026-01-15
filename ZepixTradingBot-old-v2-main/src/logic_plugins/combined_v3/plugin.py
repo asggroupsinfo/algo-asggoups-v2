@@ -26,9 +26,13 @@ from src.core.plugin_system.dual_order_interface import (
 from src.core.plugin_system.profit_booking_interface import (
     IProfitBookingCapable, ProfitChain, BookingResult, ChainStatus, PYRAMID_LEVELS
 )
+from src.core.plugin_system.autonomous_interface import (
+    IAutonomousCapable, SafetyCheckResult, ReverseShieldStatus
+)
 from src.core.services.reentry_service import ReentryService
 from src.core.services.dual_order_service import DualOrderService
 from src.core.services.profit_booking_service import ProfitBookingService
+from src.core.services.autonomous_service import AutonomousService
 from .signal_handlers import V3SignalHandlers
 from .order_manager import V3OrderManager
 from .trend_validator import V3TrendValidator
@@ -36,7 +40,7 @@ from .trend_validator import V3TrendValidator
 logger = logging.getLogger(__name__)
 
 
-class CombinedV3Plugin(BaseLogicPlugin, ISignalProcessor, IOrderExecutor, IReentryCapable, IDualOrderCapable, IProfitBookingCapable):
+class CombinedV3Plugin(BaseLogicPlugin, ISignalProcessor, IOrderExecutor, IReentryCapable, IDualOrderCapable, IProfitBookingCapable, IAutonomousCapable):
     """
     V3 Combined Logic Plugin - Handles all 12 V3 signal types.
     
@@ -85,6 +89,10 @@ class CombinedV3Plugin(BaseLogicPlugin, ISignalProcessor, IOrderExecutor, IReent
         self._profit_booking_service: Optional[ProfitBookingService] = None
         self._order_to_chain: Dict[str, str] = {}  # order_b_id -> chain_id
         
+        # Autonomous system support (Plan 06)
+        self._autonomous_service: Optional[AutonomousService] = None
+        self._active_shields: Dict[str, ReverseShieldStatus] = {}  # trade_id -> shield_status
+        
         self.logger.info(
             f"CombinedV3Plugin initialized | "
             f"Shadow Mode: {self.shadow_mode} | "
@@ -127,6 +135,16 @@ class CombinedV3Plugin(BaseLogicPlugin, ISignalProcessor, IOrderExecutor, IReent
         """
         self._profit_booking_service = service
         self.logger.info(f"ProfitBookingService injected into {self.plugin_id}")
+    
+    def set_autonomous_service(self, service: AutonomousService):
+        """
+        Inject autonomous service for safety operations.
+        
+        Args:
+            service: AutonomousService instance
+        """
+        self._autonomous_service = service
+        self.logger.info(f"AutonomousService injected into {self.plugin_id}")
     
     # ==================== IDualOrderCapable Implementation (Plan 04) ====================
     
@@ -434,6 +452,171 @@ class CombinedV3Plugin(BaseLogicPlugin, ISignalProcessor, IOrderExecutor, IReent
             Dict mapping level (0-4) to number of orders
         """
         return PYRAMID_LEVELS.copy()
+    
+    # ==================== IAutonomousCapable Implementation (Plan 06) ====================
+    
+    async def check_recovery_allowed(self) -> SafetyCheckResult:
+        """
+        Check if recovery is allowed based on all safety limits.
+        
+        Checks daily limit, concurrent limit, and profit protection
+        before allowing any recovery operation.
+        
+        Returns:
+            SafetyCheckResult with allowed=True if all checks pass
+        """
+        if not self._autonomous_service:
+            self.logger.warning("AutonomousService not available for safety check")
+            return SafetyCheckResult(
+                allowed=False,
+                reason="AutonomousService not available",
+                daily_count=0,
+                daily_limit=0,
+                concurrent_count=0,
+                concurrent_limit=0,
+                current_profit=0,
+                profit_threshold=0
+            )
+        
+        return await self._autonomous_service.check_recovery_allowed(self.plugin_id)
+    
+    async def activate_reverse_shield(
+        self,
+        trade_id: str,
+        symbol: str,
+        direction: str
+    ) -> ReverseShieldStatus:
+        """
+        Activate Reverse Shield for a trade during recovery.
+        
+        Creates hedge position to protect during recovery window.
+        Shield A: Recovery hedge with TP at 1:1
+        Shield B: Profit booking hedge
+        
+        Args:
+            trade_id: ID of the trade being protected
+            symbol: Trading symbol
+            direction: Original trade direction
+            
+        Returns:
+            ReverseShieldStatus with shield details
+        """
+        if not self._autonomous_service:
+            self.logger.warning("AutonomousService not available for Reverse Shield")
+            return ReverseShieldStatus(
+                active=False,
+                shield_id=None,
+                symbol=symbol,
+                direction=direction,
+                hedge_order_id=None,
+                error="AutonomousService not available"
+            )
+        
+        # Check if Reverse Shield is enabled in config
+        rs_enabled = self.plugin_config.get("reverse_shield_enabled", True)
+        if not rs_enabled:
+            self.logger.info(f"Reverse Shield disabled for {self.plugin_id}")
+            return ReverseShieldStatus(
+                active=False,
+                shield_id=None,
+                symbol=symbol,
+                direction=direction,
+                hedge_order_id=None,
+                error="Reverse Shield disabled in config"
+            )
+        
+        # Activate shield via service
+        status = await self._autonomous_service.activate_reverse_shield(
+            plugin_id=self.plugin_id,
+            trade_id=trade_id,
+            symbol=symbol,
+            direction=direction
+        )
+        
+        if status.active:
+            self._active_shields[trade_id] = status
+            self.logger.info(f"Reverse Shield activated for {trade_id}: {status.shield_id}")
+        
+        return status
+    
+    async def deactivate_reverse_shield(self, trade_id: str) -> bool:
+        """
+        Deactivate Reverse Shield after recovery completes or fails.
+        
+        Args:
+            trade_id: ID of the trade whose shield should be deactivated
+            
+        Returns:
+            True if shield was successfully deactivated
+        """
+        if not self._autonomous_service:
+            return False
+        
+        # Get and remove shield from tracking
+        status = self._active_shields.pop(trade_id, None)
+        if not status or not status.active:
+            return False
+        
+        # Deactivate via service
+        success = await self._autonomous_service.deactivate_reverse_shield(
+            plugin_id=self.plugin_id,
+            trade_id=trade_id
+        )
+        
+        if success:
+            self.logger.info(f"Reverse Shield deactivated for {trade_id}")
+        
+        return success
+    
+    async def increment_recovery_count(self) -> int:
+        """
+        Increment daily recovery count.
+        
+        Called when a recovery operation starts.
+        
+        Returns:
+            New daily recovery count
+        """
+        if not self._autonomous_service:
+            return 0
+        
+        return await self._autonomous_service.increment_recovery_count(self.plugin_id)
+    
+    async def get_safety_stats(self) -> Dict[str, Any]:
+        """
+        Get current safety statistics for this plugin.
+        
+        Returns:
+            Dict with recovery stats, shield stats, etc.
+        """
+        if not self._autonomous_service:
+            return {}
+        
+        return self._autonomous_service.get_plugin_stats(self.plugin_id)
+    
+    def should_protect_profit(self, current_profit: float) -> bool:
+        """
+        Check if current profit should be protected.
+        
+        Args:
+            current_profit: Current session profit in dollars
+            
+        Returns:
+            True if profit should be protected (recovery should be skipped)
+        """
+        if not self._autonomous_service:
+            return False
+        
+        return self._autonomous_service.should_protect_profit(current_profit)
+    
+    def get_active_shields(self) -> List[ReverseShieldStatus]:
+        """
+        Get all active Reverse Shields for this plugin.
+        
+        Returns:
+            List of active ReverseShieldStatus objects
+        """
+        return list(self._active_shields.values())
     
     async def _create_level_orders(self, chain_id: str, level: int):
         """
@@ -1066,6 +1249,12 @@ class CombinedV3Plugin(BaseLogicPlugin, ISignalProcessor, IOrderExecutor, IReent
         SL Hunt Recovery monitors price for 70% recovery within symbol-specific
         window (EURUSD: 30min, GBPUSD: 20min, etc.).
         
+        Now includes safety checks (Plan 06):
+        - Daily recovery limit check
+        - Concurrent recovery limit check
+        - Profit protection check
+        - Reverse Shield activation
+        
         Args:
             event: ReentryEvent with trade details
             
@@ -1089,6 +1278,32 @@ class CombinedV3Plugin(BaseLogicPlugin, ISignalProcessor, IOrderExecutor, IReent
                 f"Max chain level reached for {event.trade_id}: {current_level}/{self.get_max_chain_level()}"
             )
             return False
+        
+        # ==================== Plan 06: Safety Checks ====================
+        # Check if recovery is allowed (daily/concurrent limits, profit protection)
+        safety_check = await self.check_recovery_allowed()
+        if not safety_check.allowed:
+            self.logger.info(f"Recovery blocked for {event.trade_id}: {safety_check.reason}")
+            return False
+        
+        # Activate Reverse Shield if enabled
+        rs_enabled = self.plugin_config.get("reverse_shield_enabled", True)
+        if rs_enabled:
+            shield_status = await self.activate_reverse_shield(
+                trade_id=event.trade_id,
+                symbol=event.symbol,
+                direction=event.direction
+            )
+            if shield_status.active:
+                self.logger.info(f"Reverse Shield activated for {event.trade_id}")
+                # Store recovery level in event metadata for shield monitoring
+                event.metadata = event.metadata or {}
+                event.metadata['recovery_70_level'] = shield_status.recovery_70_level
+                event.metadata['shield_id'] = shield_status.shield_id
+        
+        # Increment recovery count
+        await self.increment_recovery_count()
+        # ==================== End Plan 06 ====================
         
         # Update event with current chain level
         event.chain_level = current_level
@@ -1200,6 +1415,8 @@ class CombinedV3Plugin(BaseLogicPlugin, ISignalProcessor, IOrderExecutor, IReent
         Called when ReentryService detects a recovery opportunity
         (70% price recovery for SL Hunt, continuation signal for TP/Exit).
         
+        Now includes Reverse Shield deactivation (Plan 06).
+        
         Args:
             event: ReentryEvent with recovery details
             
@@ -1210,6 +1427,13 @@ class CombinedV3Plugin(BaseLogicPlugin, ISignalProcessor, IOrderExecutor, IReent
             f"Recovery signal received for {event.trade_id} | "
             f"Type: {event.reentry_type.value} | Chain: {event.chain_level}"
         )
+        
+        # ==================== Plan 06: Deactivate Reverse Shield ====================
+        # Deactivate shield since recovery is being executed
+        if event.trade_id in self._active_shields:
+            await self.deactivate_reverse_shield(event.trade_id)
+            self.logger.info(f"Reverse Shield deactivated for recovery: {event.trade_id}")
+        # ==================== End Plan 06 ====================
         
         # Build re-entry signal based on recovery type
         reentry_signal = {
