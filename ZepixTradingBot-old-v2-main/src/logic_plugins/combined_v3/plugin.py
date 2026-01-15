@@ -20,7 +20,11 @@ import os
 from src.core.plugin_system.base_plugin import BaseLogicPlugin
 from src.core.plugin_system.plugin_interface import ISignalProcessor, IOrderExecutor
 from src.core.plugin_system.reentry_interface import IReentryCapable, ReentryEvent, ReentryType
+from src.core.plugin_system.dual_order_interface import (
+    IDualOrderCapable, OrderConfig, DualOrderResult, OrderType, SLType
+)
 from src.core.services.reentry_service import ReentryService
+from src.core.services.dual_order_service import DualOrderService
 from .signal_handlers import V3SignalHandlers
 from .order_manager import V3OrderManager
 from .trend_validator import V3TrendValidator
@@ -28,7 +32,7 @@ from .trend_validator import V3TrendValidator
 logger = logging.getLogger(__name__)
 
 
-class CombinedV3Plugin(BaseLogicPlugin, ISignalProcessor, IOrderExecutor, IReentryCapable):
+class CombinedV3Plugin(BaseLogicPlugin, ISignalProcessor, IOrderExecutor, IReentryCapable, IDualOrderCapable):
     """
     V3 Combined Logic Plugin - Handles all 12 V3 signal types.
     
@@ -69,10 +73,14 @@ class CombinedV3Plugin(BaseLogicPlugin, ISignalProcessor, IOrderExecutor, IReent
         self._chain_levels: Dict[str, int] = {}  # trade_id -> chain_level
         self._reentry_service: Optional[ReentryService] = None
         
+        # Dual order system support (Plan 04)
+        self._dual_order_service: Optional[DualOrderService] = None
+        self._active_orders: Dict[str, Dict[str, Any]] = {}  # order_id -> order_info
+        
         self.logger.info(
             f"CombinedV3Plugin initialized | "
             f"Shadow Mode: {self.shadow_mode} | "
-            f"12 signals ready | Re-entry enabled"
+            f"12 signals ready | Re-entry enabled | Dual orders enabled"
         )
     
     def set_reentry_service(self, service: ReentryService):
@@ -91,6 +99,253 @@ class CombinedV3Plugin(BaseLogicPlugin, ISignalProcessor, IOrderExecutor, IReent
         """Callback when recovery is detected by ReentryService"""
         self.logger.info(f"Recovery callback received for {event.trade_id}")
         await self.on_recovery_signal(event)
+    
+    def set_dual_order_service(self, service: DualOrderService):
+        """
+        Inject dual order service for order operations.
+        
+        Args:
+            service: DualOrderService instance
+        """
+        self._dual_order_service = service
+        self.logger.info(f"DualOrderService injected into {self.plugin_id}")
+    
+    # ==================== IDualOrderCapable Implementation (Plan 04) ====================
+    
+    async def create_dual_orders(self, signal: Dict[str, Any]) -> DualOrderResult:
+        """
+        Create both Order A and Order B for a signal.
+        
+        Order A: TP_TRAIL with V3 Smart SL (progressive trailing)
+        Order B: PROFIT_TRAIL with fixed $10 risk SL
+        
+        Args:
+            signal: Trading signal with symbol, direction, etc.
+            
+        Returns:
+            DualOrderResult with both order IDs and status
+        """
+        if not self._dual_order_service:
+            self.logger.warning("DualOrderService not available")
+            return DualOrderResult(error="Service not available")
+        
+        # Get configurations for both orders
+        order_a_config = await self.get_order_a_config(signal)
+        order_b_config = await self.get_order_b_config(signal)
+        
+        # Create dual orders via service
+        result = await self._dual_order_service.create_dual_orders(
+            signal, order_a_config, order_b_config
+        )
+        
+        # Track orders locally
+        if result.order_a_id:
+            self._active_orders[result.order_a_id] = {
+                'type': 'order_a',
+                'signal': signal,
+                'config': order_a_config
+            }
+        if result.order_b_id:
+            self._active_orders[result.order_b_id] = {
+                'type': 'order_b',
+                'signal': signal,
+                'config': order_b_config
+            }
+        
+        self.logger.info(f"Dual orders created: A={result.order_a_id}, B={result.order_b_id}")
+        return result
+    
+    async def get_order_a_config(self, signal: Dict[str, Any]) -> OrderConfig:
+        """
+        Get Order A configuration (TP_TRAIL with V3 Smart SL).
+        
+        Order A characteristics:
+        - Uses V3 Smart SL with progressive trailing
+        - Trailing starts at 50% of SL in profit
+        - Trails in 25% steps
+        - Has TP target (2:1 RR)
+        
+        Args:
+            signal: Trading signal
+            
+        Returns:
+            OrderConfig for Order A
+        """
+        logic = signal.get('logic', 'LOGIC1')
+        base_lot = self._get_base_lot(logic)
+        smart_lot = self.get_smart_lot_size(base_lot)
+        
+        # V3 Smart SL configuration
+        sl_pips = self._get_sl_pips(signal.get('symbol', 'EURUSD'), logic)
+        tp_pips = sl_pips * 2  # 2:1 RR for Order A
+        
+        return OrderConfig(
+            order_type=OrderType.ORDER_A,
+            sl_type=SLType.V3_SMART_SL,
+            lot_size=smart_lot,
+            sl_pips=sl_pips,
+            tp_pips=tp_pips,
+            trailing_enabled=True,
+            trailing_start_pips=sl_pips * 0.5,  # Start trailing at 50% of SL
+            trailing_step_pips=sl_pips * 0.25,  # Trail in 25% steps
+            plugin_id=self.plugin_id,
+            metadata={
+                'logic': logic,
+                'original_sl': sl_pips
+            }
+        )
+    
+    async def get_order_b_config(self, signal: Dict[str, Any]) -> OrderConfig:
+        """
+        Get Order B configuration (PROFIT_TRAIL with fixed $10 risk).
+        
+        Order B characteristics:
+        - Uses fixed $10 risk SL
+        - No TP target (uses profit booking)
+        - Creates profit booking chains
+        
+        Args:
+            signal: Trading signal
+            
+        Returns:
+            OrderConfig for Order B
+        """
+        logic = signal.get('logic', 'LOGIC1')
+        base_lot = self._get_base_lot(logic)
+        smart_lot = self.get_smart_lot_size(base_lot)
+        
+        return OrderConfig(
+            order_type=OrderType.ORDER_B,
+            sl_type=SLType.FIXED_RISK_SL,
+            lot_size=smart_lot,
+            sl_pips=0,  # Will be calculated based on risk
+            tp_pips=None,  # No TP - uses profit booking
+            trailing_enabled=False,
+            risk_amount=10.0,  # Fixed $10 risk
+            plugin_id=self.plugin_id,
+            metadata={
+                'logic': logic,
+                'creates_profit_chain': True
+            }
+        )
+    
+    async def on_order_a_closed(self, order_id: str, reason: str) -> None:
+        """
+        Handle Order A closure.
+        
+        If closed by SL, may trigger SL Hunt Recovery.
+        If closed by TP, trade is complete.
+        
+        Args:
+            order_id: Order identifier
+            reason: Close reason (SL_HIT, TP_HIT, MANUAL, etc.)
+        """
+        self.logger.info(f"Order A closed: {order_id}, reason: {reason}")
+        
+        order_info = self._active_orders.pop(order_id, None)
+        if not order_info:
+            return
+        
+        # If SL hit, trigger re-entry via IReentryCapable
+        if reason == 'SL_HIT':
+            signal = order_info.get('signal', {})
+            event = ReentryEvent(
+                trade_id=order_id,
+                plugin_id=self.plugin_id,
+                symbol=signal.get('symbol', ''),
+                reentry_type=ReentryType.SL_HUNT,
+                entry_price=signal.get('price', 0),
+                exit_price=0,  # Will be filled by monitor
+                sl_price=0,
+                direction=signal.get('signal_type', ''),
+                chain_level=self.get_chain_level(order_id)
+            )
+            await self.on_sl_hit(event)
+    
+    async def on_order_b_closed(self, order_id: str, reason: str) -> None:
+        """
+        Handle Order B closure - may trigger profit booking.
+        
+        Args:
+            order_id: Order identifier
+            reason: Close reason (SL_HIT, TP_HIT, PROFIT_BOOKED, etc.)
+        """
+        self.logger.info(f"Order B closed: {order_id}, reason: {reason}")
+        
+        order_info = self._active_orders.pop(order_id, None)
+        if not order_info:
+            return
+        
+        # Order B closure triggers profit booking chain (Plan 05)
+        # For now, just log
+        if reason == 'TP_HIT' or reason == 'PROFIT_BOOKED':
+            self.logger.info(f"Order B profit booked: {order_id}")
+    
+    def get_smart_lot_size(self, base_lot: float) -> float:
+        """
+        Calculate smart lot based on daily P&L.
+        
+        Discovery 6: Reduces lot when approaching daily limit:
+        - >50% remaining: 100% of base lot
+        - 25-50% remaining: 75% of base lot
+        - <25% remaining: 50% of base lot
+        
+        Args:
+            base_lot: Base lot size for the logic
+            
+        Returns:
+            Adjusted lot size
+        """
+        if not self._dual_order_service:
+            return base_lot
+        return self._dual_order_service._apply_smart_lot(base_lot)
+    
+    def _get_base_lot(self, logic: str) -> float:
+        """
+        Get base lot size for logic.
+        
+        Args:
+            logic: Logic route (LOGIC1, LOGIC2, LOGIC3)
+            
+        Returns:
+            Base lot size
+        """
+        lot_sizes = {
+            'LOGIC1': 0.01,  # 5m scalping - smallest
+            'LOGIC2': 0.02,  # 15m intraday - medium
+            'LOGIC3': 0.03   # 1h swing - largest
+        }
+        return lot_sizes.get(logic, 0.01)
+    
+    def _get_sl_pips(self, symbol: str, logic: str) -> float:
+        """
+        Get SL pips based on symbol and logic.
+        
+        Args:
+            symbol: Trading symbol
+            logic: Logic route
+            
+        Returns:
+            SL in pips
+        """
+        # Symbol-specific base SL
+        symbol_sl = {
+            'EURUSD': 15,
+            'GBPUSD': 18,
+            'USDJPY': 15,
+            'XAUUSD': 30,
+        }
+        base_sl = symbol_sl.get(symbol, 15)
+        
+        # Logic multiplier
+        logic_multiplier = {
+            'LOGIC1': 1.0,   # 5m - standard
+            'LOGIC2': 1.5,   # 15m - wider
+            'LOGIC3': 2.0    # 1h - widest
+        }
+        multiplier = logic_multiplier.get(logic, 1.0)
+        
+        return base_sl * multiplier
     
     def _load_plugin_config(self):
         """Load plugin configuration from config.json"""
