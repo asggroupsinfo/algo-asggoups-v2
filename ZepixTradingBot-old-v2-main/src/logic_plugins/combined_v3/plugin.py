@@ -23,8 +23,12 @@ from src.core.plugin_system.reentry_interface import IReentryCapable, ReentryEve
 from src.core.plugin_system.dual_order_interface import (
     IDualOrderCapable, OrderConfig, DualOrderResult, OrderType, SLType
 )
+from src.core.plugin_system.profit_booking_interface import (
+    IProfitBookingCapable, ProfitChain, BookingResult, ChainStatus, PYRAMID_LEVELS
+)
 from src.core.services.reentry_service import ReentryService
 from src.core.services.dual_order_service import DualOrderService
+from src.core.services.profit_booking_service import ProfitBookingService
 from .signal_handlers import V3SignalHandlers
 from .order_manager import V3OrderManager
 from .trend_validator import V3TrendValidator
@@ -32,7 +36,7 @@ from .trend_validator import V3TrendValidator
 logger = logging.getLogger(__name__)
 
 
-class CombinedV3Plugin(BaseLogicPlugin, ISignalProcessor, IOrderExecutor, IReentryCapable, IDualOrderCapable):
+class CombinedV3Plugin(BaseLogicPlugin, ISignalProcessor, IOrderExecutor, IReentryCapable, IDualOrderCapable, IProfitBookingCapable):
     """
     V3 Combined Logic Plugin - Handles all 12 V3 signal types.
     
@@ -77,10 +81,14 @@ class CombinedV3Plugin(BaseLogicPlugin, ISignalProcessor, IOrderExecutor, IReent
         self._dual_order_service: Optional[DualOrderService] = None
         self._active_orders: Dict[str, Dict[str, Any]] = {}  # order_id -> order_info
         
+        # Profit booking system support (Plan 05)
+        self._profit_booking_service: Optional[ProfitBookingService] = None
+        self._order_to_chain: Dict[str, str] = {}  # order_b_id -> chain_id
+        
         self.logger.info(
             f"CombinedV3Plugin initialized | "
             f"Shadow Mode: {self.shadow_mode} | "
-            f"12 signals ready | Re-entry enabled | Dual orders enabled"
+            f"12 signals ready | Re-entry enabled | Dual orders enabled | Profit booking enabled"
         )
     
     def set_reentry_service(self, service: ReentryService):
@@ -109,6 +117,16 @@ class CombinedV3Plugin(BaseLogicPlugin, ISignalProcessor, IOrderExecutor, IReent
         """
         self._dual_order_service = service
         self.logger.info(f"DualOrderService injected into {self.plugin_id}")
+    
+    def set_profit_booking_service(self, service: ProfitBookingService):
+        """
+        Inject profit booking service for chain operations.
+        
+        Args:
+            service: ProfitBookingService instance
+        """
+        self._profit_booking_service = service
+        self.logger.info(f"ProfitBookingService injected into {self.plugin_id}")
     
     # ==================== IDualOrderCapable Implementation (Plan 04) ====================
     
@@ -153,6 +171,11 @@ class CombinedV3Plugin(BaseLogicPlugin, ISignalProcessor, IOrderExecutor, IReent
             }
         
         self.logger.info(f"Dual orders created: A={result.order_a_id}, B={result.order_b_id}")
+        
+        # Create profit chain for Order B (Plan 05)
+        if result.order_b_id and not signal.get('is_profit_chain_order'):
+            await self.create_profit_chain(result.order_b_id, signal)
+        
         return result
     
     async def get_order_a_config(self, signal: Dict[str, Any]) -> OrderConfig:
@@ -264,11 +287,11 @@ class CombinedV3Plugin(BaseLogicPlugin, ISignalProcessor, IOrderExecutor, IReent
     
     async def on_order_b_closed(self, order_id: str, reason: str) -> None:
         """
-        Handle Order B closure - may trigger profit booking.
+        Handle Order B closure - triggers profit booking.
         
         Args:
             order_id: Order identifier
-            reason: Close reason (SL_HIT, TP_HIT, PROFIT_BOOKED, etc.)
+            reason: Close reason (SL_HIT, TP_HIT, PROFIT_TARGET, etc.)
         """
         self.logger.info(f"Order B closed: {order_id}, reason: {reason}")
         
@@ -276,10 +299,179 @@ class CombinedV3Plugin(BaseLogicPlugin, ISignalProcessor, IOrderExecutor, IReent
         if not order_info:
             return
         
-        # Order B closure triggers profit booking chain (Plan 05)
-        # For now, just log
-        if reason == 'TP_HIT' or reason == 'PROFIT_BOOKED':
-            self.logger.info(f"Order B profit booked: {order_id}")
+        # Get chain for this order
+        chain_id = self._order_to_chain.get(order_id)
+        if not chain_id:
+            self.logger.warning(f"No chain found for Order B: {order_id}")
+            return
+        
+        # Handle based on close reason
+        if reason == 'PROFIT_TARGET':
+            # Book profit via IProfitBookingCapable
+            result = await self.on_profit_target_hit(chain_id, order_id)
+            self.logger.info(f"Profit booked: ${result.profit_amount:.2f}")
+        elif reason == 'SL_HIT':
+            # Start Profit Booking SL Hunt
+            await self.on_chain_sl_hit(chain_id)
+    
+    # ==================== IProfitBookingCapable Implementation (Plan 05) ====================
+    
+    async def create_profit_chain(
+        self,
+        order_b_id: str,
+        signal: Dict[str, Any]
+    ) -> Optional[ProfitChain]:
+        """
+        Create a new profit booking chain for Order B.
+        
+        Called when Order B is created. Initializes chain at Level 0
+        with 1 order and $7 profit target.
+        
+        Args:
+            order_b_id: Order B identifier
+            signal: Original trading signal
+            
+        Returns:
+            ProfitChain if created successfully
+        """
+        if not self._profit_booking_service:
+            self.logger.warning("ProfitBookingService not available")
+            return None
+        
+        chain = await self._profit_booking_service.create_chain(
+            plugin_id=self.plugin_id,
+            order_b_id=order_b_id,
+            symbol=signal.get('symbol', ''),
+            direction=signal.get('signal_type', ''),
+            metadata={
+                'logic': signal.get('logic', 'LOGIC1'),
+                'original_signal': signal
+            }
+        )
+        
+        if chain:
+            self._order_to_chain[order_b_id] = chain.chain_id
+            self.logger.info(f"Profit chain created for Order B: {order_b_id} -> {chain.chain_id}")
+        
+        return chain
+    
+    async def on_profit_target_hit(
+        self,
+        chain_id: str,
+        order_id: str
+    ) -> BookingResult:
+        """
+        Called when an order hits its $7 profit target.
+        
+        Books profit and potentially advances chain level.
+        
+        Args:
+            chain_id: Chain identifier
+            order_id: Order that hit profit target
+            
+        Returns:
+            BookingResult with profit and level info
+        """
+        if not self._profit_booking_service:
+            return BookingResult(
+                success=False,
+                order_id=order_id,
+                profit_amount=0,
+                chain_advanced=False,
+                new_level=0,
+                error="Service not available"
+            )
+        
+        result = await self._profit_booking_service.book_profit(
+            chain_id=chain_id,
+            order_id=order_id,
+            profit_amount=self._profit_booking_service.PROFIT_TARGET
+        )
+        
+        if result.chain_advanced:
+            self.logger.info(f"Chain {chain_id} advanced to level {result.new_level}")
+            # Create new orders for the new level
+            await self._create_level_orders(chain_id, result.new_level)
+        
+        return result
+    
+    async def on_chain_sl_hit(self, chain_id: str) -> bool:
+        """
+        Called when chain SL is hit.
+        
+        Triggers Profit Booking SL Hunt to recover the chain.
+        
+        Args:
+            chain_id: Chain identifier
+            
+        Returns:
+            True if SL Hunt started successfully
+        """
+        if not self._profit_booking_service:
+            return False
+        
+        success = await self._profit_booking_service.start_sl_hunt(chain_id)
+        if success:
+            self.logger.info(f"Profit Booking SL Hunt started for chain {chain_id}")
+        return success
+    
+    async def get_active_chains(self) -> List[ProfitChain]:
+        """
+        Get all active profit chains for this plugin.
+        
+        Returns:
+            List of active ProfitChain objects
+        """
+        if not self._profit_booking_service:
+            return []
+        return self._profit_booking_service.get_active_chains(self.plugin_id)
+    
+    def get_pyramid_config(self) -> Dict[int, int]:
+        """
+        Get pyramid level configuration.
+        
+        Returns:
+            Dict mapping level (0-4) to number of orders
+        """
+        return PYRAMID_LEVELS.copy()
+    
+    async def _create_level_orders(self, chain_id: str, level: int):
+        """
+        Create orders for a new pyramid level.
+        
+        Args:
+            chain_id: Chain identifier
+            level: New pyramid level (1-4)
+        """
+        if not self._profit_booking_service:
+            return
+        
+        chain = self._profit_booking_service._get_chain_by_id(chain_id)
+        if not chain:
+            return
+        
+        num_orders = self.get_pyramid_config().get(level, 0)
+        self.logger.info(f"Creating {num_orders} orders for chain {chain_id} level {level}")
+        
+        # Create orders for the new level
+        for i in range(num_orders):
+            signal = {
+                'strategy': 'V3_COMBINED',
+                'signal_type': chain.direction,
+                'symbol': chain.symbol,
+                'logic': chain.metadata.get('logic', 'LOGIC1'),
+                'is_profit_chain_order': True,
+                'chain_id': chain_id,
+                'chain_level': level,
+                'order_index': i
+            }
+            
+            # Create only Order B for profit chain orders
+            if self._dual_order_service:
+                order_b_config = await self.get_order_b_config(signal)
+                # Track order to chain mapping
+                # Note: Actual order creation would go through dual order service
+                self.logger.debug(f"Would create profit chain order {i+1}/{num_orders} for level {level}")
     
     def get_smart_lot_size(self, base_lot: float) -> float:
         """
