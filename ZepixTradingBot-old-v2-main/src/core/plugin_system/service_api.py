@@ -106,7 +106,7 @@ class ServiceAPI:
     
     Usage:
         # For plugins (with plugin_id)
-        api = ServiceAPI(trading_engine, plugin_id="combined_v3")
+        api = ServiceAPI(trading_engine, plugin_id="v3_combined")
         lot = await api.calculate_lot_size(symbol="XAUUSD", risk_pct=1.5, sl_pips=50)
         
         # For core bot (backward compatible)

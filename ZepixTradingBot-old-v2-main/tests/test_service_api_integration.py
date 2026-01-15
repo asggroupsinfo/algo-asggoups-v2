@@ -543,12 +543,12 @@ class TestSuccessCriteria:
     
     def test_criterion_2_plugins_use_service_api(self):
         """Criterion 2: Plugins use ServiceAPI exclusively"""
-        from src.logic_plugins.combined_v3.plugin import CombinedV3Plugin
+        from src.logic_plugins.v3_combined.plugin import V3CombinedPlugin
         
         # Verify plugin has set_service_api method
-        assert hasattr(CombinedV3Plugin, 'set_service_api')
-        assert hasattr(CombinedV3Plugin, 'process_signal_via_service_api')
-        assert hasattr(CombinedV3Plugin, 'on_sl_hit_via_service_api')
+        assert hasattr(V3CombinedPlugin, 'set_service_api')
+        assert hasattr(V3CombinedPlugin, 'process_signal_via_service_api')
+        assert hasattr(V3CombinedPlugin, 'on_sl_hit_via_service_api')
     
     def test_criterion_3_service_discovery_works(self, service_api, mock_order_service, mock_reentry_service):
         """Criterion 3: Service discovery works"""

@@ -137,9 +137,9 @@ class TestCombinedV3Plugin:
     def plugin(self, mock_service_api, plugin_config):
         with patch('src.logic_plugins.combined_v3.plugin.json.load', return_value=plugin_config):
             with patch('builtins.open', MagicMock()):
-                from src.logic_plugins.combined_v3.plugin import CombinedV3Plugin
+                from src.logic_plugins.v3_combined.plugin import CombinedV3Plugin
                 p = CombinedV3Plugin(
-                    plugin_id="combined_v3",
+                    plugin_id="v3_combined",
                     config=plugin_config,
                     service_api=mock_service_api
                 )
@@ -147,7 +147,7 @@ class TestCombinedV3Plugin:
     
     def test_plugin_initialization(self, plugin):
         """Test plugin initializes correctly"""
-        assert plugin.plugin_id == "combined_v3"
+        assert plugin.plugin_id == "v3_combined"
         assert plugin.enabled == True
         assert plugin.shadow_mode == False
         assert len(plugin.metadata.get("supported_signals", [])) == 12
@@ -175,7 +175,7 @@ class TestCombinedV3Plugin:
     def test_get_status(self, plugin):
         """Test get_status returns correct info"""
         status = plugin.get_status()
-        assert status["plugin_id"] == "combined_v3"
+        assert status["plugin_id"] == "v3_combined"
         assert status["enabled"] == True
         assert "shadow_mode" in status
         assert "supported_signals" in status
@@ -216,8 +216,8 @@ class TestV3RoutingMatrix:
         }
         with patch('src.logic_plugins.combined_v3.plugin.json.load', return_value=config):
             with patch('builtins.open', MagicMock()):
-                from src.logic_plugins.combined_v3.plugin import CombinedV3Plugin
-                return CombinedV3Plugin("combined_v3", config, mock_api)
+                from src.logic_plugins.v3_combined.plugin import CombinedV3Plugin
+                return CombinedV3Plugin("v3_combined", config, mock_api)
     
     def test_signal_override_screener_bullish(self, plugin):
         """Test Screener_Full_Bullish always routes to LOGIC3"""
@@ -312,8 +312,8 @@ class TestV3SignalHandlers:
         }
         with patch('src.logic_plugins.combined_v3.plugin.json.load', return_value=config):
             with patch('builtins.open', MagicMock()):
-                from src.logic_plugins.combined_v3.plugin import CombinedV3Plugin
-                plugin = CombinedV3Plugin("combined_v3", config, mock_api)
+                from src.logic_plugins.v3_combined.plugin import CombinedV3Plugin
+                plugin = CombinedV3Plugin("v3_combined", config, mock_api)
                 return plugin.signal_handlers
     
     def test_handler_map_has_all_signals(self, signal_handlers):
@@ -380,8 +380,8 @@ class TestV3DualOrderSystem:
         }
         with patch('src.logic_plugins.combined_v3.plugin.json.load', return_value=config):
             with patch('builtins.open', MagicMock()):
-                from src.logic_plugins.combined_v3.plugin import CombinedV3Plugin
-                plugin = CombinedV3Plugin("combined_v3", config, mock_api)
+                from src.logic_plugins.v3_combined.plugin import CombinedV3Plugin
+                plugin = CombinedV3Plugin("v3_combined", config, mock_api)
                 return plugin.order_manager
     
     def test_consensus_to_multiplier_low(self, order_manager):
@@ -480,8 +480,8 @@ class TestV3MTF4Pillar:
         }
         with patch('src.logic_plugins.combined_v3.plugin.json.load', return_value=config):
             with patch('builtins.open', MagicMock()):
-                from src.logic_plugins.combined_v3.plugin import CombinedV3Plugin
-                plugin = CombinedV3Plugin("combined_v3", config, mock_api)
+                from src.logic_plugins.v3_combined.plugin import CombinedV3Plugin
+                plugin = CombinedV3Plugin("v3_combined", config, mock_api)
                 return plugin.trend_validator
     
     def test_extract_4_pillars_correct(self, trend_validator):
@@ -580,8 +580,8 @@ class TestV3PositionSizing:
         }
         with patch('src.logic_plugins.combined_v3.plugin.json.load', return_value=config):
             with patch('builtins.open', MagicMock()):
-                from src.logic_plugins.combined_v3.plugin import CombinedV3Plugin
-                plugin = CombinedV3Plugin("combined_v3", config, mock_api)
+                from src.logic_plugins.v3_combined.plugin import CombinedV3Plugin
+                plugin = CombinedV3Plugin("v3_combined", config, mock_api)
                 return plugin.order_manager
     
     def test_position_sizing_4_step_flow(self, order_manager):
@@ -627,8 +627,8 @@ class TestV3ShadowMode:
         }
         with patch('src.logic_plugins.combined_v3.plugin.json.load', return_value=config):
             with patch('builtins.open', MagicMock()):
-                from src.logic_plugins.combined_v3.plugin import CombinedV3Plugin
-                return CombinedV3Plugin("combined_v3", config, mock_api)
+                from src.logic_plugins.v3_combined.plugin import CombinedV3Plugin
+                return CombinedV3Plugin("v3_combined", config, mock_api)
     
     @pytest.mark.asyncio
     async def test_shadow_mode_no_real_orders(self, shadow_plugin):
@@ -696,8 +696,8 @@ class TestV3BackwardCompatibility:
         }
         with patch('src.logic_plugins.combined_v3.plugin.json.load', return_value=config):
             with patch('builtins.open', MagicMock()):
-                from src.logic_plugins.combined_v3.plugin import CombinedV3Plugin
-                return CombinedV3Plugin("combined_v3", config, mock_api)
+                from src.logic_plugins.v3_combined.plugin import CombinedV3Plugin
+                return CombinedV3Plugin("v3_combined", config, mock_api)
     
     def test_routing_matches_trading_engine(self, plugin):
         """Test routing matches existing trading_engine._route_v3_to_logic()"""
@@ -761,8 +761,8 @@ class TestV3Integration:
         }
         with patch('src.logic_plugins.combined_v3.plugin.json.load', return_value=config):
             with patch('builtins.open', MagicMock()):
-                from src.logic_plugins.combined_v3.plugin import CombinedV3Plugin
-                return CombinedV3Plugin("combined_v3", config, mock_api)
+                from src.logic_plugins.v3_combined.plugin import CombinedV3Plugin
+                return CombinedV3Plugin("v3_combined", config, mock_api)
     
     @pytest.mark.asyncio
     async def test_full_entry_flow(self, plugin):

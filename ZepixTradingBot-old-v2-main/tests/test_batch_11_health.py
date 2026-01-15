@@ -430,13 +430,13 @@ class TestPluginVersion:
         from core.versioned_plugin_registry import PluginVersion
         
         version = PluginVersion(
-            plugin_id="combined_v3",
+            plugin_id="v3_combined",
             major=3,
             minor=2,
             patch=1
         )
         
-        assert version.plugin_id == "combined_v3"
+        assert version.plugin_id == "v3_combined"
         assert version.major == 3
         assert version.minor == 2
         assert version.patch == 1
@@ -446,7 +446,7 @@ class TestPluginVersion:
         from core.versioned_plugin_registry import PluginVersion
         
         version = PluginVersion(
-            plugin_id="combined_v3",
+            plugin_id="v3_combined",
             major=3,
             minor=2,
             patch=1
@@ -458,9 +458,9 @@ class TestPluginVersion:
         """Test creating version from string"""
         from core.versioned_plugin_registry import PluginVersion
         
-        version = PluginVersion.from_string("combined_v3", "3.2.1")
+        version = PluginVersion.from_string("v3_combined", "3.2.1")
         
-        assert version.plugin_id == "combined_v3"
+        assert version.plugin_id == "v3_combined"
         assert version.major == 3
         assert version.minor == 2
         assert version.patch == 1
@@ -938,7 +938,7 @@ class TestDefaultPluginVersions:
         assert len(versions) == 5  # 1 V3 + 4 V6 plugins
         
         # Check V3 plugin
-        v3_versions = [v for v in versions if v.plugin_id == "combined_v3"]
+        v3_versions = [v for v in versions if v.plugin_id == "v3_combined"]
         assert len(v3_versions) == 1
         assert v3_versions[0].major == 3
         

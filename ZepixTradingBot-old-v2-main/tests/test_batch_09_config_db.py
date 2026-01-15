@@ -225,7 +225,7 @@ class TestPluginConfigHotReload:
             plugin_config_path = os.path.join(plugin_dir, "combined_v3_config.json")
             with open(plugin_config_path, 'w') as f:
                 json.dump({
-                    "plugin_id": "combined_v3",
+                    "plugin_id": "v3_combined",
                     "enabled": True,
                     "max_lot_size": 1.0
                 }, f)
@@ -244,9 +244,9 @@ class TestPluginConfigHotReload:
             enable_watching=False
         )
         
-        plugin_config = manager.get_plugin_config("combined_v3")
+        plugin_config = manager.get_plugin_config("v3_combined")
         
-        assert plugin_config["plugin_id"] == "combined_v3"
+        assert plugin_config["plugin_id"] == "v3_combined"
         assert plugin_config["enabled"] is True
         assert plugin_config["max_lot_size"] == 1.0
     
@@ -260,17 +260,17 @@ class TestPluginConfigHotReload:
         
         with open(temp_plugin_config["plugin_config_path"], 'w') as f:
             json.dump({
-                "plugin_id": "combined_v3",
+                "plugin_id": "v3_combined",
                 "enabled": True,
                 "max_lot_size": 2.0
             }, f)
         
-        changes = manager.reload_plugin_config("combined_v3")
+        changes = manager.reload_plugin_config("v3_combined")
         
         assert len(changes) == 1
         assert "max_lot_size" in changes[0].key
         
-        plugin_config = manager.get_plugin_config("combined_v3")
+        plugin_config = manager.get_plugin_config("v3_combined")
         assert plugin_config["max_lot_size"] == 2.0
     
     def test_plugin_observer_notification(self, temp_plugin_config):
@@ -286,16 +286,16 @@ class TestPluginConfigHotReload:
         def observer(changes):
             received_changes.extend(changes)
         
-        manager.register_plugin_observer("combined_v3", observer)
+        manager.register_plugin_observer("v3_combined", observer)
         
         with open(temp_plugin_config["plugin_config_path"], 'w') as f:
             json.dump({
-                "plugin_id": "combined_v3",
+                "plugin_id": "v3_combined",
                 "enabled": False,
                 "max_lot_size": 1.0
             }, f)
         
-        manager.reload_plugin_config("combined_v3")
+        manager.reload_plugin_config("v3_combined")
         
         assert len(received_changes) == 1
 
@@ -553,11 +553,11 @@ class TestPluginDatabaseManager:
         """Test manager creates databases on demand"""
         manager = PluginDatabaseManager(db_dir=temp_db_dir)
         
-        db_v3 = manager.get_database("combined_v3")
-        db_v6 = manager.get_database("price_action_1m")
+        db_v3 = manager.get_database("v3_combined")
+        db_v6 = manager.get_database("v6_price_action_1m")
         
-        assert db_v3.plugin_id == "combined_v3"
-        assert db_v6.plugin_id == "price_action_1m"
+        assert db_v3.plugin_id == "v3_combined"
+        assert db_v6.plugin_id == "v6_price_action_1m"
         
         manager.close_all()
     
@@ -631,7 +631,7 @@ class TestDatabaseSyncManager:
     @pytest.mark.asyncio
     async def test_sync_skips_missing_db(self, sync_manager):
         """Test sync skips when database doesn't exist"""
-        result = await sync_manager.sync_plugin("combined_v3")
+        result = await sync_manager.sync_plugin("v3_combined")
         
         assert result.status == SyncStatus.SKIPPED
         assert "not found" in result.error_message
@@ -640,7 +640,7 @@ class TestDatabaseSyncManager:
     async def test_sync_with_data(self, temp_db_dir, sync_manager):
         """Test sync with actual data"""
         v3_db = PluginDatabase(
-            plugin_id="combined_v3",
+            plugin_id="v3_combined",
             db_dir=temp_db_dir
         )
         
@@ -658,7 +658,7 @@ class TestDatabaseSyncManager:
         
         sync_manager.v3_db_path = os.path.join(temp_db_dir, "zepix_combined_v3.db")
         
-        result = await sync_manager.sync_plugin("combined_v3")
+        result = await sync_manager.sync_plugin("v3_combined")
         
         assert result.status in [SyncStatus.SUCCESS, SyncStatus.SKIPPED]
     
@@ -810,8 +810,8 @@ class TestIntegration:
     
     def test_database_isolation_with_sync(self, temp_dir):
         """Test database isolation is maintained during sync"""
-        db_v3 = PluginDatabase(plugin_id="combined_v3", db_dir=temp_dir)
-        db_v6 = PluginDatabase(plugin_id="price_action_1m", db_dir=temp_dir)
+        db_v3 = PluginDatabase(plugin_id="v3_combined", db_dir=temp_dir)
+        db_v6 = PluginDatabase(plugin_id="v6_price_action_1m", db_dir=temp_dir)
         
         db_v3.save_trade({
             "ticket": 11111,

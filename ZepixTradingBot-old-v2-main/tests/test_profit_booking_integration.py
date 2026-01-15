@@ -59,7 +59,7 @@ class TestProfitBookingInterface:
         """Test ProfitChain dataclass creation"""
         chain = ProfitChain(
             chain_id="chain_001",
-            plugin_id="combined_v3",
+            plugin_id="v3_combined",
             symbol="EURUSD",
             direction="BUY",
             level=0,
@@ -71,7 +71,7 @@ class TestProfitBookingInterface:
         )
         
         assert chain.chain_id == "chain_001"
-        assert chain.plugin_id == "combined_v3"
+        assert chain.plugin_id == "v3_combined"
         assert chain.symbol == "EURUSD"
         assert chain.direction == "BUY"
         assert chain.level == 0
@@ -201,14 +201,14 @@ class TestProfitBookingService:
         service = ProfitBookingService()
         
         chain = await service.create_chain(
-            plugin_id='combined_v3',
+            plugin_id='v3_combined',
             order_b_id='order_b_001',
             symbol='EURUSD',
             direction='BUY'
         )
         
         assert chain is not None
-        assert chain.plugin_id == 'combined_v3'
+        assert chain.plugin_id == 'v3_combined'
         assert chain.symbol == 'EURUSD'
         assert chain.direction == 'BUY'
         assert chain.level == 0
@@ -222,7 +222,7 @@ class TestProfitBookingService:
         
         # Create chain at level 0 (1 order)
         chain = await service.create_chain(
-            plugin_id='combined_v3',
+            plugin_id='v3_combined',
             order_b_id='order_b_001',
             symbol='EURUSD',
             direction='BUY'
@@ -249,7 +249,7 @@ class TestProfitBookingService:
         
         # Create chain
         chain = await service.create_chain(
-            plugin_id='combined_v3',
+            plugin_id='v3_combined',
             order_b_id='order_b_001',
             symbol='EURUSD',
             direction='BUY'
@@ -293,7 +293,7 @@ class TestProfitBookingService:
         service._stats['sl_hunts_triggered'] = 0
         
         chain = await service.create_chain(
-            plugin_id='combined_v3',
+            plugin_id='v3_combined',
             order_b_id='order_b_001',
             symbol='EURUSD',
             direction='BUY'
@@ -311,7 +311,7 @@ class TestProfitBookingService:
         service = ProfitBookingService()
         
         chain = await service.create_chain(
-            plugin_id='combined_v3',
+            plugin_id='v3_combined',
             order_b_id='order_b_001',
             symbol='EURUSD',
             direction='BUY'
@@ -333,7 +333,7 @@ class TestProfitBookingService:
         # Manually add a chain
         chain = ProfitChain(
             chain_id='chain_001',
-            plugin_id='combined_v3',
+            plugin_id='v3_combined',
             symbol='EURUSD',
             direction='BUY',
             level=0,
@@ -342,7 +342,7 @@ class TestProfitBookingService:
             total_profit=0.0,
             status=ChainStatus.ACTIVE
         )
-        service._plugin_chains['combined_v3'] = {'chain_001': chain}
+        service._plugin_chains['v3_combined'] = {'chain_001': chain}
         
         success = service.cancel_chain('chain_001', 'manual')
         
@@ -357,7 +357,7 @@ class TestProfitBookingService:
         # Add test chains
         chain1 = ProfitChain(
             chain_id='chain_001',
-            plugin_id='combined_v3',
+            plugin_id='v3_combined',
             symbol='EURUSD',
             direction='BUY',
             level=0,
@@ -368,7 +368,7 @@ class TestProfitBookingService:
         )
         chain2 = ProfitChain(
             chain_id='chain_002',
-            plugin_id='combined_v3',
+            plugin_id='v3_combined',
             symbol='GBPUSD',
             direction='SELL',
             level=2,
@@ -377,12 +377,12 @@ class TestProfitBookingService:
             total_profit=21.0,
             status=ChainStatus.ACTIVE
         )
-        service._plugin_chains['combined_v3'] = {
+        service._plugin_chains['v3_combined'] = {
             'chain_001': chain1,
             'chain_002': chain2
         }
         
-        chains = service.get_plugin_chains('combined_v3')
+        chains = service.get_plugin_chains('v3_combined')
         
         assert len(chains) == 2
     
@@ -393,7 +393,7 @@ class TestProfitBookingService:
         # Add test chains with different statuses
         chain1 = ProfitChain(
             chain_id='chain_001',
-            plugin_id='combined_v3',
+            plugin_id='v3_combined',
             symbol='EURUSD',
             direction='BUY',
             level=0,
@@ -404,7 +404,7 @@ class TestProfitBookingService:
         )
         chain2 = ProfitChain(
             chain_id='chain_002',
-            plugin_id='combined_v3',
+            plugin_id='v3_combined',
             symbol='GBPUSD',
             direction='SELL',
             level=4,
@@ -413,12 +413,12 @@ class TestProfitBookingService:
             total_profit=217.0,
             status=ChainStatus.COMPLETED
         )
-        service._plugin_chains['combined_v3'] = {
+        service._plugin_chains['v3_combined'] = {
             'chain_001': chain1,
             'chain_002': chain2
         }
         
-        active = service.get_active_chains('combined_v3')
+        active = service.get_active_chains('v3_combined')
         
         assert len(active) == 1
         assert active[0].chain_id == 'chain_001'
@@ -428,10 +428,10 @@ class TestProfitBookingService:
         service = ProfitBookingService()
         
         # Add test chains
-        service._plugin_chains['combined_v3'] = {
+        service._plugin_chains['v3_combined'] = {
             'chain_1': ProfitChain(
                 chain_id='chain_1',
-                plugin_id='combined_v3',
+                plugin_id='v3_combined',
                 symbol='EURUSD',
                 direction='BUY',
                 level=2,
@@ -442,7 +442,7 @@ class TestProfitBookingService:
             ),
             'chain_2': ProfitChain(
                 chain_id='chain_2',
-                plugin_id='combined_v3',
+                plugin_id='v3_combined',
                 symbol='GBPUSD',
                 direction='SELL',
                 level=4,
@@ -453,7 +453,7 @@ class TestProfitBookingService:
             )
         }
         
-        stats = service.get_chain_stats('combined_v3')
+        stats = service.get_chain_stats('v3_combined')
         
         assert stats['total_chains'] == 2
         assert stats['active_chains'] == 1
@@ -495,7 +495,7 @@ class TestProfitBookingPersistence:
             
             # Create a chain
             chain = await service.create_chain(
-                plugin_id='combined_v3',
+                plugin_id='v3_combined',
                 order_b_id='order_b_001',
                 symbol='EURUSD',
                 direction='BUY'
@@ -509,7 +509,7 @@ class TestProfitBookingPersistence:
                 data = json.load(f)
             
             assert 'chains' in data
-            assert 'combined_v3' in data['chains']
+            assert 'v3_combined' in data['chains']
     
     @pytest.mark.asyncio
     async def test_chains_load_on_startup(self):
@@ -520,10 +520,10 @@ class TestProfitBookingPersistence:
             # Create persisted data
             data = {
                 'chains': {
-                    'combined_v3': {
+                    'v3_combined': {
                         'chain_001': {
                             'chain_id': 'chain_001',
-                            'plugin_id': 'combined_v3',
+                            'plugin_id': 'v3_combined',
                             'symbol': 'EURUSD',
                             'direction': 'BUY',
                             'level': 2,
@@ -556,7 +556,7 @@ class TestProfitBookingPersistence:
             service._load_persisted_chains()
             
             # Verify loaded
-            chains = service.get_plugin_chains('combined_v3')
+            chains = service.get_plugin_chains('v3_combined')
             assert len(chains) == 1
             assert chains[0].chain_id == 'chain_001'
             assert chains[0].level == 2
@@ -568,13 +568,13 @@ class TestV3PluginProfitBookingCapable:
     
     def test_v3_plugin_implements_interface(self):
         """Test CombinedV3Plugin implements IProfitBookingCapable"""
-        from src.logic_plugins.combined_v3.plugin import CombinedV3Plugin
+        from src.logic_plugins.v3_combined.plugin import CombinedV3Plugin
         
         assert issubclass(CombinedV3Plugin, IProfitBookingCapable)
     
     def test_v3_plugin_has_profit_booking_service(self):
         """Test V3 plugin has profit booking service field"""
-        from src.logic_plugins.combined_v3.plugin import CombinedV3Plugin
+        from src.logic_plugins.v3_combined.plugin import CombinedV3Plugin
         
         import inspect
         source = inspect.getsource(CombinedV3Plugin.__init__)
@@ -582,7 +582,7 @@ class TestV3PluginProfitBookingCapable:
     
     def test_v3_plugin_has_order_to_chain(self):
         """Test V3 plugin has order to chain mapping"""
-        from src.logic_plugins.combined_v3.plugin import CombinedV3Plugin
+        from src.logic_plugins.v3_combined.plugin import CombinedV3Plugin
         
         import inspect
         source = inspect.getsource(CombinedV3Plugin.__init__)
@@ -590,37 +590,37 @@ class TestV3PluginProfitBookingCapable:
     
     def test_v3_plugin_has_set_profit_booking_service(self):
         """Test V3 plugin has set_profit_booking_service method"""
-        from src.logic_plugins.combined_v3.plugin import CombinedV3Plugin
+        from src.logic_plugins.v3_combined.plugin import CombinedV3Plugin
         
         assert hasattr(CombinedV3Plugin, 'set_profit_booking_service')
     
     def test_v3_plugin_has_create_profit_chain(self):
         """Test V3 plugin has create_profit_chain method"""
-        from src.logic_plugins.combined_v3.plugin import CombinedV3Plugin
+        from src.logic_plugins.v3_combined.plugin import CombinedV3Plugin
         
         assert hasattr(CombinedV3Plugin, 'create_profit_chain')
     
     def test_v3_plugin_has_on_profit_target_hit(self):
         """Test V3 plugin has on_profit_target_hit method"""
-        from src.logic_plugins.combined_v3.plugin import CombinedV3Plugin
+        from src.logic_plugins.v3_combined.plugin import CombinedV3Plugin
         
         assert hasattr(CombinedV3Plugin, 'on_profit_target_hit')
     
     def test_v3_plugin_has_on_chain_sl_hit(self):
         """Test V3 plugin has on_chain_sl_hit method"""
-        from src.logic_plugins.combined_v3.plugin import CombinedV3Plugin
+        from src.logic_plugins.v3_combined.plugin import CombinedV3Plugin
         
         assert hasattr(CombinedV3Plugin, 'on_chain_sl_hit')
     
     def test_v3_plugin_has_get_active_chains(self):
         """Test V3 plugin has get_active_chains method"""
-        from src.logic_plugins.combined_v3.plugin import CombinedV3Plugin
+        from src.logic_plugins.v3_combined.plugin import CombinedV3Plugin
         
         assert hasattr(CombinedV3Plugin, 'get_active_chains')
     
     def test_v3_plugin_has_get_pyramid_config(self):
         """Test V3 plugin has get_pyramid_config method"""
-        from src.logic_plugins.combined_v3.plugin import CombinedV3Plugin
+        from src.logic_plugins.v3_combined.plugin import CombinedV3Plugin
         
         assert hasattr(CombinedV3Plugin, 'get_pyramid_config')
 
@@ -654,7 +654,7 @@ class TestSuccessCriteria:
     
     def test_criterion_3_plugin_implements_interface(self):
         """Criterion 3: V3 plugin implements IProfitBookingCapable"""
-        from src.logic_plugins.combined_v3.plugin import CombinedV3Plugin
+        from src.logic_plugins.v3_combined.plugin import CombinedV3Plugin
         from src.core.plugin_system.profit_booking_interface import IProfitBookingCapable
         
         assert issubclass(CombinedV3Plugin, IProfitBookingCapable)
@@ -689,7 +689,7 @@ class TestSuccessCriteria:
         service = ProfitBookingService()
         
         chain = await service.create_chain(
-            plugin_id='combined_v3',
+            plugin_id='v3_combined',
             order_b_id='order_b_001',
             symbol='EURUSD',
             direction='BUY'
@@ -708,7 +708,7 @@ class TestSuccessCriteria:
         service = ProfitBookingService()
         
         chain = await service.create_chain(
-            plugin_id='combined_v3',
+            plugin_id='v3_combined',
             order_b_id='order_b_001',
             symbol='EURUSD',
             direction='BUY'

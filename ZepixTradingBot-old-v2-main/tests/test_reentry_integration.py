@@ -52,7 +52,7 @@ class TestReentryInterface:
         """Test ReentryEvent dataclass creation"""
         event = ReentryEvent(
             trade_id="12345",
-            plugin_id="combined_v3",
+            plugin_id="v3_combined",
             symbol="EURUSD",
             reentry_type=ReentryType.SL_HUNT,
             entry_price=1.1000,
@@ -64,7 +64,7 @@ class TestReentryInterface:
         )
         
         assert event.trade_id == "12345"
-        assert event.plugin_id == "combined_v3"
+        assert event.plugin_id == "v3_combined"
         assert event.symbol == "EURUSD"
         assert event.reentry_type == ReentryType.SL_HUNT
         assert event.entry_price == 1.1000
@@ -79,7 +79,7 @@ class TestReentryInterface:
         """Test ReentryEvent default values"""
         event = ReentryEvent(
             trade_id="12345",
-            plugin_id="combined_v3",
+            plugin_id="v3_combined",
             symbol="EURUSD",
             reentry_type=ReentryType.SL_HUNT,
             entry_price=1.1000,
@@ -159,7 +159,7 @@ class TestReentryService:
         """Test V3 plugins have max chain level of 5"""
         service = ReentryService()
         
-        assert service.get_max_chain_level("combined_v3") == 5
+        assert service.get_max_chain_level("v3_combined") == 5
         assert service.get_max_chain_level("v3_plugin") == 5
         assert service.get_max_chain_level("V3_COMBINED") == 5
     
@@ -167,7 +167,7 @@ class TestReentryService:
         """Test V6 plugins have max chain level of 3"""
         service = ReentryService()
         
-        assert service.get_max_chain_level("price_action_5m") == 3
+        assert service.get_max_chain_level("v6_price_action_5m") == 3
         assert service.get_max_chain_level("v6_plugin") == 3
         assert service.get_max_chain_level("other_plugin") == 3
     
@@ -203,7 +203,7 @@ class TestReentryService:
         
         event = ReentryEvent(
             trade_id="12345",
-            plugin_id="combined_v3",
+            plugin_id="v3_combined",
             symbol="EURUSD",
             reentry_type=ReentryType.SL_HUNT,
             entry_price=1.1000,
@@ -226,7 +226,7 @@ class TestReentryService:
         
         event = ReentryEvent(
             trade_id="12345",
-            plugin_id="combined_v3",
+            plugin_id="v3_combined",
             symbol="EURUSD",
             reentry_type=ReentryType.TP_CONTINUATION,
             entry_price=1.1000,
@@ -247,13 +247,13 @@ class TestV3PluginReentryCapable:
     
     def test_v3_plugin_implements_interface(self):
         """Test CombinedV3Plugin implements IReentryCapable"""
-        from src.logic_plugins.combined_v3.plugin import CombinedV3Plugin
+        from src.logic_plugins.v3_combined.plugin import CombinedV3Plugin
         
         assert issubclass(CombinedV3Plugin, IReentryCapable)
     
     def test_v3_plugin_has_chain_levels(self):
         """Test V3 plugin has chain level tracking"""
-        from src.logic_plugins.combined_v3.plugin import CombinedV3Plugin
+        from src.logic_plugins.v3_combined.plugin import CombinedV3Plugin
         
         # Check that _chain_levels is defined in __init__
         import inspect
@@ -262,7 +262,7 @@ class TestV3PluginReentryCapable:
     
     def test_v3_plugin_has_reentry_service(self):
         """Test V3 plugin has reentry service field"""
-        from src.logic_plugins.combined_v3.plugin import CombinedV3Plugin
+        from src.logic_plugins.v3_combined.plugin import CombinedV3Plugin
         
         # Check that _reentry_service is defined in __init__
         import inspect
@@ -271,43 +271,43 @@ class TestV3PluginReentryCapable:
     
     def test_v3_plugin_has_set_reentry_service(self):
         """Test V3 plugin has set_reentry_service method"""
-        from src.logic_plugins.combined_v3.plugin import CombinedV3Plugin
+        from src.logic_plugins.v3_combined.plugin import CombinedV3Plugin
         
         assert hasattr(CombinedV3Plugin, 'set_reentry_service')
     
     def test_v3_plugin_has_on_sl_hit(self):
         """Test V3 plugin has on_sl_hit method"""
-        from src.logic_plugins.combined_v3.plugin import CombinedV3Plugin
+        from src.logic_plugins.v3_combined.plugin import CombinedV3Plugin
         
         assert hasattr(CombinedV3Plugin, 'on_sl_hit')
     
     def test_v3_plugin_has_on_tp_hit(self):
         """Test V3 plugin has on_tp_hit method"""
-        from src.logic_plugins.combined_v3.plugin import CombinedV3Plugin
+        from src.logic_plugins.v3_combined.plugin import CombinedV3Plugin
         
         assert hasattr(CombinedV3Plugin, 'on_tp_hit')
     
     def test_v3_plugin_has_on_exit(self):
         """Test V3 plugin has on_exit method"""
-        from src.logic_plugins.combined_v3.plugin import CombinedV3Plugin
+        from src.logic_plugins.v3_combined.plugin import CombinedV3Plugin
         
         assert hasattr(CombinedV3Plugin, 'on_exit')
     
     def test_v3_plugin_has_on_recovery_signal(self):
         """Test V3 plugin has on_recovery_signal method"""
-        from src.logic_plugins.combined_v3.plugin import CombinedV3Plugin
+        from src.logic_plugins.v3_combined.plugin import CombinedV3Plugin
         
         assert hasattr(CombinedV3Plugin, 'on_recovery_signal')
     
     def test_v3_plugin_has_get_chain_level(self):
         """Test V3 plugin has get_chain_level method"""
-        from src.logic_plugins.combined_v3.plugin import CombinedV3Plugin
+        from src.logic_plugins.v3_combined.plugin import CombinedV3Plugin
         
         assert hasattr(CombinedV3Plugin, 'get_chain_level')
     
     def test_v3_plugin_has_get_max_chain_level(self):
         """Test V3 plugin has get_max_chain_level method"""
-        from src.logic_plugins.combined_v3.plugin import CombinedV3Plugin
+        from src.logic_plugins.v3_combined.plugin import CombinedV3Plugin
         
         assert hasattr(CombinedV3Plugin, 'get_max_chain_level')
 
@@ -317,19 +317,19 @@ class TestOrderManagerReentryTriggers:
     
     def test_order_manager_has_on_order_closed(self):
         """Test V3OrderManager has on_order_closed method"""
-        from src.logic_plugins.combined_v3.order_manager import V3OrderManager
+        from src.logic_plugins.v3_combined.order_manager import V3OrderManager
         
         assert hasattr(V3OrderManager, 'on_order_closed')
     
     def test_order_manager_has_execute_recovery_order(self):
         """Test V3OrderManager has execute_recovery_order method"""
-        from src.logic_plugins.combined_v3.order_manager import V3OrderManager
+        from src.logic_plugins.v3_combined.order_manager import V3OrderManager
         
         assert hasattr(V3OrderManager, 'execute_recovery_order')
     
     def test_order_manager_has_close_order(self):
         """Test V3OrderManager has close_order method"""
-        from src.logic_plugins.combined_v3.order_manager import V3OrderManager
+        from src.logic_plugins.v3_combined.order_manager import V3OrderManager
         
         assert hasattr(V3OrderManager, 'close_order')
 
@@ -473,14 +473,14 @@ class TestSuccessCriteria:
     
     def test_criterion_3_plugins_implement_interface(self):
         """Criterion 3: Plugins implement IReentryCapable interface"""
-        from src.logic_plugins.combined_v3.plugin import CombinedV3Plugin
+        from src.logic_plugins.v3_combined.plugin import CombinedV3Plugin
         from src.core.plugin_system.reentry_interface import IReentryCapable
         
         assert issubclass(CombinedV3Plugin, IReentryCapable)
     
     def test_criterion_4_sl_hunt_works_via_plugins(self):
         """Criterion 4: SL Hunt Recovery works via plugins"""
-        from src.logic_plugins.combined_v3.plugin import CombinedV3Plugin
+        from src.logic_plugins.v3_combined.plugin import CombinedV3Plugin
         
         assert hasattr(CombinedV3Plugin, 'on_sl_hit')
         
@@ -490,7 +490,7 @@ class TestSuccessCriteria:
     
     def test_criterion_5_tp_continuation_works_via_plugins(self):
         """Criterion 5: TP Continuation works via plugins"""
-        from src.logic_plugins.combined_v3.plugin import CombinedV3Plugin
+        from src.logic_plugins.v3_combined.plugin import CombinedV3Plugin
         
         assert hasattr(CombinedV3Plugin, 'on_tp_hit')
         
@@ -500,7 +500,7 @@ class TestSuccessCriteria:
     
     def test_criterion_6_exit_continuation_works_via_plugins(self):
         """Criterion 6: Exit Continuation works via plugins"""
-        from src.logic_plugins.combined_v3.plugin import CombinedV3Plugin
+        from src.logic_plugins.v3_combined.plugin import CombinedV3Plugin
         
         assert hasattr(CombinedV3Plugin, 'on_exit')
         
@@ -524,7 +524,7 @@ class TestSuccessCriteria:
     
     def test_criterion_9_chain_levels_tracked(self):
         """Criterion 9: Chain levels tracked per plugin"""
-        from src.logic_plugins.combined_v3.plugin import CombinedV3Plugin
+        from src.logic_plugins.v3_combined.plugin import CombinedV3Plugin
         
         assert hasattr(CombinedV3Plugin, 'get_chain_level')
         assert hasattr(CombinedV3Plugin, 'get_max_chain_level')

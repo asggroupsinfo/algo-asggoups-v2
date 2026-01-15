@@ -1,10 +1,9 @@
 {
-  "plugin_id": "combined_v3",
+  "plugin_id": "v3_combined",
   "version": "1.0.0",
   "enabled": true,
   "shadow_mode": false,
   "description": "V3 Combined Logic - 12 Signals with Dual Orders and MTF 4-Pillar",
-  
   "signal_routing": {
     "signal_overrides": {
       "Screener_Full_Bullish": "combinedlogic-3",
@@ -20,19 +19,24 @@
     },
     "default_logic": "combinedlogic-2"
   },
-  
   "logic_multipliers": {
     "combinedlogic-1": 1.25,
     "combinedlogic-2": 1.0,
     "combinedlogic-3": 0.625
   },
-  
   "mtf_config": {
-    "pillars_only": ["15m", "1h", "4h", "1d"],
-    "ignore_timeframes": ["1m", "5m"],
+    "pillars_only": [
+      "15m",
+      "1h",
+      "4h",
+      "1d"
+    ],
+    "ignore_timeframes": [
+      "1m",
+      "5m"
+    ],
     "min_alignment": 3
   },
-  
   "dual_orders": {
     "enabled": true,
     "split_ratio": 0.5,
@@ -40,26 +44,26 @@
     "order_b_comment": "OrderB_Profit_Trail",
     "order_b_fixed_sl_dollars": 10.0
   },
-  
   "trend_bypass": {
     "bypass_for_entry_v3": true,
     "bypass_for_legacy": false,
     "bypass_for_sl_hunt": false
   },
-  
   "aggressive_reversal_signals": [
     "Liquidity_Trap_Reversal",
     "Golden_Pocket_Flip",
     "Screener_Full_Bullish",
     "Screener_Full_Bearish"
   ],
-  
   "conservative_exit_signals": [
     "Bullish_Exit",
     "Bearish_Exit"
   ],
-  
-  "supported_symbols": ["XAUUSD", "EURUSD", "GBPUSD"],
+  "supported_symbols": [
+    "XAUUSD",
+    "EURUSD",
+    "GBPUSD"
+  ],
   "max_daily_loss": 500.0,
   "rr_ratio": 1.5
 }

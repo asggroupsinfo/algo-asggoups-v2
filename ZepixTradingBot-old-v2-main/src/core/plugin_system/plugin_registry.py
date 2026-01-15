@@ -10,6 +10,62 @@ from .plugin_interface import ISignalProcessor
 
 logger = logging.getLogger(__name__)
 
+# Backward compatibility mapping for legacy plugin names
+LEGACY_PLUGIN_NAMES = {
+    'combined_v3': 'v3_combined',
+    'price_action_1m': 'v6_price_action_1m',
+    'price_action_5m': 'v6_price_action_5m',
+    'price_action_15m': 'v6_price_action_15m',
+    'price_action_1h': 'v6_price_action_1h',
+}
+
+# Plugin definitions with new naming convention
+AVAILABLE_PLUGINS = {
+    # V3 Plugins
+    'v3_combined': {
+        'class': 'V3CombinedPlugin',
+        'module': 'src.logic_plugins.v3_combined.plugin',
+        'description': 'V3 Combined Logic (multi-timeframe)',
+        'strategy': 'V3_COMBINED',
+        'timeframes': ['5m', '15m', '1h'],
+        'enabled': True
+    },
+    # V6 Plugins
+    'v6_price_action_1m': {
+        'class': 'V6PriceAction1mPlugin',
+        'module': 'src.logic_plugins.v6_price_action_1m.plugin',
+        'description': 'V6 Price Action 1-minute scalping',
+        'strategy': 'V6_PRICE_ACTION',
+        'timeframe': '1m',
+        'enabled': True
+    },
+    'v6_price_action_5m': {
+        'class': 'V6PriceAction5mPlugin',
+        'module': 'src.logic_plugins.v6_price_action_5m.plugin',
+        'description': 'V6 Price Action 5-minute scalping',
+        'strategy': 'V6_PRICE_ACTION',
+        'timeframe': '5m',
+        'enabled': True
+    },
+    'v6_price_action_15m': {
+        'class': 'V6PriceAction15mPlugin',
+        'module': 'src.logic_plugins.v6_price_action_15m.plugin',
+        'description': 'V6 Price Action 15-minute intraday',
+        'strategy': 'V6_PRICE_ACTION',
+        'timeframe': '15m',
+        'enabled': True
+    },
+    'v6_price_action_1h': {
+        'class': 'V6PriceAction1hPlugin',
+        'module': 'src.logic_plugins.v6_price_action_1h.plugin',
+        'description': 'V6 Price Action 1-hour swing',
+        'strategy': 'V6_PRICE_ACTION',
+        'timeframe': '1h',
+        'enabled': True
+    }
+}
+
+
 class PluginRegistry:
     """
     Central registry for all trading logic plugins.
@@ -71,6 +127,12 @@ class PluginRegistry:
             bool: True if loaded successfully
         """
         try:
+            # Handle legacy plugin names
+            original_id = plugin_id
+            if plugin_id in LEGACY_PLUGIN_NAMES:
+                plugin_id = LEGACY_PLUGIN_NAMES[plugin_id]
+                logger.warning(f"Using legacy plugin name '{original_id}', please update to: {plugin_id}")
+            
             # Import plugin module
             # plugin_dir could be relative, e.g. "src/logic_plugins"
             # We need to turn this into a package path: "src.logic_plugins"
@@ -79,9 +141,12 @@ class PluginRegistry:
             
             plugin_module = importlib.import_module(module_path)
             
-            # Get plugin class
-            # Construct expected class name: "my_plugin" -> "MyPluginPlugin"
-            class_name = f"{plugin_id.title().replace('_', '')}Plugin"
+            # Get plugin class from AVAILABLE_PLUGINS if defined, otherwise construct
+            if plugin_id in AVAILABLE_PLUGINS:
+                class_name = AVAILABLE_PLUGINS[plugin_id]['class']
+            else:
+                # Fallback: Construct expected class name: "my_plugin" -> "MyPluginPlugin"
+                class_name = f"{plugin_id.title().replace('_', '')}Plugin"
             plugin_class = getattr(plugin_module, class_name)
             
             # Load plugin config
@@ -123,12 +188,20 @@ class PluginRegistry:
         """
         Get plugin instance by ID.
         
+        Supports legacy plugin names for backward compatibility.
+        
         Args:
             plugin_id: Plugin identifier
             
         Returns:
             BaseLogicPlugin or None
         """
+        # Handle legacy plugin names
+        if plugin_id in LEGACY_PLUGIN_NAMES:
+            new_id = LEGACY_PLUGIN_NAMES[plugin_id]
+            logger.warning(f"Using legacy plugin name '{plugin_id}', please update to: {new_id}")
+            plugin_id = new_id
+        
         return self.plugins.get(plugin_id)
     
     def get_plugin_for_signal(self, signal_data: Dict[str, Any]) -> Optional[BaseLogicPlugin]:

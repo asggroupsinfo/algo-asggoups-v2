@@ -125,7 +125,7 @@ class TestPluginRegistryLookup:
     def mock_v3_plugin(self):
         """Create mock V3 plugin"""
         plugin = Mock()
-        plugin.plugin_id = "combined_v3"
+        plugin.plugin_id = "v3_combined"
         plugin.enabled = True
         plugin.get_supported_strategies = Mock(return_value=['V3_COMBINED', 'COMBINED_V3', 'V3'])
         plugin.get_supported_timeframes = Mock(return_value=['5m', '15m', '1h'])
@@ -135,7 +135,7 @@ class TestPluginRegistryLookup:
     def mock_v6_1m_plugin(self):
         """Create mock V6 1M plugin"""
         plugin = Mock()
-        plugin.plugin_id = "price_action_1m"
+        plugin.plugin_id = "v6_price_action_1m"
         plugin.enabled = True
         plugin.get_supported_strategies = Mock(return_value=['V6_PRICE_ACTION', 'PRICE_ACTION', 'V6'])
         plugin.get_supported_timeframes = Mock(return_value=['1m', '1'])
@@ -145,7 +145,7 @@ class TestPluginRegistryLookup:
     def mock_v6_5m_plugin(self):
         """Create mock V6 5M plugin"""
         plugin = Mock()
-        plugin.plugin_id = "price_action_5m"
+        plugin.plugin_id = "v6_price_action_5m"
         plugin.enabled = True
         plugin.get_supported_strategies = Mock(return_value=['V6_PRICE_ACTION', 'PRICE_ACTION', 'V6'])
         plugin.get_supported_timeframes = Mock(return_value=['5m', '5'])
@@ -155,7 +155,7 @@ class TestPluginRegistryLookup:
     def mock_v6_15m_plugin(self):
         """Create mock V6 15M plugin"""
         plugin = Mock()
-        plugin.plugin_id = "price_action_15m"
+        plugin.plugin_id = "v6_price_action_15m"
         plugin.enabled = True
         plugin.get_supported_strategies = Mock(return_value=['V6_PRICE_ACTION', 'PRICE_ACTION', 'V6'])
         plugin.get_supported_timeframes = Mock(return_value=['15m', '15'])
@@ -165,7 +165,7 @@ class TestPluginRegistryLookup:
     def mock_v6_1h_plugin(self):
         """Create mock V6 1H plugin"""
         plugin = Mock()
-        plugin.plugin_id = "price_action_1h"
+        plugin.plugin_id = "v6_price_action_1h"
         plugin.enabled = True
         plugin.get_supported_strategies = Mock(return_value=['V6_PRICE_ACTION', 'PRICE_ACTION', 'V6'])
         plugin.get_supported_timeframes = Mock(return_value=['1h', '60'])
@@ -270,7 +270,7 @@ class TestPluginInterfaceImplementation:
         
         # Import the actual plugin
         try:
-            from src.logic_plugins.combined_v3.plugin import CombinedV3Plugin
+            from src.logic_plugins.v3_combined.plugin import CombinedV3Plugin
             
             for method in required_methods:
                 assert hasattr(CombinedV3Plugin, method), f"CombinedV3Plugin missing method: {method}"
@@ -290,7 +290,7 @@ class TestPluginInterfaceImplementation:
         ]
         
         try:
-            from src.logic_plugins.price_action_1m.plugin import PriceAction1MPlugin
+            from src.logic_plugins.v6_price_action_1m.plugin import PriceAction1MPlugin
             
             for method in required_methods:
                 assert hasattr(PriceAction1MPlugin, method), f"PriceAction1MPlugin missing method: {method}"
@@ -307,7 +307,7 @@ class TestPluginInterfaceImplementation:
         ]
         
         try:
-            from src.logic_plugins.price_action_5m.plugin import PriceAction5MPlugin
+            from src.logic_plugins.v6_price_action_5m.plugin import PriceAction5MPlugin
             
             for method in required_methods:
                 assert hasattr(PriceAction5MPlugin, method), f"PriceAction5MPlugin missing method: {method}"
@@ -324,7 +324,7 @@ class TestPluginInterfaceImplementation:
         ]
         
         try:
-            from src.logic_plugins.price_action_15m.plugin import PriceAction15MPlugin
+            from src.logic_plugins.v6_price_action_15m.plugin import PriceAction15MPlugin
             
             for method in required_methods:
                 assert hasattr(PriceAction15MPlugin, method), f"PriceAction15MPlugin missing method: {method}"
@@ -341,7 +341,7 @@ class TestPluginInterfaceImplementation:
         ]
         
         try:
-            from src.logic_plugins.price_action_1h.plugin import PriceAction1HPlugin
+            from src.logic_plugins.v6_price_action_1h.plugin import PriceAction1HPlugin
             
             for method in required_methods:
                 assert hasattr(PriceAction1HPlugin, method), f"PriceAction1HPlugin missing method: {method}"
@@ -379,7 +379,7 @@ class TestIntegrationFlow:
     async def test_v3_signal_flows_through_v3_plugin(self):
         """Test V3 signal flows through V3 plugin"""
         mock_plugin = Mock()
-        mock_plugin.plugin_id = "combined_v3"
+        mock_plugin.plugin_id = "v3_combined"
         mock_plugin.enabled = True
         mock_plugin.get_supported_strategies = Mock(return_value=['V3_COMBINED'])
         mock_plugin.process_entry_signal = AsyncMock(return_value={"status": "success"})
@@ -402,7 +402,7 @@ class TestIntegrationFlow:
     async def test_v6_signal_flows_through_correct_v6_plugin(self):
         """Test V6 signal flows through correct V6 plugin based on timeframe"""
         mock_5m_plugin = Mock()
-        mock_5m_plugin.plugin_id = "price_action_5m"
+        mock_5m_plugin.plugin_id = "v6_price_action_5m"
         mock_5m_plugin.enabled = True
         mock_5m_plugin.get_supported_strategies = Mock(return_value=['V6_PRICE_ACTION'])
         mock_5m_plugin.get_supported_timeframes = Mock(return_value=['5m', '5'])

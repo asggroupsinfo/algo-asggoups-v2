@@ -12,6 +12,6 @@ Version: 1.0.0
 Date: 2026-01-14
 """
 
-from .plugin import CombinedV3Plugin
+from .plugin import V3CombinedPlugin
 
-__all__ = ['CombinedV3Plugin']
+__all__ = ['V3CombinedPlugin']

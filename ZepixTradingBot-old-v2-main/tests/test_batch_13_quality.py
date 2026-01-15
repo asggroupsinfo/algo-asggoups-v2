@@ -258,7 +258,7 @@ class TestUserGuide:
     def test_user_guide_explains_plugins(self, user_guide_content):
         """Test that user guide explains plugin concept."""
         assert "Plugin" in user_guide_content, "Should explain plugins"
-        assert "combined_v3" in user_guide_content, "Should mention combined_v3 plugin"
+        assert "v3_combined" in user_guide_content, "Should mention combined_v3 plugin"
 
     def test_user_guide_lists_commands(self, user_guide_content):
         """Test that user guide lists Telegram commands."""
@@ -519,7 +519,7 @@ class TestIntegration:
         
         # User guide should cover plugins
         assert "plugin" in user_content.lower()
-        assert "combined_v3" in user_content
+        assert "v3_combined" in user_content
         
         # Migration guide should cover data migration
         assert "migration" in migration_content.lower()

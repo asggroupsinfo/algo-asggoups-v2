@@ -602,9 +602,9 @@ class TestPriceAction1MPlugin:
     
     @pytest.fixture
     def plugin(self, mock_service_api):
-        from src.logic_plugins.price_action_1m.plugin import PriceAction1MPlugin
+        from src.logic_plugins.v6_price_action_1m.plugin import PriceAction1MPlugin
         return PriceAction1MPlugin(
-            plugin_id="price_action_1m",
+            plugin_id="v6_price_action_1m",
             config={"shadow_mode": True},
             service_api=mock_service_api
         )
@@ -736,9 +736,9 @@ class TestPriceAction5MPlugin:
     
     @pytest.fixture
     def plugin(self, mock_service_api):
-        from src.logic_plugins.price_action_5m.plugin import PriceAction5MPlugin
+        from src.logic_plugins.v6_price_action_5m.plugin import PriceAction5MPlugin
         return PriceAction5MPlugin(
-            plugin_id="price_action_5m",
+            plugin_id="v6_price_action_5m",
             config={"shadow_mode": True},
             service_api=mock_service_api
         )
@@ -817,9 +817,9 @@ class TestPriceAction15MPlugin:
     
     @pytest.fixture
     def plugin(self, mock_service_api):
-        from src.logic_plugins.price_action_15m.plugin import PriceAction15MPlugin
+        from src.logic_plugins.v6_price_action_15m.plugin import PriceAction15MPlugin
         return PriceAction15MPlugin(
-            plugin_id="price_action_15m",
+            plugin_id="v6_price_action_15m",
             config={"shadow_mode": True},
             service_api=mock_service_api
         )
@@ -878,9 +878,9 @@ class TestPriceAction1HPlugin:
     
     @pytest.fixture
     def plugin(self, mock_service_api):
-        from src.logic_plugins.price_action_1h.plugin import PriceAction1HPlugin
+        from src.logic_plugins.v6_price_action_1h.plugin import PriceAction1HPlugin
         return PriceAction1HPlugin(
-            plugin_id="price_action_1h",
+            plugin_id="v6_price_action_1h",
             config={"shadow_mode": True},
             service_api=mock_service_api
         )
@@ -936,22 +936,22 @@ class TestOrderRoutingMatrix:
     
     def test_1m_order_routing(self):
         """Test 1M uses ORDER B ONLY"""
-        from src.logic_plugins.price_action_1m.plugin import PriceAction1MPlugin
+        from src.logic_plugins.v6_price_action_1m.plugin import PriceAction1MPlugin
         assert PriceAction1MPlugin.ORDER_ROUTING == "ORDER_B_ONLY"
     
     def test_5m_order_routing(self):
         """Test 5M uses DUAL ORDERS"""
-        from src.logic_plugins.price_action_5m.plugin import PriceAction5MPlugin
+        from src.logic_plugins.v6_price_action_5m.plugin import PriceAction5MPlugin
         assert PriceAction5MPlugin.ORDER_ROUTING == "DUAL_ORDERS"
     
     def test_15m_order_routing(self):
         """Test 15M uses ORDER A ONLY"""
-        from src.logic_plugins.price_action_15m.plugin import PriceAction15MPlugin
+        from src.logic_plugins.v6_price_action_15m.plugin import PriceAction15MPlugin
         assert PriceAction15MPlugin.ORDER_ROUTING == "ORDER_A_ONLY"
     
     def test_1h_order_routing(self):
         """Test 1H uses ORDER A ONLY"""
-        from src.logic_plugins.price_action_1h.plugin import PriceAction1HPlugin
+        from src.logic_plugins.v6_price_action_1h.plugin import PriceAction1HPlugin
         assert PriceAction1HPlugin.ORDER_ROUTING == "ORDER_A_ONLY"
 
 
@@ -960,22 +960,22 @@ class TestRiskMultipliers:
     
     def test_1m_risk_multiplier(self):
         """Test 1M uses 0.5x risk"""
-        from src.logic_plugins.price_action_1m.plugin import PriceAction1MPlugin
+        from src.logic_plugins.v6_price_action_1m.plugin import PriceAction1MPlugin
         assert PriceAction1MPlugin.RISK_MULTIPLIER == 0.5
     
     def test_5m_risk_multiplier(self):
         """Test 5M uses 1.0x risk"""
-        from src.logic_plugins.price_action_5m.plugin import PriceAction5MPlugin
+        from src.logic_plugins.v6_price_action_5m.plugin import PriceAction5MPlugin
         assert PriceAction5MPlugin.RISK_MULTIPLIER == 1.0
     
     def test_15m_risk_multiplier(self):
         """Test 15M uses 1.0x risk"""
-        from src.logic_plugins.price_action_15m.plugin import PriceAction15MPlugin
+        from src.logic_plugins.v6_price_action_15m.plugin import PriceAction15MPlugin
         assert PriceAction15MPlugin.RISK_MULTIPLIER == 1.0
     
     def test_1h_risk_multiplier(self):
         """Test 1H uses 0.6x risk"""
-        from src.logic_plugins.price_action_1h.plugin import PriceAction1HPlugin
+        from src.logic_plugins.v6_price_action_1h.plugin import PriceAction1HPlugin
         assert PriceAction1HPlugin.RISK_MULTIPLIER == 0.6
 
 
@@ -984,27 +984,27 @@ class TestTimeframeFilters:
     
     def test_1m_filters(self):
         """Test 1M filter thresholds"""
-        from src.logic_plugins.price_action_1m.plugin import PriceAction1MPlugin
+        from src.logic_plugins.v6_price_action_1m.plugin import PriceAction1MPlugin
         assert PriceAction1MPlugin.ADX_THRESHOLD == 20
         assert PriceAction1MPlugin.CONFIDENCE_THRESHOLD == 80
         assert PriceAction1MPlugin.MAX_SPREAD_PIPS == 2.0
     
     def test_5m_filters(self):
         """Test 5M filter thresholds"""
-        from src.logic_plugins.price_action_5m.plugin import PriceAction5MPlugin
+        from src.logic_plugins.v6_price_action_5m.plugin import PriceAction5MPlugin
         assert PriceAction5MPlugin.ADX_THRESHOLD == 25
         assert PriceAction5MPlugin.CONFIDENCE_THRESHOLD == 70
         assert PriceAction5MPlugin.REQUIRE_15M_ALIGNMENT is True
     
     def test_15m_filters(self):
         """Test 15M filter thresholds"""
-        from src.logic_plugins.price_action_15m.plugin import PriceAction15MPlugin
+        from src.logic_plugins.v6_price_action_15m.plugin import PriceAction15MPlugin
         assert PriceAction15MPlugin.CONFIDENCE_THRESHOLD == 60
         assert PriceAction15MPlugin.REQUIRE_PULSE_ALIGNMENT is True
     
     def test_1h_filters(self):
         """Test 1H filter thresholds"""
-        from src.logic_plugins.price_action_1h.plugin import PriceAction1HPlugin
+        from src.logic_plugins.v6_price_action_1h.plugin import PriceAction1HPlugin
         assert PriceAction1HPlugin.CONFIDENCE_THRESHOLD == 60
         assert PriceAction1HPlugin.REQUIRE_4H_ALIGNMENT is True
 
@@ -1019,9 +1019,9 @@ class TestShadowMode:
     @pytest.mark.asyncio
     async def test_1m_shadow_mode_no_orders(self, mock_service_api):
         """Test 1M shadow mode doesn't place real orders"""
-        from src.logic_plugins.price_action_1m.plugin import PriceAction1MPlugin
+        from src.logic_plugins.v6_price_action_1m.plugin import PriceAction1MPlugin
         plugin = PriceAction1MPlugin(
-            plugin_id="price_action_1m",
+            plugin_id="v6_price_action_1m",
             config={"shadow_mode": True},
             service_api=mock_service_api
         )
@@ -1046,9 +1046,9 @@ class TestShadowMode:
     @pytest.mark.asyncio
     async def test_5m_shadow_mode_no_orders(self, mock_service_api):
         """Test 5M shadow mode doesn't place real orders"""
-        from src.logic_plugins.price_action_5m.plugin import PriceAction5MPlugin
+        from src.logic_plugins.v6_price_action_5m.plugin import PriceAction5MPlugin
         plugin = PriceAction5MPlugin(
-            plugin_id="price_action_5m",
+            plugin_id="v6_price_action_5m",
             config={"shadow_mode": True},
             service_api=mock_service_api
         )
@@ -1098,10 +1098,10 @@ class TestBackwardCompatibility:
     
     def test_plugins_inherit_base_plugin(self):
         """Test V6 plugins inherit from BaseLogicPlugin"""
-        from src.logic_plugins.price_action_1m.plugin import PriceAction1MPlugin
-        from src.logic_plugins.price_action_5m.plugin import PriceAction5MPlugin
-        from src.logic_plugins.price_action_15m.plugin import PriceAction15MPlugin
-        from src.logic_plugins.price_action_1h.plugin import PriceAction1HPlugin
+        from src.logic_plugins.v6_price_action_1m.plugin import PriceAction1MPlugin
+        from src.logic_plugins.v6_price_action_5m.plugin import PriceAction5MPlugin
+        from src.logic_plugins.v6_price_action_15m.plugin import PriceAction15MPlugin
+        from src.logic_plugins.v6_price_action_1h.plugin import PriceAction1HPlugin
         from src.core.plugin_system.base_plugin import BaseLogicPlugin
         
         assert issubclass(PriceAction1MPlugin, BaseLogicPlugin)
@@ -1120,9 +1120,9 @@ class TestIntegration:
     @pytest.mark.asyncio
     async def test_full_entry_exit_cycle_1m(self, mock_service_api):
         """Test full entry-exit cycle for 1M"""
-        from src.logic_plugins.price_action_1m.plugin import PriceAction1MPlugin
+        from src.logic_plugins.v6_price_action_1m.plugin import PriceAction1MPlugin
         plugin = PriceAction1MPlugin(
-            plugin_id="price_action_1m",
+            plugin_id="v6_price_action_1m",
             config={"shadow_mode": True},
             service_api=mock_service_api
         )

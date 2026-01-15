@@ -62,7 +62,7 @@ class TestDualOrderInterface:
             trailing_enabled=True,
             trailing_start_pips=7.5,
             trailing_step_pips=3.75,
-            plugin_id="combined_v3",
+            plugin_id="v3_combined",
             metadata={"logic": "LOGIC1"}
         )
         
@@ -74,7 +74,7 @@ class TestDualOrderInterface:
         assert config.trailing_enabled is True
         assert config.trailing_start_pips == 7.5
         assert config.trailing_step_pips == 3.75
-        assert config.plugin_id == "combined_v3"
+        assert config.plugin_id == "v3_combined"
         assert config.metadata == {"logic": "LOGIC1"}
     
     def test_order_config_default_values(self):
@@ -251,21 +251,21 @@ class TestDualOrderService:
         """Test order tracking by plugin"""
         service = DualOrderService()
         
-        service._track_order('combined_v3', 'order_001', 'order_a')
-        service._track_order('combined_v3', 'order_002', 'order_b')
+        service._track_order('v3_combined', 'order_001', 'order_a')
+        service._track_order('v3_combined', 'order_002', 'order_b')
         
-        assert 'combined_v3' in service._plugin_orders
-        assert service._plugin_orders['combined_v3']['order_001'] == 'order_a'
-        assert service._plugin_orders['combined_v3']['order_002'] == 'order_b'
+        assert 'v3_combined' in service._plugin_orders
+        assert service._plugin_orders['v3_combined']['order_001'] == 'order_a'
+        assert service._plugin_orders['v3_combined']['order_002'] == 'order_b'
     
     def test_get_plugin_orders(self):
         """Test getting orders for a plugin"""
         service = DualOrderService()
         
-        service._track_order('combined_v3', 'order_001', 'order_a')
-        service._track_order('combined_v3', 'order_002', 'order_b')
+        service._track_order('v3_combined', 'order_001', 'order_a')
+        service._track_order('v3_combined', 'order_002', 'order_b')
         
-        orders = service.get_plugin_orders('combined_v3')
+        orders = service.get_plugin_orders('v3_combined')
         
         assert len(orders) == 2
         assert orders['order_001'] == 'order_a'
@@ -275,7 +275,7 @@ class TestDualOrderService:
         """Test getting order type"""
         service = DualOrderService()
         
-        service._track_order('combined_v3', 'order_001', 'order_a')
+        service._track_order('v3_combined', 'order_001', 'order_a')
         
         assert service.get_order_type('order_001') == 'order_a'
         assert service.get_order_type('nonexistent') is None
@@ -284,20 +284,20 @@ class TestDualOrderService:
         """Test getting plugin for an order"""
         service = DualOrderService()
         
-        service._track_order('combined_v3', 'order_001', 'order_a')
+        service._track_order('v3_combined', 'order_001', 'order_a')
         
-        assert service.get_order_plugin('order_001') == 'combined_v3'
+        assert service.get_order_plugin('order_001') == 'v3_combined'
         assert service.get_order_plugin('nonexistent') is None
     
     def test_untrack_order(self):
         """Test removing order from tracking"""
         service = DualOrderService()
         
-        service._track_order('combined_v3', 'order_001', 'order_a')
+        service._track_order('v3_combined', 'order_001', 'order_a')
         plugin_id = service._untrack_order('order_001')
         
-        assert plugin_id == 'combined_v3'
-        assert 'order_001' not in service._plugin_orders.get('combined_v3', {})
+        assert plugin_id == 'v3_combined'
+        assert 'order_001' not in service._plugin_orders.get('v3_combined', {})
     
     def test_get_stats(self):
         """Test statistics retrieval"""
@@ -391,13 +391,13 @@ class TestV3PluginDualOrderCapable:
     
     def test_v3_plugin_implements_interface(self):
         """Test CombinedV3Plugin implements IDualOrderCapable"""
-        from src.logic_plugins.combined_v3.plugin import CombinedV3Plugin
+        from src.logic_plugins.v3_combined.plugin import CombinedV3Plugin
         
         assert issubclass(CombinedV3Plugin, IDualOrderCapable)
     
     def test_v3_plugin_has_dual_order_service(self):
         """Test V3 plugin has dual order service field"""
-        from src.logic_plugins.combined_v3.plugin import CombinedV3Plugin
+        from src.logic_plugins.v3_combined.plugin import CombinedV3Plugin
         
         import inspect
         source = inspect.getsource(CombinedV3Plugin.__init__)
@@ -405,7 +405,7 @@ class TestV3PluginDualOrderCapable:
     
     def test_v3_plugin_has_active_orders(self):
         """Test V3 plugin has active orders tracking"""
-        from src.logic_plugins.combined_v3.plugin import CombinedV3Plugin
+        from src.logic_plugins.v3_combined.plugin import CombinedV3Plugin
         
         import inspect
         source = inspect.getsource(CombinedV3Plugin.__init__)
@@ -413,43 +413,43 @@ class TestV3PluginDualOrderCapable:
     
     def test_v3_plugin_has_set_dual_order_service(self):
         """Test V3 plugin has set_dual_order_service method"""
-        from src.logic_plugins.combined_v3.plugin import CombinedV3Plugin
+        from src.logic_plugins.v3_combined.plugin import CombinedV3Plugin
         
         assert hasattr(CombinedV3Plugin, 'set_dual_order_service')
     
     def test_v3_plugin_has_create_dual_orders(self):
         """Test V3 plugin has create_dual_orders method"""
-        from src.logic_plugins.combined_v3.plugin import CombinedV3Plugin
+        from src.logic_plugins.v3_combined.plugin import CombinedV3Plugin
         
         assert hasattr(CombinedV3Plugin, 'create_dual_orders')
     
     def test_v3_plugin_has_get_order_a_config(self):
         """Test V3 plugin has get_order_a_config method"""
-        from src.logic_plugins.combined_v3.plugin import CombinedV3Plugin
+        from src.logic_plugins.v3_combined.plugin import CombinedV3Plugin
         
         assert hasattr(CombinedV3Plugin, 'get_order_a_config')
     
     def test_v3_plugin_has_get_order_b_config(self):
         """Test V3 plugin has get_order_b_config method"""
-        from src.logic_plugins.combined_v3.plugin import CombinedV3Plugin
+        from src.logic_plugins.v3_combined.plugin import CombinedV3Plugin
         
         assert hasattr(CombinedV3Plugin, 'get_order_b_config')
     
     def test_v3_plugin_has_on_order_a_closed(self):
         """Test V3 plugin has on_order_a_closed method"""
-        from src.logic_plugins.combined_v3.plugin import CombinedV3Plugin
+        from src.logic_plugins.v3_combined.plugin import CombinedV3Plugin
         
         assert hasattr(CombinedV3Plugin, 'on_order_a_closed')
     
     def test_v3_plugin_has_on_order_b_closed(self):
         """Test V3 plugin has on_order_b_closed method"""
-        from src.logic_plugins.combined_v3.plugin import CombinedV3Plugin
+        from src.logic_plugins.v3_combined.plugin import CombinedV3Plugin
         
         assert hasattr(CombinedV3Plugin, 'on_order_b_closed')
     
     def test_v3_plugin_has_get_smart_lot_size(self):
         """Test V3 plugin has get_smart_lot_size method"""
-        from src.logic_plugins.combined_v3.plugin import CombinedV3Plugin
+        from src.logic_plugins.v3_combined.plugin import CombinedV3Plugin
         
         assert hasattr(CombinedV3Plugin, 'get_smart_lot_size')
 
@@ -459,13 +459,13 @@ class TestOrderEventHandler:
     
     def test_order_event_handler_exists(self):
         """Test V3OrderEventHandler class exists"""
-        from src.logic_plugins.combined_v3.order_events import V3OrderEventHandler
+        from src.logic_plugins.v3_combined.order_events import V3OrderEventHandler
         
         assert V3OrderEventHandler is not None
     
     def test_order_event_handler_has_required_methods(self):
         """Test V3OrderEventHandler has required methods"""
-        from src.logic_plugins.combined_v3.order_events import V3OrderEventHandler
+        from src.logic_plugins.v3_combined.order_events import V3OrderEventHandler
         
         required_methods = [
             'on_order_opened',
@@ -514,14 +514,14 @@ class TestSuccessCriteria:
     
     def test_criterion_3_plugin_implements_interface(self):
         """Criterion 3: V3 plugin implements IDualOrderCapable"""
-        from src.logic_plugins.combined_v3.plugin import CombinedV3Plugin
+        from src.logic_plugins.v3_combined.plugin import CombinedV3Plugin
         from src.core.plugin_system.dual_order_interface import IDualOrderCapable
         
         assert issubclass(CombinedV3Plugin, IDualOrderCapable)
     
     def test_criterion_4_order_a_uses_v3_smart_sl(self):
         """Criterion 4: Order A uses V3 Smart SL with trailing"""
-        from src.logic_plugins.combined_v3.plugin import CombinedV3Plugin
+        from src.logic_plugins.v3_combined.plugin import CombinedV3Plugin
         
         # Verify get_order_a_config returns config with V3_SMART_SL
         import inspect
@@ -532,7 +532,7 @@ class TestSuccessCriteria:
     
     def test_criterion_5_order_b_uses_fixed_risk_sl(self):
         """Criterion 5: Order B uses fixed $10 risk SL"""
-        from src.logic_plugins.combined_v3.plugin import CombinedV3Plugin
+        from src.logic_plugins.v3_combined.plugin import CombinedV3Plugin
         
         # Verify get_order_b_config returns config with FIXED_RISK_SL
         import inspect
@@ -562,10 +562,10 @@ class TestSuccessCriteria:
         service = DualOrderService()
         
         # Track order with plugin_id
-        service._track_order('combined_v3', 'order_001', 'order_a')
+        service._track_order('v3_combined', 'order_001', 'order_a')
         
         # Verify plugin_id is tracked
-        assert service.get_order_plugin('order_001') == 'combined_v3'
+        assert service.get_order_plugin('order_001') == 'v3_combined'
     
     def test_criterion_8_all_tests_pass(self):
         """Criterion 8: All tests pass (meta-test)"""
