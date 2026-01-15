@@ -23,6 +23,7 @@ from src.utils.optimized_logger import logger
 from src.core.plugin_system.plugin_registry import PluginRegistry
 from src.core.plugin_system.service_api import ServiceAPI
 from src.telegram.multi_telegram_manager import MultiTelegramManager
+from src.core.shadow_mode_manager import ShadowModeManager, ExecutionMode
 import json
 import uuid
 
@@ -111,6 +112,10 @@ class TradingEngine:
             service_api=self.service_api
         )
         
+        # Plan 11: Initialize Shadow Mode Manager
+        shadow_config = self.config.get("shadow_mode", {})
+        self.shadow_manager = ShadowModeManager(shadow_config)
+        
         # Plan 07: Initialize Multi-Telegram Manager (3-Bot System)
         self.telegram_manager: Optional[MultiTelegramManager] = None
         self._init_telegram_manager()
@@ -181,6 +186,60 @@ class TradingEngine:
             self.telegram_bot.send_message(f"Trade Closed: {symbol} P/L: ${profit:.2f}")
     
     # ==================== End Plan 07 Notification Methods ====================
+    
+    # ==================== Plan 11: Shadow Mode Methods ====================
+    
+    def get_shadow_manager(self) -> ShadowModeManager:
+        """Get the shadow mode manager"""
+        return self.shadow_manager
+    
+    def set_shadow_mode(self, mode: ExecutionMode):
+        """Set shadow mode execution mode"""
+        self.shadow_manager.set_mode(mode)
+        logger.info(f"Shadow mode set to: {mode.value}")
+    
+    def enable_plugin_shadow(self, plugin_id: str):
+        """Enable a plugin for shadow mode testing"""
+        self.shadow_manager.enable_shadow_plugin(plugin_id)
+    
+    def disable_plugin_shadow(self, plugin_id: str):
+        """Disable a plugin from shadow mode testing"""
+        self.shadow_manager.disable_shadow_plugin(plugin_id)
+    
+    async def _notify_discrepancy(self, comparison):
+        """Notify about decision discrepancy via Telegram"""
+        message = f"Shadow Mode Discrepancy: {comparison.discrepancy_type}\n"
+        message += f"Signal: {comparison.signal_id}\n"
+        message += f"Details: {comparison.discrepancy_details}"
+        
+        await self.send_notification('shadow_discrepancy', message)
+    
+    def record_shadow_decision(
+        self,
+        plugin_id: str,
+        signal_id: str,
+        action: str,
+        reason: str,
+        order_params: Dict[str, Any] = None
+    ):
+        """Record a plugin decision for shadow mode comparison"""
+        self.shadow_manager.record_plugin_decision(
+            plugin_id=plugin_id,
+            signal_id=signal_id,
+            action=action,
+            reason=reason,
+            order_params=order_params
+        )
+        
+        # If plugin is in shadow mode, record virtual order
+        if self.shadow_manager.is_plugin_in_shadow(plugin_id) and action == 'execute':
+            self.shadow_manager.record_virtual_order(
+                plugin_id=plugin_id,
+                signal_id=signal_id,
+                order_params=order_params or {}
+            )
+    
+    # ==================== End Plan 11 Shadow Mode Methods ====================
     
     def get_open_trades(self) -> List[Trade]:
         """Get list of currently open trades"""
