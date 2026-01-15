@@ -17,6 +17,8 @@ import logging
 import uuid
 from datetime import datetime
 
+from src.core.plugin_system.reentry_interface import ReentryEvent, ReentryType
+
 if TYPE_CHECKING:
     from .plugin import CombinedV3Plugin
 
@@ -617,3 +619,222 @@ class V3OrderManager:
         if isinstance(alert, dict) and alert.get('tp2_price'):
             return float(alert.get('tp2_price'))
         return None
+    
+    # =========================================================================
+    # Re-Entry Event Triggers (Plan 03 - Step 4)
+    # =========================================================================
+    
+    async def on_order_closed(
+        self,
+        order_id: str,
+        close_reason: str,
+        close_price: float,
+        order_metadata: Dict[str, Any]
+    ) -> None:
+        """
+        Handle order close event and trigger appropriate re-entry.
+        
+        This method is called when an order is closed (SL hit, TP hit, manual exit).
+        It creates a ReentryEvent and triggers the appropriate plugin method.
+        
+        Args:
+            order_id: MT5 order/position ID
+            close_reason: Reason for close (sl_hit, tp_hit, manual_exit, reversal_exit)
+            close_price: Price at which order was closed
+            order_metadata: Order metadata including symbol, direction, entry_price, etc.
+        """
+        self.logger.info(
+            f"Order closed: {order_id} | Reason: {close_reason} | Price: {close_price}"
+        )
+        
+        # Extract order details from metadata
+        symbol = order_metadata.get("symbol", "")
+        direction = order_metadata.get("direction", "")
+        entry_price = order_metadata.get("entry_price", 0.0)
+        sl_price = order_metadata.get("sl_price", 0.0)
+        chain_id = order_metadata.get("chain_id", "")
+        order_type = order_metadata.get("order_type", "")
+        
+        # Determine re-entry type based on close reason
+        if close_reason == "sl_hit":
+            reentry_type = ReentryType.SL_HUNT
+        elif close_reason == "tp_hit":
+            reentry_type = ReentryType.TP_CONTINUATION
+        elif close_reason in ("manual_exit", "reversal_exit"):
+            reentry_type = ReentryType.EXIT_CONTINUATION
+        else:
+            self.logger.info(f"No re-entry for close reason: {close_reason}")
+            return
+        
+        # Create ReentryEvent
+        event = ReentryEvent(
+            trade_id=order_id,
+            plugin_id=self.plugin.plugin_id,
+            symbol=symbol,
+            reentry_type=reentry_type,
+            entry_price=entry_price,
+            exit_price=close_price,
+            sl_price=sl_price,
+            direction=direction,
+            chain_level=self.plugin.get_chain_level(chain_id),
+            metadata={
+                "chain_id": chain_id,
+                "order_type": order_type,
+                "close_reason": close_reason,
+                **order_metadata
+            }
+        )
+        
+        # Trigger appropriate plugin method
+        try:
+            if reentry_type == ReentryType.SL_HUNT:
+                await self.plugin.on_sl_hit(event)
+            elif reentry_type == ReentryType.TP_CONTINUATION:
+                await self.plugin.on_tp_hit(event)
+            elif reentry_type == ReentryType.EXIT_CONTINUATION:
+                await self.plugin.on_exit(event)
+        except Exception as e:
+            self.logger.error(f"Re-entry trigger failed: {e}")
+    
+    async def execute_recovery_order(self, signal: Dict[str, Any]) -> bool:
+        """
+        Execute a recovery re-entry order.
+        
+        Called by plugin.on_recovery_signal when recovery is detected.
+        
+        Args:
+            signal: Recovery signal with entry details
+            
+        Returns:
+            bool: True if order placed successfully
+        """
+        try:
+            symbol = signal.get("symbol", "")
+            direction = signal.get("direction", "")
+            entry_price = signal.get("entry_price", 0.0)
+            sl_price = signal.get("sl_price", 0.0)
+            chain_level = signal.get("chain_level", 0)
+            recovery_type = signal.get("recovery_type", "")
+            original_trade_id = signal.get("original_trade_id", "")
+            
+            # Calculate lot size for recovery (may be reduced based on chain level)
+            base_lot = await self._get_base_lot(symbol)
+            
+            # Reduce lot size for higher chain levels (10% reduction per level)
+            lot_reduction = 1.0 - (0.1 * chain_level)
+            lot_reduction = max(lot_reduction, 0.5)  # Min 50% of original
+            recovery_lot = base_lot * lot_reduction
+            
+            # Calculate TP based on recovery type
+            sl_distance = abs(entry_price - sl_price)
+            if direction.lower() == "buy":
+                tp_price = entry_price + (sl_distance * 1.5)  # 1.5 RR for recovery
+            else:
+                tp_price = entry_price - (sl_distance * 1.5)
+            
+            self.logger.info(
+                f"Executing recovery order:\n"
+                f"  Type: {recovery_type}\n"
+                f"  Symbol: {symbol}\n"
+                f"  Direction: {direction}\n"
+                f"  Entry: {entry_price}\n"
+                f"  SL: {sl_price}\n"
+                f"  TP: {tp_price}\n"
+                f"  Lot: {recovery_lot} (chain level {chain_level})"
+            )
+            
+            if self.plugin.shadow_mode:
+                self.logger.info(f"[SHADOW] Recovery order would be placed")
+                return True
+            
+            # Place recovery order
+            result = await self.service_api.place_order(
+                plugin_id=self.plugin.plugin_id,
+                symbol=symbol,
+                direction=direction,
+                lot_size=recovery_lot,
+                entry_price=entry_price,
+                sl_price=sl_price,
+                tp_price=tp_price,
+                comment=f"RECOVERY_{recovery_type}_{chain_level}",
+                metadata={
+                    "order_type": "RECOVERY",
+                    "recovery_type": recovery_type,
+                    "chain_level": chain_level,
+                    "original_trade_id": original_trade_id,
+                    **signal.get("metadata", {})
+                }
+            )
+            
+            if result.get("success"):
+                self.logger.info(f"Recovery order placed: {result.get('trade_id')}")
+                
+                # Send notification
+                await self.service_api.send_notification(
+                    plugin_id=self.plugin.plugin_id,
+                    message=(
+                        f"RECOVERY ORDER PLACED\n"
+                        f"Type: {recovery_type}\n"
+                        f"Symbol: {symbol}\n"
+                        f"Direction: {direction.upper()}\n"
+                        f"Chain Level: {chain_level}"
+                    ),
+                    priority="high"
+                )
+                return True
+            else:
+                self.logger.error(f"Recovery order failed: {result.get('error')}")
+                return False
+                
+        except Exception as e:
+            self.logger.error(f"Recovery order execution error: {e}")
+            return False
+    
+    async def close_order(self, order_id: str, reason: str) -> bool:
+        """
+        Close an order and trigger re-entry if applicable.
+        
+        Args:
+            order_id: MT5 order/position ID
+            reason: Reason for closing
+            
+        Returns:
+            bool: True if close successful
+        """
+        try:
+            # Get order details before closing
+            order_info = await self.service_api.get_order_info(
+                plugin_id=self.plugin.plugin_id,
+                order_id=order_id
+            )
+            
+            if not order_info:
+                self.logger.warning(f"Order {order_id} not found")
+                return False
+            
+            # Close the order
+            result = await self.service_api.close_order(
+                plugin_id=self.plugin.plugin_id,
+                order_id=order_id,
+                reason=reason
+            )
+            
+            if result.get("success"):
+                close_price = result.get("close_price", order_info.get("current_price", 0))
+                
+                # Trigger re-entry event
+                await self.on_order_closed(
+                    order_id=order_id,
+                    close_reason=reason,
+                    close_price=close_price,
+                    order_metadata=order_info
+                )
+                
+                return True
+            else:
+                self.logger.error(f"Order close failed: {result.get('error')}")
+                return False
+                
+        except Exception as e:
+            self.logger.error(f"Order close error: {e}")
+            return False

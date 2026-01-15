@@ -19,6 +19,8 @@ import os
 
 from src.core.plugin_system.base_plugin import BaseLogicPlugin
 from src.core.plugin_system.plugin_interface import ISignalProcessor, IOrderExecutor
+from src.core.plugin_system.reentry_interface import IReentryCapable, ReentryEvent, ReentryType
+from src.core.services.reentry_service import ReentryService
 from .signal_handlers import V3SignalHandlers
 from .order_manager import V3OrderManager
 from .trend_validator import V3TrendValidator
@@ -26,7 +28,7 @@ from .trend_validator import V3TrendValidator
 logger = logging.getLogger(__name__)
 
 
-class CombinedV3Plugin(BaseLogicPlugin, ISignalProcessor, IOrderExecutor):
+class CombinedV3Plugin(BaseLogicPlugin, ISignalProcessor, IOrderExecutor, IReentryCapable):
     """
     V3 Combined Logic Plugin - Handles all 12 V3 signal types.
     
@@ -63,11 +65,32 @@ class CombinedV3Plugin(BaseLogicPlugin, ISignalProcessor, IOrderExecutor):
         
         self.shadow_mode = self.plugin_config.get("shadow_mode", False)
         
+        # Re-entry system support (Plan 03)
+        self._chain_levels: Dict[str, int] = {}  # trade_id -> chain_level
+        self._reentry_service: Optional[ReentryService] = None
+        
         self.logger.info(
             f"CombinedV3Plugin initialized | "
             f"Shadow Mode: {self.shadow_mode} | "
-            f"12 signals ready"
+            f"12 signals ready | Re-entry enabled"
         )
+    
+    def set_reentry_service(self, service: ReentryService):
+        """
+        Inject re-entry service for recovery operations.
+        
+        Args:
+            service: ReentryService instance
+        """
+        self._reentry_service = service
+        # Register callback for recovery events
+        service.register_recovery_callback(self.plugin_id, self._on_recovery_callback)
+        self.logger.info(f"ReentryService injected into {self.plugin_id}")
+    
+    async def _on_recovery_callback(self, event: ReentryEvent):
+        """Callback when recovery is detected by ReentryService"""
+        self.logger.info(f"Recovery callback received for {event.trade_id}")
+        await self.on_recovery_signal(event)
     
     def _load_plugin_config(self):
         """Load plugin configuration from config.json"""
@@ -584,3 +607,228 @@ class CombinedV3Plugin(BaseLogicPlugin, ISignalProcessor, IOrderExecutor):
         except Exception as e:
             self.logger.error(f"Order close failed: {e}")
             return False
+    
+    # =========================================================================
+    # IReentryCapable Interface Implementation (Plan 03)
+    # =========================================================================
+    
+    async def on_sl_hit(self, event: ReentryEvent) -> bool:
+        """
+        Handle SL hit event - start SL Hunt Recovery if enabled.
+        
+        SL Hunt Recovery monitors price for 70% recovery within symbol-specific
+        window (EURUSD: 30min, GBPUSD: 20min, etc.).
+        
+        Args:
+            event: ReentryEvent with trade details
+            
+        Returns:
+            bool: True if recovery started successfully
+        """
+        if not self._reentry_service:
+            self.logger.warning("ReentryService not available for SL Hunt")
+            return False
+        
+        # Check if SL Hunt is enabled in config
+        sl_hunt_enabled = self.plugin_config.get("sl_hunt_recovery", {}).get("enabled", True)
+        if not sl_hunt_enabled:
+            self.logger.info(f"SL Hunt disabled for {event.trade_id}")
+            return False
+        
+        # Check chain level limit (V3 max = 5)
+        current_level = self.get_chain_level(event.trade_id)
+        if current_level >= self.get_max_chain_level():
+            self.logger.warning(
+                f"Max chain level reached for {event.trade_id}: {current_level}/{self.get_max_chain_level()}"
+            )
+            return False
+        
+        # Update event with current chain level
+        event.chain_level = current_level
+        
+        self.logger.info(
+            f"SL Hunt Recovery starting for {event.trade_id} | "
+            f"Symbol: {event.symbol} | Chain: {current_level}"
+        )
+        
+        # Start SL Hunt Recovery via ReentryService
+        success = await self._reentry_service.start_sl_hunt_recovery(event)
+        
+        if success:
+            # Increment chain level
+            self._chain_levels[event.trade_id] = current_level + 1
+            self.logger.info(f"SL Hunt Recovery started for {event.trade_id}")
+        
+        return success
+    
+    async def on_tp_hit(self, event: ReentryEvent) -> bool:
+        """
+        Handle TP hit event - start TP Continuation.
+        
+        TP Continuation reduces SL by 10% per chain level (min 50%)
+        and continues trading in the same direction.
+        
+        Args:
+            event: ReentryEvent with trade details
+            
+        Returns:
+            bool: True if continuation started successfully
+        """
+        if not self._reentry_service:
+            self.logger.warning("ReentryService not available for TP Continuation")
+            return False
+        
+        # Check if TP Continuation is enabled
+        tp_cont_enabled = self.plugin_config.get("tp_continuation", {}).get("enabled", True)
+        if not tp_cont_enabled:
+            self.logger.info(f"TP Continuation disabled for {event.trade_id}")
+            return False
+        
+        # Check chain level limit
+        current_level = self.get_chain_level(event.trade_id)
+        if current_level >= self.get_max_chain_level():
+            self.logger.warning(
+                f"Max chain level reached for TP Continuation: {current_level}/{self.get_max_chain_level()}"
+            )
+            return False
+        
+        event.chain_level = current_level
+        
+        self.logger.info(
+            f"TP Continuation starting for {event.trade_id} | "
+            f"Symbol: {event.symbol} | Chain: {current_level}"
+        )
+        
+        # Start TP Continuation via ReentryService
+        success = await self._reentry_service.start_tp_continuation(event)
+        
+        if success:
+            self._chain_levels[event.trade_id] = current_level + 1
+            self.logger.info(f"TP Continuation started for {event.trade_id}")
+        
+        return success
+    
+    async def on_exit(self, event: ReentryEvent) -> bool:
+        """
+        Handle exit event - start Exit Continuation monitoring.
+        
+        Exit Continuation monitors for 60 seconds after manual/reversal exit
+        to detect continuation opportunities.
+        
+        Args:
+            event: ReentryEvent with trade details
+            
+        Returns:
+            bool: True if monitoring started successfully
+        """
+        if not self._reentry_service:
+            self.logger.warning("ReentryService not available for Exit Continuation")
+            return False
+        
+        # Check if Exit Continuation is enabled
+        exit_cont_enabled = self.plugin_config.get("exit_continuation", {}).get("enabled", True)
+        if not exit_cont_enabled:
+            self.logger.info(f"Exit Continuation disabled for {event.trade_id}")
+            return False
+        
+        event.chain_level = self.get_chain_level(event.trade_id)
+        
+        self.logger.info(
+            f"Exit Continuation monitoring starting for {event.trade_id} | "
+            f"Symbol: {event.symbol}"
+        )
+        
+        # Start Exit Continuation via ReentryService
+        success = await self._reentry_service.start_exit_continuation(event)
+        
+        if success:
+            self.logger.info(f"Exit Continuation monitoring started for {event.trade_id}")
+        
+        return success
+    
+    async def on_recovery_signal(self, event: ReentryEvent) -> bool:
+        """
+        Handle recovery signal - execute re-entry order.
+        
+        Called when ReentryService detects a recovery opportunity
+        (70% price recovery for SL Hunt, continuation signal for TP/Exit).
+        
+        Args:
+            event: ReentryEvent with recovery details
+            
+        Returns:
+            bool: True if re-entry order executed successfully
+        """
+        self.logger.info(
+            f"Recovery signal received for {event.trade_id} | "
+            f"Type: {event.reentry_type.value} | Chain: {event.chain_level}"
+        )
+        
+        # Build re-entry signal based on recovery type
+        reentry_signal = {
+            "signal_type": "recovery_entry",
+            "symbol": event.symbol,
+            "direction": event.direction,
+            "entry_price": event.entry_price,
+            "sl_price": event.sl_price,
+            "chain_level": event.chain_level,
+            "recovery_type": event.reentry_type.value,
+            "original_trade_id": event.trade_id,
+            "metadata": event.metadata
+        }
+        
+        # Calculate reduced SL for TP Continuation
+        if event.reentry_type == ReentryType.TP_CONTINUATION:
+            # 10% reduction per chain level, min 50%
+            reduction = min(0.1 * event.chain_level, 0.5)
+            original_sl_distance = abs(event.entry_price - event.sl_price)
+            reduced_sl_distance = original_sl_distance * (1 - reduction)
+            
+            if event.direction.upper() == "BUY":
+                reentry_signal["sl_price"] = event.entry_price - reduced_sl_distance
+            else:
+                reentry_signal["sl_price"] = event.entry_price + reduced_sl_distance
+            
+            self.logger.info(
+                f"TP Continuation SL reduced by {reduction*100}% | "
+                f"New SL: {reentry_signal['sl_price']}"
+            )
+        
+        # Execute re-entry via order manager
+        try:
+            result = await self.order_manager.execute_recovery_order(reentry_signal)
+            
+            if result:
+                self.logger.info(f"Re-entry order executed for {event.trade_id}")
+                return True
+            else:
+                self.logger.warning(f"Re-entry order failed for {event.trade_id}")
+                return False
+                
+        except Exception as e:
+            self.logger.error(f"Re-entry execution error: {e}")
+            return False
+    
+    def get_chain_level(self, trade_id: str) -> int:
+        """
+        Get current chain level for a trade.
+        
+        Args:
+            trade_id: Trade identifier
+            
+        Returns:
+            int: Current chain level (0 = original trade)
+        """
+        return self._chain_levels.get(trade_id, 0)
+    
+    def get_max_chain_level(self) -> int:
+        """
+        Get maximum allowed chain level for V3 plugin.
+        
+        V3 plugins allow up to 5 chain levels (more aggressive).
+        V6 plugins allow up to 3 chain levels (more conservative).
+        
+        Returns:
+            int: Maximum chain level (5 for V3)
+        """
+        return self.plugin_config.get("max_chain_level", 5)

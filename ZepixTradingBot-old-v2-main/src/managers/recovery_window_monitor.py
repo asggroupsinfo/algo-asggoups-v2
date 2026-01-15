@@ -5,11 +5,14 @@ Monitors price movements in real-time and triggers immediate recovery actions
 
 import asyncio
 from datetime import datetime
-from typing import Dict, Optional, Any
+from typing import Dict, Optional, Any, Callable
 import MetaTrader5 as mt5
 import logging
 
 logger = logging.getLogger(__name__)
+
+# Type alias for plugin callback
+PluginRecoveryCallback = Callable[[Dict[str, Any]], None]
 
 
 class RecoveryWindowMonitor:
@@ -80,6 +83,9 @@ class RecoveryWindowMonitor:
         self.active_monitors: Dict[int, Dict[str, Any]] = {}
         self.monitor_tasks: Dict[int, asyncio.Task] = {}
         
+        # Plugin notification callbacks (Plan 03 - Step 5)
+        self._plugin_callbacks: Dict[str, PluginRecoveryCallback] = {}
+        
         logger.info("✅ RecoveryWindowMonitor initialized")
     
     async def start_monitoring(
@@ -89,7 +95,8 @@ class RecoveryWindowMonitor:
         direction: str,
         sl_price: float,
         original_order: Any,
-        order_type: str = "A"
+        order_type: str = "A",
+        plugin_id: Optional[str] = None
     ) -> None:
         """
         Start continuous monitoring for SL Hunt recovery
@@ -101,6 +108,7 @@ class RecoveryWindowMonitor:
             sl_price: Stop loss price that was hit
             original_order: Original order object
             order_type: "A" (TP Trail) or "B" (Profit Booking)
+            plugin_id: Plugin ID for callback notification (Plan 03)
         """
         
         # Get recovery window for this symbol
@@ -132,7 +140,8 @@ class RecoveryWindowMonitor:
             "status": "MONITORING",
             "original_order": original_order,
             "order_type": order_type,
-            "check_count": 0
+            "check_count": 0,
+            "plugin_id": plugin_id  # Plan 03 - Step 5
         }
         
         self.active_monitors[order_id] = monitor_data
@@ -379,6 +388,9 @@ Check Count: {check_count}
 Placing Recovery Order NOW...
         """)
         
+        # Notify plugin of recovery (Plan 03 - Step 5)
+        await self._notify_plugin_recovery(monitor_data, recovery_price)
+        
         # Clean up monitor
         self._cleanup_monitor(order_id)
         
@@ -623,3 +635,73 @@ Recovery attempt in progress...
             "check_count": monitor_data["check_count"],
             "status": monitor_data["status"]
         }
+    
+    # =========================================================================
+    # Plugin Notification Methods (Plan 03 - Step 5)
+    # =========================================================================
+    
+    def register_plugin_callback(self, plugin_id: str, callback: PluginRecoveryCallback) -> None:
+        """
+        Register a callback for plugin recovery notifications.
+        
+        Args:
+            plugin_id: Plugin identifier
+            callback: Async callback function to call on recovery
+        """
+        self._plugin_callbacks[plugin_id] = callback
+        logger.info(f"Plugin callback registered: {plugin_id}")
+    
+    def unregister_plugin_callback(self, plugin_id: str) -> None:
+        """
+        Unregister a plugin callback.
+        
+        Args:
+            plugin_id: Plugin identifier
+        """
+        self._plugin_callbacks.pop(plugin_id, None)
+        logger.info(f"Plugin callback unregistered: {plugin_id}")
+    
+    async def _notify_plugin_recovery(self, monitor_data: Dict[str, Any], recovery_price: float) -> None:
+        """
+        Notify plugin when recovery is detected.
+        
+        This method is called when price recovers 70% and triggers
+        the plugin's on_recovery_signal method.
+        
+        Args:
+            monitor_data: Monitor data dictionary
+            recovery_price: Price at which recovery was detected
+        """
+        plugin_id = monitor_data.get("plugin_id")
+        if not plugin_id:
+            logger.debug("No plugin_id in monitor_data, skipping plugin notification")
+            return
+        
+        callback = self._plugin_callbacks.get(plugin_id)
+        if not callback:
+            logger.debug(f"No callback registered for plugin {plugin_id}")
+            return
+        
+        # Build recovery event data
+        recovery_event = {
+            "trade_id": str(monitor_data["order_id"]),
+            "plugin_id": plugin_id,
+            "symbol": monitor_data["symbol"],
+            "reentry_type": "sl_hunt",
+            "entry_price": recovery_price,
+            "exit_price": monitor_data["sl_price"],
+            "sl_price": monitor_data["sl_price"],
+            "direction": monitor_data["direction"],
+            "chain_level": 0,  # Will be updated by plugin
+            "metadata": {
+                "order_type": monitor_data.get("order_type", "A"),
+                "recovery_time_seconds": (datetime.now() - monitor_data["start_time"]).total_seconds(),
+                "check_count": monitor_data["check_count"]
+            }
+        }
+        
+        try:
+            logger.info(f"Notifying plugin {plugin_id} of recovery for order #{monitor_data['order_id']}")
+            await callback(recovery_event)
+        except Exception as e:
+            logger.error(f"Error notifying plugin {plugin_id}: {e}")

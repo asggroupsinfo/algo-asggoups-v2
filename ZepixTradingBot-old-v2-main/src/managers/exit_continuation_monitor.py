@@ -14,10 +14,13 @@ Similar to RecoveryWindowMonitor but for exit scenarios instead of SL hunts.
 
 import asyncio
 from datetime import datetime
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, Callable
 from src.models import Trade
 from src.utils.optimized_logger import logger
 import time
+
+# Type alias for plugin callback
+PluginContinuationCallback = Callable[[Dict[str, Any]], None]
 
 
 class ExitContinuationMonitor:
@@ -58,12 +61,16 @@ class ExitContinuationMonitor:
         # Monitoring tasks
         self.monitoring_tasks = {}
         
+        # Plugin notification callbacks (Plan 03 - Step 6)
+        self._plugin_callbacks: Dict[str, PluginContinuationCallback] = {}
+        
         logger.info(
             f"✅ Exit Continuation Monitor initialized "
             f"(Window: {self.monitor_duration}s, Interval: {self.check_interval}s)"
         )
     
-    def start_monitoring(self, trade: Trade, exit_reason: str, exit_price: float):
+    def start_monitoring(self, trade: Trade, exit_reason: str, exit_price: float, 
+                         plugin_id: Optional[str] = None):
         """
         Start monitoring a closed trade for continuation opportunity
         
@@ -71,6 +78,7 @@ class ExitContinuationMonitor:
             trade: Closed trade object
             exit_reason: Why trade was closed (MANUAL_EXIT, REVERSAL_EXIT, etc.)
             exit_price: Price at which trade was closed
+            plugin_id: Plugin ID for callback notification (Plan 03)
         """
         if not self.enabled:
             logger.debug("Exit continuation disabled, skipping monitoring")
@@ -94,7 +102,8 @@ class ExitContinuationMonitor:
             "original_entry": trade.entry,
             "original_sl": trade.sl,
             "original_tp": trade.tp,
-            "check_count": 0
+            "check_count": 0,
+            "plugin_id": plugin_id  # Plan 03 - Step 6
         }
         
         self.active_monitors[exit_id] = monitor_data
@@ -298,6 +307,9 @@ class ExitContinuationMonitor:
             f"✅ EXIT CONTINUATION TRIGGERED - {monitor_data['symbol']} "
             f"recovered in {elapsed_time:.1f}s"
         )
+        
+        # Notify plugin of continuation (Plan 03 - Step 6)
+        await self._notify_plugin_continuation(monitor_data, entry_price)
         
         # Place continuation order
         success = await self._place_continuation_order(monitor_data, entry_price)
@@ -520,3 +532,76 @@ Monitoring stopped.
         self.active_monitors.clear()
         self.monitoring_tasks.clear()
         logger.info("✅ All exit continuation monitors stopped")
+    
+    # =========================================================================
+    # Plugin Notification Methods (Plan 03 - Step 6)
+    # =========================================================================
+    
+    def register_plugin_callback(self, plugin_id: str, callback: PluginContinuationCallback) -> None:
+        """
+        Register a callback for plugin continuation notifications.
+        
+        Args:
+            plugin_id: Plugin identifier
+            callback: Async callback function to call on continuation
+        """
+        self._plugin_callbacks[plugin_id] = callback
+        logger.info(f"Plugin callback registered for exit continuation: {plugin_id}")
+    
+    def unregister_plugin_callback(self, plugin_id: str) -> None:
+        """
+        Unregister a plugin callback.
+        
+        Args:
+            plugin_id: Plugin identifier
+        """
+        self._plugin_callbacks.pop(plugin_id, None)
+        logger.info(f"Plugin callback unregistered for exit continuation: {plugin_id}")
+    
+    async def _notify_plugin_continuation(self, monitor_data: Dict[str, Any], entry_price: float) -> None:
+        """
+        Notify plugin when continuation opportunity is detected.
+        
+        This method is called when price reverts and trend aligns,
+        triggering the plugin's on_recovery_signal method.
+        
+        Args:
+            monitor_data: Monitor session data
+            entry_price: Price at which continuation was detected
+        """
+        plugin_id = monitor_data.get("plugin_id")
+        if not plugin_id:
+            logger.debug("No plugin_id in monitor_data, skipping plugin notification")
+            return
+        
+        callback = self._plugin_callbacks.get(plugin_id)
+        if not callback:
+            logger.debug(f"No callback registered for plugin {plugin_id}")
+            return
+        
+        # Build continuation event data
+        trade = monitor_data["trade"]
+        continuation_event = {
+            "trade_id": str(trade.trade_id),
+            "plugin_id": plugin_id,
+            "symbol": monitor_data["symbol"],
+            "reentry_type": "exit_cont",
+            "entry_price": entry_price,
+            "exit_price": monitor_data["exit_price"],
+            "sl_price": monitor_data["original_sl"],
+            "direction": monitor_data["original_direction"],
+            "chain_level": 0,  # Will be updated by plugin
+            "metadata": {
+                "exit_reason": monitor_data["exit_reason"],
+                "original_entry": monitor_data["original_entry"],
+                "original_tp": monitor_data["original_tp"],
+                "recovery_time_seconds": (datetime.now() - monitor_data["start_time"]).total_seconds(),
+                "check_count": monitor_data["check_count"]
+            }
+        }
+        
+        try:
+            logger.info(f"Notifying plugin {plugin_id} of continuation for trade #{trade.trade_id}")
+            await callback(continuation_event)
+        except Exception as e:
+            logger.error(f"Error notifying plugin {plugin_id}: {str(e)}")
