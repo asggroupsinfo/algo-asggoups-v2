@@ -1,56 +1,48 @@
-# 🕵️‍♂️ MISSION: V3 & V6 LOGIC INTEGRITY & CONFLICT VERIFICATION
+# 🕵️‍♂️ MISSION: V3 & V6 DEEP LOGIC AUDIT (ZERO TOLERANCE)
 
-## 🔴 CRITICAL CONTEXT
-The user demands a **"Logic Scanning Phase"**.
-We must prove that:
-1.  **V3 Implementation** matches the V3 Planning/Rules exactly.
-2.  **V6 Implementation** matches the V6 Planning/Rules exactly.
-3.  **NO CONFLICTS:** If V3 and V6 alerts arrive simultaneously, the system MUST handle them independently. No cross-talk.
+## 🎯 USER OBJECTIVE
+**"Mujhe complete report chaiye 2 alag alag V3 ke liye aur V6 ke liye."**
+(I want two separate, complete reports for V3 and V6.)
 
-## 📂 TRUTH SOURCES (The "Standard")
+The user specifically mentions:
+1.  **V3 Logic Parsing:** The V3 documentation explains how `Logic 1`, `Logic 2`, and `Logic 3` handle different Pine alerts.
+2.  **V6 Logic Parsing:** The V6 documentation explains its specific alert handling.
+3.  **Execution Flow:** It's not just about receiving the alert, but **how the bot executes it**. Does it match the documented behavior?
 
-### V3 Logic (Legacy Combined)
-- **Path:** `updates/v5_hybrid_plugin_architecture/COMBINED LOGICS/V3_FINAL_REPORTS/`
-- **Key Files:**
-  - `04_LOGIC_IMPLEMENTATION_COMPARISON.md` (Logic Rules)
-  - `02_IMPLEMENTATION_VERIFICATION_REPORT.md` (Features)
+## 📂 SOURCE OF TRUTH (DOCUMENTATION)
 
-### V6 Logic (Price Action)
-- **Path:** `updates/v5_hybrid_plugin_architecture/V6_INTEGRATION_PROJECT/02_PLANNING PRICE ACTION LOGIC/`
-- **Key Files:**
-  - `01_INTEGRATION_MASTER_PLAN.md` (Architecture)
-  - `02_PRICE_ACTION_LOGIC_1M.md` through `05_PRICE_ACTION_LOGIC_1H.md` (Timeframe specific rules)
+**V3 Documentation:**
+- Search in: `updates/v5_hybrid_plugin_architecture/COMBINED LOGICS/V3_FINAL_REPORTS`
+- Check for Logic 1/2/3 specific rules.
 
-## 🎯 YOUR TASK: DEEP SCAN & CROSS-EXAMINATION
+**V6 Documentation:**
+- Search in: `updates/v5_hybrid_plugin_architecture/V6_INTEGRATION_PROJECT`
+- Check for 4-Pillar validation and Price Action rules.
 
-### 1. V3 Integrity Check
-- Compare `src/logic_plugins/v3_combined/` code against V3 Truth Source.
-- **Verify:** Are ALL 12 signal types handled? Are the specific V3 Re-entry/Profit Booking rules active?
+## 📋 YOUR TASK
+**Do not ask me what to check.**
+You must autonomously read the documentation and verify the code against it effectively.
 
-### 2. V6 Integrity Check
-- Compare `src/logic_plugins/v6_price_action_*/` code against V6 Truth Source.
-- **Verify:** Are the 4-Pillar Trend Validation checks present? Is the entry criteria matching the Pine Script plan?
+**Verification Steps:**
+1.  **Read the Docs:** Understand exactly how V3 and V6 alerts *should* be processed.
+2.  **Read the Code:** Scan the actual implementation in `src/logic_plugins/` and `src/core/`.
+3.  **Compare:**
+    - Does the code handle `Logic 1`, `Logic 2`, `Logic 3` distinction correctly?
+    - Does `signal_parser.py` correctly identify V6 vs V3?
+    - Do the **Action Executions** (Order Placement, SL/TP, Recovery) match the text?
 
-### 3. The "Mixed Fire" Conflict Test (CRITICAL)
-You must verify the **Router Logic** (`src/core/plugin_router.py` & `src/utils/signal_parser.py`).
-- **Scenario:**
-  1.  V3 Alert (`LOGIC1`) arrives.
-  2.  V6 Alert (`PRICE_ACTION_1M`) arrives 1 second later.
-- **Question:** Does V3 Alert go ONLY to V3 Plugin? Does V6 go ONLY to V6 Plugin?
-- **Features Check:**
-  - Does V3 trigger *V3 Smart SL*?
-  - Does V6 trigger *V6 SL Logic* (if defined)?
-  - Do they share or separate the "Daily Loss Limit"? (They should likely share the Autonomous System but have separate strategies).
+## � DELIVERABLES (2 SEPARATE REPORTS)
 
-## 🚀 EXECUTION PLAN
-1.  **Read Truth Files:** Absorb the requirements from the paths above.
-2.  **Scan Plugin Code:** Check `plugin.py`, `signal_handlers.py` in both plugin logic folders.
-3.  **Analyze Routing:** detailed check of `process_alert` flow.
-4.  **Report Generation:** Create `updates/v5_hybrid_plugin_architecture/07_LOGIC_VERIFICATION/01_LOGIC_INTEGRITY_REPORT.md`.
+You must generate two detailed reports in `updates/v5_hybrid_plugin_architecture/07_LOGIC_VERIFICATION/`:
 
-**The Report Must Answer:**
-- "Does V3 match docs?" (Yes/No + Proof)
-- "Does V6 match docs?" (Yes/No + Proof)
-- "Conflict Test Result:" (Pass/Fail)
+### 1. `V3_DEEP_AUDIT_REPORT.md`
+- logic 1/2/3 mapping verification.
+- Alert-to-Action flow verification.
+- Bugs/Errors/Missing implementation.
+
+### 2. `V6_DEEP_AUDIT_REPORT.md`
+- Price Action logic verification.
+- Alert-to-Action flow verification.
+- Bugs/Errors/Missing implementation.
 
 **START NOW.**
