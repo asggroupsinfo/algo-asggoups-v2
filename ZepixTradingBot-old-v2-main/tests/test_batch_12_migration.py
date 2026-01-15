@@ -284,7 +284,7 @@ class TestDataMigrationTool:
             backup_dir=temp_dirs["backup_dir"]
         )
         
-        result = tool.migrate_to_plugin("combined_v3", dry_run=True)
+        result = tool.migrate_to_plugin("v3_combined", dry_run=True)
         
         assert result.status == MigrationStatus.COMPLETED
         assert result.records_migrated == 3
@@ -300,7 +300,7 @@ class TestDataMigrationTool:
             backup_dir=temp_dirs["backup_dir"]
         )
         
-        result = tool.migrate_to_plugin("combined_v3", dry_run=False)
+        result = tool.migrate_to_plugin("v3_combined", dry_run=False)
         
         assert result.status == MigrationStatus.COMPLETED
         assert result.records_migrated == 3
@@ -316,9 +316,9 @@ class TestDataMigrationTool:
             backup_dir=temp_dirs["backup_dir"]
         )
         
-        tool.migrate_to_plugin("combined_v3", dry_run=False)
+        tool.migrate_to_plugin("v3_combined", dry_run=False)
         
-        integrity = tool.verify_integrity("combined_v3")
+        integrity = tool.verify_integrity("v3_combined")
         
         assert integrity["passed"] is True
         assert any(c["name"] == "record_count" for c in integrity["checks"])
@@ -332,7 +332,7 @@ class TestDataMigrationTool:
             backup_dir=temp_dirs["backup_dir"]
         )
         
-        result = tool.migrate_to_plugin("combined_v3", dry_run=False)
+        result = tool.migrate_to_plugin("v3_combined", dry_run=False)
         
         assert result.source_total_pnl == 225.0
         assert result.target_total_pnl == 225.0
@@ -347,9 +347,9 @@ class TestDataMigrationTool:
             backup_dir=temp_dirs["backup_dir"]
         )
         
-        tool.migrate_to_plugin("combined_v3", dry_run=False)
+        tool.migrate_to_plugin("v3_combined", dry_run=False)
         
-        success = tool.rollback_migration("combined_v3")
+        success = tool.rollback_migration("v3_combined")
         
         assert success is True
         
@@ -371,8 +371,8 @@ class TestDataMigrationTool:
             backup_dir=temp_dirs["backup_dir"]
         )
         
-        tool.migrate_to_plugin("combined_v3", dry_run=True)
-        tool.migrate_to_plugin("combined_v3", dry_run=False)
+        tool.migrate_to_plugin("v3_combined", dry_run=True)
+        tool.migrate_to_plugin("v3_combined", dry_run=False)
         
         history = tool.get_migration_history()
         
@@ -386,7 +386,7 @@ class TestDataMigrationTool:
             backup_dir=temp_dirs["backup_dir"]
         )
         
-        result = tool.migrate_to_plugin("combined_v3", dry_run=False)
+        result = tool.migrate_to_plugin("v3_combined", dry_run=False)
         report = tool.format_migration_report(result)
         
         assert "Migration Report" in report
@@ -952,15 +952,15 @@ class TestIntegration:
         summary = tool.get_v4_summary()
         assert summary["total_trades"] == 10
         
-        dry_result = tool.migrate_to_plugin("combined_v3", dry_run=True)
+        dry_result = tool.migrate_to_plugin("v3_combined", dry_run=True)
         assert dry_result.status == MigrationStatus.COMPLETED
         assert dry_result.records_migrated == 10
         
-        result = tool.migrate_to_plugin("combined_v3", dry_run=False)
+        result = tool.migrate_to_plugin("v3_combined", dry_run=False)
         assert result.status == MigrationStatus.COMPLETED
         assert result.records_migrated == 10
         
-        integrity = tool.verify_integrity("combined_v3")
+        integrity = tool.verify_integrity("v3_combined")
         assert integrity["passed"] is True
         
         expected_pnl = sum(50.0 + i * 10 for i in range(10))
@@ -977,15 +977,15 @@ class TestIntegration:
             backup_dir=env["backup_dir"]
         )
         
-        tool.migrate_to_plugin("combined_v3", dry_run=False)
+        tool.migrate_to_plugin("v3_combined", dry_run=False)
         
-        integrity_before = tool.verify_integrity("combined_v3")
+        integrity_before = tool.verify_integrity("v3_combined")
         assert integrity_before["passed"] is True
         
-        success = tool.rollback_migration("combined_v3")
+        success = tool.rollback_migration("v3_combined")
         assert success is True
         
-        integrity_after = tool.verify_integrity("combined_v3")
+        integrity_after = tool.verify_integrity("v3_combined")
         migrated_check = next(
             (c for c in integrity_after["checks"] if c["name"] == "migrated_records"),
             None

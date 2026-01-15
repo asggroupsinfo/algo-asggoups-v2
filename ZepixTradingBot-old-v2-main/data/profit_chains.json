@@ -1,0 +1,47 @@
+{
+  "chains": {
+    "combined_v3": {
+      "chain_001": {
+        "chain_id": "chain_001",
+        "plugin_id": "combined_v3",
+        "symbol": "EURUSD",
+        "direction": "BUY",
+        "level": 0,
+        "orders_in_level": 1,
+        "orders_booked": 0,
+        "total_profit": 0.0,
+        "status": "cancelled",
+        "created_at": "2026-01-15T13:24:26.481921",
+        "metadata": {
+          "cancel_reason": "manual",
+          "cancelled_at": "2026-01-15T13:24:26.481926"
+        }
+      },
+      "chain_combined_v3_order_b_001_1768483466": {
+        "chain_id": "chain_combined_v3_order_b_001_1768483466",
+        "plugin_id": "combined_v3",
+        "symbol": "EURUSD",
+        "direction": "BUY",
+        "level": 0,
+        "orders_in_level": 1,
+        "orders_booked": 0,
+        "total_profit": 0.0,
+        "status": "sl_hunt",
+        "created_at": "2026-01-15T13:24:26.504898",
+        "metadata": {}
+      }
+    }
+  },
+  "order_to_chain": {
+    "order_b_001": "chain_combined_v3_order_b_001_1768483466"
+  },
+  "stats": {
+    "total_chains_created": 56,
+    "total_chains_completed": 8,
+    "total_profit_booked": 1848.0,
+    "total_orders_booked": 264,
+    "sl_hunts_triggered": 3,
+    "last_reset": "2026-01-15T12:28:07.452717"
+  },
+  "saved_at": "2026-01-15T13:24:26.505203"
+}

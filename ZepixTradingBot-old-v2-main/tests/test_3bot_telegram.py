@@ -454,7 +454,7 @@ class TestSuccessCriteria:
     def test_criterion_7_plugins_can_send_notifications(self):
         """Criterion 7: Plugins send notifications through new system"""
         # This is verified by the existence of notification methods in plugin
-        from src.logic_plugins.combined_v3.plugin import CombinedV3Plugin
+        from src.logic_plugins.v3_combined.plugin import CombinedV3Plugin
         
         # Verify plugin has notification methods
         assert hasattr(CombinedV3Plugin, '_send_notification')

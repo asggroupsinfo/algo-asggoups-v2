@@ -10,6 +10,6 @@ Version: 1.0.0
 Date: 2026-01-14
 """
 
-from .plugin import PriceAction15MPlugin
+from .plugin import V6PriceAction15mPlugin
 
-__all__ = ['PriceAction15MPlugin']
+__all__ = ['V6PriceAction15mPlugin']

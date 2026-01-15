@@ -189,11 +189,11 @@ class TestSQLSchemas:
             cursor.execute("SELECT plugin_id FROM plugins_registry")
             plugins = [row[0] for row in cursor.fetchall()]
             
-            assert 'combined_v3' in plugins
-            assert 'price_action_1m' in plugins
-            assert 'price_action_5m' in plugins
-            assert 'price_action_15m' in plugins
-            assert 'price_action_1h' in plugins
+            assert 'v3_combined' in plugins
+            assert 'v6_price_action_1m' in plugins
+            assert 'v6_price_action_5m' in plugins
+            assert 'v6_price_action_15m' in plugins
+            assert 'v6_price_action_1h' in plugins
             
             conn.close()
         finally:
@@ -234,7 +234,7 @@ class TestJSONConfigs:
         with open(config_path, 'r') as f:
             config = json.load(f)
         
-        assert config['plugin_id'] == 'combined_v3'
+        assert config['plugin_id'] == 'v3_combined'
         assert config['metadata']['category'] == 'V3_COMBINED'
         assert 'settings' in config
         assert 'database' in config
@@ -245,7 +245,7 @@ class TestJSONConfigs:
         with open(config_path, 'r') as f:
             config = json.load(f)
         
-        assert config['plugin_id'] == 'price_action_1m'
+        assert config['plugin_id'] == 'v6_price_action_1m'
         assert config['metadata']['category'] == 'V6_PRICE_ACTION'
         assert config['settings']['order_routing'] == 'ORDER_B_ONLY'
     
@@ -255,7 +255,7 @@ class TestJSONConfigs:
         with open(config_path, 'r') as f:
             config = json.load(f)
         
-        assert config['plugin_id'] == 'price_action_5m'
+        assert config['plugin_id'] == 'v6_price_action_5m'
         assert config['settings']['order_routing'] == 'DUAL_ORDERS'
     
     def test_price_action_15m_config_is_valid_json(self):
@@ -264,7 +264,7 @@ class TestJSONConfigs:
         with open(config_path, 'r') as f:
             config = json.load(f)
         
-        assert config['plugin_id'] == 'price_action_15m'
+        assert config['plugin_id'] == 'v6_price_action_15m'
         assert config['settings']['order_routing'] == 'ORDER_A_ONLY'
     
     def test_price_action_1h_config_is_valid_json(self):
@@ -273,7 +273,7 @@ class TestJSONConfigs:
         with open(config_path, 'r') as f:
             config = json.load(f)
         
-        assert config['plugin_id'] == 'price_action_1h'
+        assert config['plugin_id'] == 'v6_price_action_1h'
         assert config['settings']['order_routing'] == 'ORDER_A_ONLY'
     
     def test_all_configs_have_required_fields(self):

@@ -187,8 +187,8 @@ class MockTradingEngine:
                 'tier_3': {'daily_loss_limit': 500.0, 'max_total_loss': 2000.0}
             },
             'plugins': {
-                'combined_v3': {'max_lot_size': 1.0, 'risk_percentage': 1.5},
-                'price_action_1m': {'max_lot_size': 0.5, 'risk_percentage': 1.0}
+                'v3_combined': {'max_lot_size': 1.0, 'risk_percentage': 1.5},
+                'v6_price_action_1m': {'max_lot_size': 0.5, 'risk_percentage': 1.0}
             }
         }
         self.mt5_client = MockMT5Client()
@@ -238,9 +238,9 @@ class TestServiceAPIInitialization:
     def test_init_with_plugin_id(self, mock_trading_engine):
         """Test initialization with plugin_id"""
         from src.core.plugin_system.service_api import ServiceAPI
-        api = ServiceAPI(mock_trading_engine, plugin_id="combined_v3")
+        api = ServiceAPI(mock_trading_engine, plugin_id="v3_combined")
         
-        assert api.plugin_id == "combined_v3"
+        assert api.plugin_id == "v3_combined"
         assert api._engine == mock_trading_engine
         assert api._mt5 == mock_trading_engine.mt5_client
         assert api._risk == mock_trading_engine.risk_manager
@@ -692,19 +692,19 @@ class TestPluginIsolation:
         """Test that different plugins have different IDs"""
         from src.core.plugin_system.service_api import ServiceAPI
         
-        api_v3 = ServiceAPI(mock_trading_engine, plugin_id="combined_v3")
-        api_v6 = ServiceAPI(mock_trading_engine, plugin_id="price_action_1m")
+        api_v3 = ServiceAPI(mock_trading_engine, plugin_id="v3_combined")
+        api_v6 = ServiceAPI(mock_trading_engine, plugin_id="v6_price_action_1m")
         
         assert api_v3.plugin_id != api_v6.plugin_id
-        assert api_v3.plugin_id == "combined_v3"
-        assert api_v6.plugin_id == "price_action_1m"
+        assert api_v3.plugin_id == "v3_combined"
+        assert api_v6.plugin_id == "v6_price_action_1m"
     
     def test_plugin_config_isolation(self, mock_trading_engine):
         """Test that plugins get their own config"""
         from src.core.plugin_system.service_api import ServiceAPI
         
-        api_v3 = ServiceAPI(mock_trading_engine, plugin_id="combined_v3")
-        api_v6 = ServiceAPI(mock_trading_engine, plugin_id="price_action_1m")
+        api_v3 = ServiceAPI(mock_trading_engine, plugin_id="v3_combined")
+        api_v6 = ServiceAPI(mock_trading_engine, plugin_id="v6_price_action_1m")
         
         v3_max_lot = api_v3.get_plugin_config("max_lot_size")
         v6_max_lot = api_v6.get_plugin_config("max_lot_size")
@@ -902,7 +902,7 @@ class TestConfiguration:
         """Test plugin-specific config retrieval"""
         from src.core.plugin_system.service_api import ServiceAPI
         
-        api = ServiceAPI(mock_trading_engine, plugin_id="combined_v3")
+        api = ServiceAPI(mock_trading_engine, plugin_id="v3_combined")
         
         max_lot = api.get_plugin_config("max_lot_size")
         risk_pct = api.get_plugin_config("risk_percentage")

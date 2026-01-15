@@ -39,16 +39,16 @@ class DatabaseService:
     
     # Database paths per plugin type
     DATABASE_PATHS = {
-        'combined_v3': 'data/zepix_combined_v3.db',
-        'price_action_1m': 'data/zepix_price_action.db',
-        'price_action_5m': 'data/zepix_price_action.db',
-        'price_action_15m': 'data/zepix_price_action.db',
-        'price_action_1h': 'data/zepix_price_action.db',
+        'v3_combined': 'data/zepix_combined_v3.db',
+        'v6_price_action_1m': 'data/zepix_price_action.db',
+        'v6_price_action_5m': 'data/zepix_price_action.db',
+        'v6_price_action_15m': 'data/zepix_price_action.db',
+        'v6_price_action_1h': 'data/zepix_price_action.db',
     }
     
     # Schema files per plugin type
     SCHEMA_FILES = {
-        'combined_v3': 'data/schemas/combined_v3_schema.sql',
+        'v3_combined': 'data/schemas/combined_v3_schema.sql',
         'price_action': 'data/schemas/price_action_v6_schema.sql',
     }
     
@@ -71,8 +71,8 @@ class DatabaseService:
     
     def _get_schema_path(self, plugin_id: str) -> Optional[Path]:
         """Get schema file path for a plugin"""
-        if plugin_id == 'combined_v3':
-            schema_file = self.SCHEMA_FILES.get('combined_v3')
+        if plugin_id == 'v3_combined':
+            schema_file = self.SCHEMA_FILES.get('v3_combined')
         elif plugin_id.startswith('price_action'):
             schema_file = self.SCHEMA_FILES.get('price_action')
         else:

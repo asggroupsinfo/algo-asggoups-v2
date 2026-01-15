@@ -43,7 +43,7 @@ from .trend_validator import V3TrendValidator
 logger = logging.getLogger(__name__)
 
 
-class CombinedV3Plugin(BaseLogicPlugin, ISignalProcessor, IOrderExecutor, IReentryCapable, IDualOrderCapable, IProfitBookingCapable, IAutonomousCapable, IDatabaseCapable):
+class V3CombinedPlugin(BaseLogicPlugin, ISignalProcessor, IOrderExecutor, IReentryCapable, IDualOrderCapable, IProfitBookingCapable, IAutonomousCapable, IDatabaseCapable):
     """
     V3 Combined Logic Plugin - Handles all 12 V3 signal types.
     
@@ -97,7 +97,7 @@ class CombinedV3Plugin(BaseLogicPlugin, ISignalProcessor, IOrderExecutor, IReent
         self._active_shields: Dict[str, ReverseShieldStatus] = {}  # trade_id -> shield_status
         
         self.logger.info(
-            f"CombinedV3Plugin initialized | "
+            f"V3CombinedPlugin initialized | "
             f"Shadow Mode: {self.shadow_mode} | "
             f"12 signals ready | Re-entry enabled | Dual orders enabled | Profit booking enabled"
         )

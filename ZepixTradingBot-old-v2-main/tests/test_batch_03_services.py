@@ -56,7 +56,7 @@ class TestOrderExecutionService:
     async def test_place_dual_orders_v3(self, service, mock_mt5):
         """Test V3 dual order placement with different SLs"""
         order_a, order_b = await service.place_dual_orders_v3(
-            plugin_id='combined_v3',
+            plugin_id='v3_combined',
             symbol='XAUUSD',
             direction='BUY',
             lot_size_total=0.10,
@@ -79,7 +79,7 @@ class TestOrderExecutionService:
     async def test_place_single_order_a(self, service, mock_mt5):
         """Test V6 Order A placement (15M/1H plugins)"""
         ticket = await service.place_single_order_a(
-            plugin_id='price_action_15m',
+            plugin_id='v6_price_action_15m',
             symbol='XAUUSD',
             direction='BUY',
             lot_size=0.10,
@@ -95,7 +95,7 @@ class TestOrderExecutionService:
     async def test_place_single_order_b(self, service, mock_mt5):
         """Test V6 Order B placement (1M plugin - scalping)"""
         ticket = await service.place_single_order_b(
-            plugin_id='price_action_1m',
+            plugin_id='v6_price_action_1m',
             symbol='XAUUSD',
             direction='BUY',
             lot_size=0.05,
@@ -111,7 +111,7 @@ class TestOrderExecutionService:
     async def test_place_dual_orders_v6(self, service, mock_mt5):
         """Test V6 dual order placement with same SL"""
         order_a, order_b = await service.place_dual_orders_v6(
-            plugin_id='price_action_5m',
+            plugin_id='v6_price_action_5m',
             symbol='XAUUSD',
             direction='BUY',
             lot_size_total=0.10,
@@ -132,7 +132,7 @@ class TestOrderExecutionService:
     async def test_modify_order(self, service, mock_mt5):
         """Test order modification"""
         result = await service.modify_order(
-            plugin_id='combined_v3',
+            plugin_id='v3_combined',
             order_id=12345,
             new_sl=2029.00,
             new_tp=2036.00
@@ -145,7 +145,7 @@ class TestOrderExecutionService:
     async def test_close_position(self, service, mock_mt5):
         """Test position close"""
         result = await service.close_position(
-            plugin_id='combined_v3',
+            plugin_id='v3_combined',
             order_id=12345,
             reason='TP Hit'
         )

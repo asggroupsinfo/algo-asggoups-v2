@@ -24,7 +24,7 @@ from src.core.zepix_v6_alert import ZepixV6Alert, parse_v6_from_dict
 logger = logging.getLogger(__name__)
 
 
-class PriceAction1HPlugin(BaseLogicPlugin, ISignalProcessor, IOrderExecutor):
+class V6PriceAction1hPlugin(BaseLogicPlugin, ISignalProcessor, IOrderExecutor):
     """
     V6 1-Hour Swing Plugin
     
@@ -64,7 +64,7 @@ class PriceAction1HPlugin(BaseLogicPlugin, ISignalProcessor, IOrderExecutor):
         }
         
         self.logger.info(
-            f"PriceAction1HPlugin initialized | "
+            f"V6PriceAction1hPlugin initialized | "
             f"Shadow Mode: {self.shadow_mode} | "
             f"Order Routing: {self.ORDER_ROUTING}"
         )

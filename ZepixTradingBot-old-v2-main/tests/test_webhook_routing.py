@@ -40,7 +40,7 @@ class TestSignalParser:
         assert signal['signal_type'] == 'BUY'
         assert signal['symbol'] == 'EURUSD'
         assert signal['timeframe'] == '5m'  # LOGIC1 = 5m
-        assert signal['plugin_hint'] == 'combined_v3'
+        assert signal['plugin_hint'] == 'v3_combined'
         assert signal['requires_dual_order'] == True
     
     def test_parse_v3_alert_with_type(self):
@@ -79,7 +79,7 @@ class TestSignalParser:
         assert signal['signal_type'] == 'TRENDLINE_BREAK'
         assert signal['symbol'] == 'GBPUSD'
         assert signal['timeframe'] == '15m'
-        assert signal['plugin_hint'] == 'price_action_15m'
+        assert signal['plugin_hint'] == 'v6_price_action_15m'
         assert signal['requires_dual_order'] == False
     
     def test_parse_v6_alert_with_type(self):
@@ -97,7 +97,7 @@ class TestSignalParser:
         assert signal is not None
         assert signal['strategy'] == 'V6_PRICE_ACTION'
         assert signal['timeframe'] == '1m'
-        assert signal['plugin_hint'] == 'price_action_1m'
+        assert signal['plugin_hint'] == 'v6_price_action_1m'
     
     def test_detect_v3_from_logic(self):
         """Test V3 detection from logic field"""
@@ -222,14 +222,14 @@ class TestPluginRouter:
         """Test routing by explicit plugin hint"""
         mock_plugin = MagicMock()
         mock_plugin.enabled = True
-        mock_plugin.plugin_id = 'combined_v3'
+        mock_plugin.plugin_id = 'v3_combined'
         mock_plugin.process_signal = AsyncMock(return_value={'status': 'success'})
         mock_registry.get_plugin.return_value = mock_plugin
         
-        signal = {'strategy': 'V3_COMBINED', 'plugin_hint': 'combined_v3'}
+        signal = {'strategy': 'V3_COMBINED', 'plugin_hint': 'v3_combined'}
         result = await router.route_signal(signal)
         
-        mock_registry.get_plugin.assert_called_with('combined_v3')
+        mock_registry.get_plugin.assert_called_with('v3_combined')
         mock_plugin.process_signal.assert_called_once_with(signal)
         assert result == {'status': 'success'}
     
@@ -237,7 +237,7 @@ class TestPluginRouter:
     async def test_route_by_strategy_match(self, router, mock_registry):
         """Test routing by strategy match"""
         mock_plugin = MagicMock()
-        mock_plugin.plugin_id = 'combined_v3'
+        mock_plugin.plugin_id = 'v3_combined'
         mock_plugin.process_signal = AsyncMock(return_value={'status': 'success'})
         mock_registry.get_plugin.return_value = None  # No hint match
         mock_registry.get_plugin_for_signal.return_value = mock_plugin
@@ -265,11 +265,11 @@ class TestPluginRouter:
         """Test plugin failure is tracked"""
         mock_plugin = MagicMock()
         mock_plugin.enabled = True
-        mock_plugin.plugin_id = 'combined_v3'
+        mock_plugin.plugin_id = 'v3_combined'
         mock_plugin.process_signal = AsyncMock(side_effect=Exception("Test error"))
         mock_registry.get_plugin.return_value = mock_plugin
         
-        signal = {'strategy': 'V3_COMBINED', 'plugin_hint': 'combined_v3'}
+        signal = {'strategy': 'V3_COMBINED', 'plugin_hint': 'v3_combined'}
         result = await router.route_signal(signal)
         
         assert result['status'] == 'error'
@@ -337,12 +337,12 @@ class TestPluginRouter:
         mock_plugin.get_supported_strategies.return_value = ['V3_COMBINED']
         mock_plugin.get_supported_timeframes.return_value = ['5m', '15m']
         
-        mock_registry._plugins = {'combined_v3': mock_plugin}
+        mock_registry._plugins = {'v3_combined': mock_plugin}
         
         routes = router.get_available_routes()
         
         assert len(routes) == 1
-        assert routes[0]['plugin_id'] == 'combined_v3'
+        assert routes[0]['plugin_id'] == 'v3_combined'
         assert routes[0]['strategies'] == ['V3_COMBINED']
 
 

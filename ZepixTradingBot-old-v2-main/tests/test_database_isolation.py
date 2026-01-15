@@ -36,13 +36,13 @@ class TestDatabaseConfig:
     def test_database_config_creation(self):
         """Test creating a DatabaseConfig"""
         config = DatabaseConfig(
-            plugin_id='combined_v3',
+            plugin_id='v3_combined',
             db_path='data/zepix_combined_v3.db',
             schema_version='1.0.0',
             tables=['trades', 'signals']
         )
         
-        assert config.plugin_id == 'combined_v3'
+        assert config.plugin_id == 'v3_combined'
         assert config.db_path == 'data/zepix_combined_v3.db'
         assert config.schema_version == '1.0.0'
         assert 'trades' in config.tables
@@ -50,7 +50,7 @@ class TestDatabaseConfig:
     def test_database_config_to_dict(self):
         """Test converting DatabaseConfig to dictionary"""
         config = DatabaseConfig(
-            plugin_id='price_action_1m',
+            plugin_id='v6_price_action_1m',
             db_path='data/zepix_price_action.db',
             schema_version='1.0.0',
             tables=['trades']
@@ -58,7 +58,7 @@ class TestDatabaseConfig:
         
         result = config.to_dict()
         
-        assert result['plugin_id'] == 'price_action_1m'
+        assert result['plugin_id'] == 'v6_price_action_1m'
         assert result['db_path'] == 'data/zepix_price_action.db'
 
 
@@ -128,7 +128,7 @@ class TestDatabaseService:
         CREATE TABLE IF NOT EXISTS trades (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             trade_id TEXT,
-            plugin_id TEXT DEFAULT 'combined_v3',
+            plugin_id TEXT DEFAULT 'v3_combined',
             symbol TEXT NOT NULL,
             direction TEXT,
             entry_price REAL,
@@ -139,7 +139,7 @@ class TestDatabaseService:
         CREATE TABLE IF NOT EXISTS signals (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             signal_id TEXT,
-            plugin_id TEXT DEFAULT 'combined_v3',
+            plugin_id TEXT DEFAULT 'v3_combined',
             symbol TEXT NOT NULL,
             signal_type TEXT,
             processed BOOLEAN DEFAULT FALSE,
@@ -153,7 +153,7 @@ class TestDatabaseService:
     @pytest.mark.asyncio
     async def test_get_connection(self, db_service, temp_dir):
         """Test getting database connection"""
-        conn = await db_service.get_connection('combined_v3')
+        conn = await db_service.get_connection('v3_combined')
         
         assert conn is not None
         # Verify database file was created
@@ -164,19 +164,19 @@ class TestDatabaseService:
     async def test_initialize_database(self, db_service, v3_schema):
         """Test initializing database with schema"""
         schema = v3_schema.read_text()
-        result = await db_service.initialize_database('combined_v3', schema)
+        result = await db_service.initialize_database('v3_combined', schema)
         
         assert result is True
-        assert 'combined_v3' in db_service._initialized_dbs
+        assert 'v3_combined' in db_service._initialized_dbs
     
     @pytest.mark.asyncio
     async def test_insert_record(self, db_service, v3_schema):
         """Test inserting a record"""
         schema = v3_schema.read_text()
-        await db_service.initialize_database('combined_v3', schema)
+        await db_service.initialize_database('v3_combined', schema)
         
         record_id = await db_service.insert_record(
-            'combined_v3',
+            'v3_combined',
             'trades',
             {
                 'trade_id': 'TEST001',
@@ -192,18 +192,18 @@ class TestDatabaseService:
     async def test_execute_query(self, db_service, v3_schema):
         """Test executing a query"""
         schema = v3_schema.read_text()
-        await db_service.initialize_database('combined_v3', schema)
+        await db_service.initialize_database('v3_combined', schema)
         
         # Insert test data
         await db_service.insert_record(
-            'combined_v3',
+            'v3_combined',
             'trades',
             {'trade_id': 'TEST001', 'symbol': 'EURUSD', 'direction': 'BUY', 'entry_price': 1.1000}
         )
         
         # Query the data
         rows = await db_service.execute_query(
-            'combined_v3',
+            'v3_combined',
             "SELECT * FROM trades WHERE symbol = ?",
             ('EURUSD',)
         )
@@ -215,18 +215,18 @@ class TestDatabaseService:
     async def test_update_record(self, db_service, v3_schema):
         """Test updating a record"""
         schema = v3_schema.read_text()
-        await db_service.initialize_database('combined_v3', schema)
+        await db_service.initialize_database('v3_combined', schema)
         
         # Insert test data
         await db_service.insert_record(
-            'combined_v3',
+            'v3_combined',
             'trades',
             {'trade_id': 'TEST001', 'symbol': 'EURUSD', 'direction': 'BUY', 'entry_price': 1.1000}
         )
         
         # Update the record
         updated = await db_service.update_record(
-            'combined_v3',
+            'v3_combined',
             'trades',
             {'status': 'closed', 'profit': 50.0},
             {'trade_id': 'TEST001'}
@@ -236,7 +236,7 @@ class TestDatabaseService:
         
         # Verify update
         rows = await db_service.execute_query(
-            'combined_v3',
+            'v3_combined',
             "SELECT * FROM trades WHERE trade_id = ?",
             ('TEST001',)
         )
@@ -247,34 +247,34 @@ class TestDatabaseService:
     async def test_count_records(self, db_service, v3_schema):
         """Test counting records"""
         schema = v3_schema.read_text()
-        await db_service.initialize_database('combined_v3', schema)
+        await db_service.initialize_database('v3_combined', schema)
         
         # Insert test data
         for i in range(5):
             await db_service.insert_record(
-                'combined_v3',
+                'v3_combined',
                 'trades',
                 {'trade_id': f'TEST{i:03d}', 'symbol': 'EURUSD', 'direction': 'BUY', 'entry_price': 1.1000}
             )
         
-        count = await db_service.count_records('combined_v3', 'trades')
+        count = await db_service.count_records('v3_combined', 'trades')
         
         assert count == 5
     
     @pytest.mark.asyncio
     async def test_close_connection(self, db_service, temp_dir):
         """Test closing database connection"""
-        await db_service.get_connection('combined_v3')
-        assert 'combined_v3' in db_service._connections
+        await db_service.get_connection('v3_combined')
+        assert 'v3_combined' in db_service._connections
         
-        await db_service.close_connection('combined_v3')
-        assert 'combined_v3' not in db_service._connections
+        await db_service.close_connection('v3_combined')
+        assert 'v3_combined' not in db_service._connections
     
     @pytest.mark.asyncio
     async def test_close_all(self, db_service, temp_dir):
         """Test closing all connections"""
-        await db_service.get_connection('combined_v3')
-        await db_service.get_connection('price_action_1m')
+        await db_service.get_connection('v3_combined')
+        await db_service.get_connection('v6_price_action_1m')
         
         await db_service.close_all()
         
@@ -309,7 +309,7 @@ class TestDatabaseIsolation:
         CREATE TABLE IF NOT EXISTS trades (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             trade_id TEXT,
-            plugin_id TEXT DEFAULT 'combined_v3',
+            plugin_id TEXT DEFAULT 'v3_combined',
             symbol TEXT NOT NULL,
             profit REAL DEFAULT 0,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -334,53 +334,53 @@ class TestDatabaseIsolation:
     async def test_v3_v6_isolation(self, db_service, setup_schemas):
         """Test that V3 and V6 use separate databases"""
         # Initialize both databases
-        await db_service.initialize_database('combined_v3', setup_schemas['v3'])
-        await db_service.initialize_database('price_action_1m', setup_schemas['v6'])
+        await db_service.initialize_database('v3_combined', setup_schemas['v3'])
+        await db_service.initialize_database('v6_price_action_1m', setup_schemas['v6'])
         
         # Insert V3 trade
         await db_service.insert_record(
-            'combined_v3',
+            'v3_combined',
             'trades',
             {'trade_id': 'V3_001', 'symbol': 'EURUSD', 'profit': 100.0}
         )
         
         # Insert V6 trade
         await db_service.insert_record(
-            'price_action_1m',
+            'v6_price_action_1m',
             'trades',
-            {'trade_id': 'V6_001', 'plugin_id': 'price_action_1m', 'symbol': 'GBPUSD', 'timeframe': '1m', 'profit': 50.0}
+            {'trade_id': 'V6_001', 'plugin_id': 'v6_price_action_1m', 'symbol': 'GBPUSD', 'timeframe': '1m', 'profit': 50.0}
         )
         
         # Verify V3 database only has V3 trade
-        v3_trades = await db_service.execute_query('combined_v3', "SELECT * FROM trades")
+        v3_trades = await db_service.execute_query('v3_combined', "SELECT * FROM trades")
         assert len(v3_trades) == 1
         assert v3_trades[0]['trade_id'] == 'V3_001'
         
         # Verify V6 database only has V6 trade
-        v6_trades = await db_service.execute_query('price_action_1m', "SELECT * FROM trades")
+        v6_trades = await db_service.execute_query('v6_price_action_1m', "SELECT * FROM trades")
         assert len(v6_trades) == 1
         assert v6_trades[0]['trade_id'] == 'V6_001'
     
     @pytest.mark.asyncio
     async def test_no_cross_contamination(self, db_service, setup_schemas):
         """Test that data doesn't leak between databases"""
-        await db_service.initialize_database('combined_v3', setup_schemas['v3'])
-        await db_service.initialize_database('price_action_1m', setup_schemas['v6'])
+        await db_service.initialize_database('v3_combined', setup_schemas['v3'])
+        await db_service.initialize_database('v6_price_action_1m', setup_schemas['v6'])
         
         # Insert many V3 trades
         for i in range(10):
             await db_service.insert_record(
-                'combined_v3',
+                'v3_combined',
                 'trades',
                 {'trade_id': f'V3_{i:03d}', 'symbol': 'EURUSD', 'profit': i * 10}
             )
         
         # V6 database should still be empty
-        v6_count = await db_service.count_records('price_action_1m', 'trades')
+        v6_count = await db_service.count_records('v6_price_action_1m', 'trades')
         assert v6_count == 0
         
         # V3 database should have all trades
-        v3_count = await db_service.count_records('combined_v3', 'trades')
+        v3_count = await db_service.count_records('v3_combined', 'trades')
         assert v3_count == 10
 
 
@@ -421,32 +421,32 @@ class TestCrossPluginAggregation:
     async def test_aggregate_trades(self, db_service, setup_schemas):
         """Test aggregating trades across plugins"""
         # Initialize databases
-        await db_service.initialize_database('combined_v3', setup_schemas)
-        await db_service.initialize_database('price_action_1m', setup_schemas)
+        await db_service.initialize_database('v3_combined', setup_schemas)
+        await db_service.initialize_database('v6_price_action_1m', setup_schemas)
         
         # Insert V3 trades
         for i in range(5):
             await db_service.insert_record(
-                'combined_v3',
+                'v3_combined',
                 'trades',
-                {'trade_id': f'V3_{i}', 'plugin_id': 'combined_v3', 'symbol': 'EURUSD', 'profit': 10.0}
+                {'trade_id': f'V3_{i}', 'plugin_id': 'v3_combined', 'symbol': 'EURUSD', 'profit': 10.0}
             )
         
         # Insert V6 trades (note: all price_action_* share same DB)
         for i in range(3):
             await db_service.insert_record(
-                'price_action_1m',
+                'v6_price_action_1m',
                 'trades',
-                {'trade_id': f'V6_{i}', 'plugin_id': 'price_action_1m', 'symbol': 'GBPUSD', 'profit': 20.0}
+                {'trade_id': f'V6_{i}', 'plugin_id': 'v6_price_action_1m', 'symbol': 'GBPUSD', 'profit': 20.0}
             )
         
         # Aggregate
         results = await db_service.aggregate_trades()
         
         # Verify aggregation - V3 has 5 trades
-        assert 'combined_v3' in results['by_plugin']
-        assert results['by_plugin']['combined_v3']['trades'] == 5
-        assert results['by_plugin']['combined_v3']['profit'] == 50.0
+        assert 'v3_combined' in results['by_plugin']
+        assert results['by_plugin']['v3_combined']['trades'] == 5
+        assert results['by_plugin']['v3_combined']['profit'] == 50.0
         
         # V6 plugins share same DB, so each sees the 3 trades
         # Total includes V3 (5) + V6 trades counted per plugin (3 * 4 = 12 for 4 V6 plugins)
@@ -578,21 +578,21 @@ class TestV3PluginDatabaseIntegration:
     def test_v3_plugin_database_config(self):
         """Test V3 plugin returns correct database config"""
         # Mock the plugin
-        from src.logic_plugins.combined_v3.plugin import CombinedV3Plugin
+        from src.logic_plugins.v3_combined.plugin import V3CombinedPlugin
         
         # Create mock service_api
         mock_service_api = Mock()
         mock_service_api.database_service = None
         
-        plugin = CombinedV3Plugin(
-            plugin_id='combined_v3',
+        plugin = V3CombinedPlugin(
+            plugin_id='v3_combined',
             config={'shadow_mode': True},
             service_api=mock_service_api
         )
         
         config = plugin.get_database_config()
         
-        assert config.plugin_id == 'combined_v3'
+        assert config.plugin_id == 'v3_combined'
         assert config.db_path == 'data/zepix_combined_v3.db'
         assert 'combined_v3_trades' in config.tables
 

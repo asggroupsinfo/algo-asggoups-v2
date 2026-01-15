@@ -1,12 +1,12 @@
 """
-V6 Price Action 5M Plugin - Momentum Logic
+V6 Price Action 1M Plugin - Scalping Logic
 
-5-Minute Momentum Strategy:
-- Catch intraday breakouts and rapid moves
-- DUAL ORDERS (Order A + Order B)
-- Filters: ADX >= 25, Confidence >= 70, 15M Alignment
-- Risk Multiplier: 1.0x (standard size)
-- Requires 15M timeframe alignment
+1-Minute Scalping Strategy:
+- Ultra-fast scalping for quick 10-20 pip moves
+- ORDER B ONLY (no main orders)
+- Strict filters: ADX > 20, Confidence >= 80, Spread < 2 pips
+- Risk Multiplier: 0.5x (half size due to noise)
+- Trend Pulse: IGNORED (1m too fast for alignment)
 
 Version: 1.0.0
 Date: 2026-01-14
@@ -24,33 +24,33 @@ from src.core.zepix_v6_alert import ZepixV6Alert, parse_v6_from_dict
 logger = logging.getLogger(__name__)
 
 
-class PriceAction5MPlugin(BaseLogicPlugin, ISignalProcessor, IOrderExecutor):
+class V6PriceAction1mPlugin(BaseLogicPlugin, ISignalProcessor, IOrderExecutor):
     """
-    V6 5-Minute Momentum Plugin
+    V6 1-Minute Scalping Plugin
     
     Strategy Profile:
-    - Type: Momentum Trading
-    - Goal: Catch intraday breakouts and rapid moves
-    - Risk Multiplier: 1.0x
-    - Order Routing: DUAL ORDERS (Order A + Order B)
+    - Type: Hyper-Scalping
+    - Goal: Capture quick 10-20 pip moves
+    - Risk Multiplier: 0.5x
+    - Order Routing: ORDER B ONLY
     
     Entry Filters:
-    - ADX >= 25 (need proven momentum)
-    - Confidence >= 70 (standard threshold)
-    - 15M Alignment required (must align with immediate higher TF)
-    - Trend Pulse alignment checked
+    - ADX > 20 (avoid choppy markets)
+    - Confidence >= 80 (high confidence required for 1m noise)
+    - Spread < 2 pips (spread kills scalping profit)
+    - Trend Pulse: IGNORED (1m too fast)
     """
     
-    TIMEFRAME = "5"
-    ORDER_ROUTING = "DUAL_ORDERS"
-    RISK_MULTIPLIER = 1.0
+    TIMEFRAME = "1"
+    ORDER_ROUTING = "ORDER_B_ONLY"
+    RISK_MULTIPLIER = 0.5
     
-    ADX_THRESHOLD = 25
-    CONFIDENCE_THRESHOLD = 70
-    REQUIRE_15M_ALIGNMENT = True
+    ADX_THRESHOLD = 20
+    CONFIDENCE_THRESHOLD = 80
+    MAX_SPREAD_PIPS = 2.0
     
     def __init__(self, plugin_id: str, config: Dict[str, Any], service_api):
-        """Initialize the 5M Momentum Plugin"""
+        """Initialize the 1M Scalping Plugin"""
         super().__init__(plugin_id, config, service_api)
         
         self._load_plugin_config()
@@ -66,16 +66,16 @@ class PriceAction5MPlugin(BaseLogicPlugin, ISignalProcessor, IOrderExecutor):
         }
         
         self.logger.info(
-            f"PriceAction5MPlugin initialized | "
+            f"V6PriceAction1mPlugin initialized | "
             f"Shadow Mode: {self.shadow_mode} | "
             f"Order Routing: {self.ORDER_ROUTING}"
         )
     
     def _load_plugin_config(self):
-        """Load plugin configuration"""
+        """Load plugin configuration from config.json or config/plugins/"""
         config_paths = [
             os.path.join(os.path.dirname(__file__), "config.json"),
-            os.path.join(os.path.dirname(__file__), "..", "..", "..", "config", "plugins", "price_action_5m_config.json")
+            os.path.join(os.path.dirname(__file__), "..", "..", "..", "config", "plugins", "price_action_1m_config.json")
         ]
         
         self.plugin_config = {}
@@ -97,7 +97,7 @@ class PriceAction5MPlugin(BaseLogicPlugin, ISignalProcessor, IOrderExecutor):
         
         self.ADX_THRESHOLD = entry_conditions.get("adx_threshold", self.ADX_THRESHOLD)
         self.CONFIDENCE_THRESHOLD = entry_conditions.get("confidence_threshold", self.CONFIDENCE_THRESHOLD)
-        self.REQUIRE_15M_ALIGNMENT = entry_conditions.get("require_15m_alignment", self.REQUIRE_15M_ALIGNMENT)
+        self.MAX_SPREAD_PIPS = entry_conditions.get("max_spread_pips", self.MAX_SPREAD_PIPS)
         self.RISK_MULTIPLIER = risk_mgmt.get("risk_multiplier", self.RISK_MULTIPLIER)
     
     def _load_metadata(self) -> Dict[str, Any]:
@@ -105,8 +105,8 @@ class PriceAction5MPlugin(BaseLogicPlugin, ISignalProcessor, IOrderExecutor):
         return {
             "version": "1.0.0",
             "author": "Zepix Team",
-            "description": "V6 5M Momentum - DUAL ORDERS with 15M alignment",
-            "timeframe": "5m",
+            "description": "V6 1M Scalping - ORDER B ONLY with strict filters",
+            "timeframe": "1m",
             "order_routing": self.ORDER_ROUTING,
             "supported_signals": [
                 "BULLISH_ENTRY",
@@ -118,14 +118,14 @@ class PriceAction5MPlugin(BaseLogicPlugin, ISignalProcessor, IOrderExecutor):
     
     async def process_entry_signal(self, alert) -> Dict[str, Any]:
         """
-        Process V6 5M entry signal.
+        Process V6 1M entry signal.
         
         Flow:
         1. Parse alert to ZepixV6Alert
-        2. Validate timeframe (must be "5")
-        3. Apply filters (ADX, Confidence, 15M Alignment)
-        4. Calculate lot size (1.0x multiplier)
-        5. Place DUAL ORDERS (Order A + Order B)
+        2. Validate timeframe (must be "1")
+        3. Apply filters (ADX, Confidence, Spread)
+        4. Calculate lot size (0.5x multiplier)
+        5. Place ORDER B ONLY
         
         Args:
             alert: Alert data (dict or ZepixV6Alert)
@@ -153,24 +153,24 @@ class PriceAction5MPlugin(BaseLogicPlugin, ISignalProcessor, IOrderExecutor):
             
             lot_size = await self._calculate_lot_size(v6_alert)
             
-            result = await self._place_dual_orders(v6_alert, lot_size)
+            result = await self._place_order_b(v6_alert, lot_size)
             
             if result.get("status") == "success":
-                self._stats["trades_placed"] += 2
+                self._stats["trades_placed"] += 1
             
             return result
             
         except Exception as e:
-            self.logger.error(f"[5M Entry Error] {e}")
+            self.logger.error(f"[1M Entry Error] {e}")
             import traceback
             traceback.print_exc()
             return {"status": "error", "message": str(e)}
     
     async def process_exit_signal(self, alert) -> Dict[str, Any]:
         """
-        Process V6 5M exit signal.
+        Process V6 1M exit signal.
         
-        5M exits close 80%, leave 20% runner if in profit.
+        1M exits are IMMEDIATE - close all positions fast.
         
         Args:
             alert: Exit alert data
@@ -184,7 +184,7 @@ class PriceAction5MPlugin(BaseLogicPlugin, ISignalProcessor, IOrderExecutor):
             if v6_alert.tf != self.TIMEFRAME:
                 return self._skip_result("wrong_timeframe", f"Expected {self.TIMEFRAME}, got {v6_alert.tf}")
             
-            self.logger.info(f"[5M Exit] {v6_alert.type} | {v6_alert.ticker}")
+            self.logger.info(f"[1M Exit] {v6_alert.type} | {v6_alert.ticker}")
             
             if self.shadow_mode:
                 return await self._process_shadow_exit(v6_alert)
@@ -207,12 +207,16 @@ class PriceAction5MPlugin(BaseLogicPlugin, ISignalProcessor, IOrderExecutor):
             }
             
         except Exception as e:
-            self.logger.error(f"[5M Exit Error] {e}")
+            self.logger.error(f"[1M Exit Error] {e}")
             return {"status": "error", "message": str(e)}
     
     async def process_reversal_signal(self, alert) -> Dict[str, Any]:
         """
-        Process V6 5M reversal signal.
+        Process V6 1M reversal signal.
+        
+        For 1M scalping, reversals are rare but handled as:
+        1. Close all opposite positions
+        2. Enter new direction
         
         Args:
             alert: Reversal alert data
@@ -226,12 +230,13 @@ class PriceAction5MPlugin(BaseLogicPlugin, ISignalProcessor, IOrderExecutor):
             if v6_alert.tf != self.TIMEFRAME:
                 return self._skip_result("wrong_timeframe", f"Expected {self.TIMEFRAME}, got {v6_alert.tf}")
             
-            self.logger.info(f"[5M Reversal] {v6_alert.type} | {v6_alert.ticker}")
+            self.logger.info(f"[1M Reversal] {v6_alert.type} | {v6_alert.ticker}")
             
             if self.shadow_mode:
                 return await self._process_shadow_reversal(v6_alert)
             
             exit_result = await self.process_exit_signal(alert)
+            
             entry_result = await self.process_entry_signal(alert)
             
             return {
@@ -242,17 +247,19 @@ class PriceAction5MPlugin(BaseLogicPlugin, ISignalProcessor, IOrderExecutor):
             }
             
         except Exception as e:
-            self.logger.error(f"[5M Reversal Error] {e}")
+            self.logger.error(f"[1M Reversal Error] {e}")
             return {"status": "error", "message": str(e)}
     
     async def _validate_entry(self, alert: ZepixV6Alert) -> Dict[str, Any]:
         """
-        Validate entry conditions for 5M momentum.
+        Validate entry conditions for 1M scalping.
         
         Filters:
-        1. ADX >= 25 (need proven momentum)
-        2. Confidence >= 70 (standard threshold)
-        3. 15M Alignment (must align with immediate higher TF)
+        1. ADX > 20 (avoid choppy markets)
+        2. Confidence >= 80 (high confidence for 1m noise)
+        3. Spread < 2 pips (spread kills scalping profit)
+        
+        Note: Trend Pulse is IGNORED for 1M (too fast)
         
         Args:
             alert: ZepixV6Alert to validate
@@ -262,27 +269,23 @@ class PriceAction5MPlugin(BaseLogicPlugin, ISignalProcessor, IOrderExecutor):
         """
         if alert.adx is None or alert.adx < self.ADX_THRESHOLD:
             adx_val = alert.adx if alert.adx is not None else "NA"
-            self.logger.info(f"[5M Skip] ADX {adx_val} < {self.ADX_THRESHOLD} (low momentum)")
+            self.logger.info(f"[1M Skip] ADX {adx_val} < {self.ADX_THRESHOLD} (choppy market)")
             return {"valid": False, "reason": "adx_low"}
         
         if alert.conf_score < self.CONFIDENCE_THRESHOLD:
-            self.logger.info(f"[5M Skip] Confidence {alert.conf_score} < {self.CONFIDENCE_THRESHOLD}")
+            self.logger.info(f"[1M Skip] Confidence {alert.conf_score} < {self.CONFIDENCE_THRESHOLD}")
             return {"valid": False, "reason": "confidence_low"}
         
-        if self.REQUIRE_15M_ALIGNMENT:
-            try:
-                is_aligned = await self.service_api.check_pulse_alignment(
-                    symbol=alert.ticker,
-                    direction=alert.direction
-                )
-                if not is_aligned:
-                    self.logger.info(f"[5M Skip] 15M alignment failed for {alert.direction}")
-                    return {"valid": False, "reason": "alignment_failed"}
-            except Exception as e:
-                self.logger.debug(f"[5M] Alignment check skipped: {e}")
+        try:
+            spread = await self.service_api.get_current_spread(alert.ticker)
+            if spread is not None and spread > self.MAX_SPREAD_PIPS:
+                self.logger.info(f"[1M Skip] Spread {spread:.2f} > {self.MAX_SPREAD_PIPS} pips")
+                return {"valid": False, "reason": "spread_high"}
+        except Exception as e:
+            self.logger.debug(f"[1M] Spread check skipped: {e}")
         
         self.logger.info(
-            f"[5M Valid] ADX={alert.adx:.1f}, Conf={alert.conf_score}, "
+            f"[1M Valid] ADX={alert.adx:.1f}, Conf={alert.conf_score}, "
             f"Direction={alert.direction}"
         )
         
@@ -290,9 +293,9 @@ class PriceAction5MPlugin(BaseLogicPlugin, ISignalProcessor, IOrderExecutor):
     
     async def _calculate_lot_size(self, alert: ZepixV6Alert) -> float:
         """
-        Calculate lot size for 5M momentum.
+        Calculate lot size for 1M scalping.
         
-        Uses 1.0x risk multiplier (standard size).
+        Uses 0.5x risk multiplier due to 1M noise.
         
         Args:
             alert: ZepixV6Alert with trade details
@@ -312,92 +315,74 @@ class PriceAction5MPlugin(BaseLogicPlugin, ISignalProcessor, IOrderExecutor):
             
             settings = self.plugin_config.get("settings", {})
             risk_mgmt = settings.get("risk_management", {})
-            max_lot = risk_mgmt.get("max_lot_size", 0.20)
+            max_lot = risk_mgmt.get("max_lot_size", 0.10)
             
             final_lot = min(final_lot, max_lot)
             
-            self.logger.debug(f"[5M Lot] Base={base_lot:.2f}, Final={final_lot:.2f}")
+            self.logger.debug(f"[1M Lot] Base={base_lot:.2f}, Final={final_lot:.2f} (0.5x)")
             
             return final_lot
             
         except Exception as e:
-            self.logger.error(f"[5M Lot Error] {e}")
-            return 0.02
+            self.logger.error(f"[1M Lot Error] {e}")
+            return 0.01
     
-    async def _place_dual_orders(self, alert: ZepixV6Alert, lot_size: float) -> Dict[str, Any]:
+    async def _place_order_b(self, alert: ZepixV6Alert, lot_size: float) -> Dict[str, Any]:
         """
-        Place DUAL ORDERS for 5M momentum.
+        Place ORDER B ONLY for 1M scalping.
         
-        Order A: Targets TP2 (larger move)
-        Order B: Targets TP1 (quick profit)
-        Both use same SL.
+        1M uses only Order B (quick exit order) targeting TP1.
         
         Args:
             alert: ZepixV6Alert with trade details
-            lot_size: Total lot size (split 50/50)
+            lot_size: Calculated lot size
         
         Returns:
             dict: Order execution result
         """
         try:
-            lot_a = lot_size * 0.5
-            lot_b = lot_size * 0.5
-            
-            ticket_a = await self.service_api.place_single_order_a(
+            ticket = await self.service_api.place_single_order_b(
                 plugin_id=self.plugin_id,
                 symbol=alert.ticker,
                 direction=alert.direction,
-                lot_size=lot_a,
-                sl_price=alert.sl,
-                tp_price=alert.tp2,
-                comment=f"{self.plugin_id}_5m_order_a"
-            )
-            
-            ticket_b = await self.service_api.place_single_order_b(
-                plugin_id=self.plugin_id,
-                symbol=alert.ticker,
-                direction=alert.direction,
-                lot_size=lot_b,
+                lot_size=lot_size,
                 sl_price=alert.sl,
                 tp_price=alert.tp1,
-                comment=f"{self.plugin_id}_5m_order_b"
+                comment=f"{self.plugin_id}_1m_scalp"
             )
             
             self.logger.info(
-                f"[5M DUAL] A#{ticket_a} B#{ticket_b} | {alert.ticker} {alert.direction} | "
-                f"Lot A={lot_a:.2f} B={lot_b:.2f} | SL={alert.sl}"
+                f"[1M ORDER B] #{ticket} | {alert.ticker} {alert.direction} | "
+                f"Lot={lot_size:.2f} | SL={alert.sl} | TP1={alert.tp1}"
             )
             
             return {
                 "status": "success",
                 "action": "entry",
-                "order_type": "DUAL_ORDERS",
-                "ticket_a": ticket_a,
-                "ticket_b": ticket_b,
+                "order_type": "ORDER_B_ONLY",
+                "ticket": ticket,
                 "symbol": alert.ticker,
                 "direction": alert.direction,
-                "lot_a": lot_a,
-                "lot_b": lot_b,
+                "lot_size": lot_size,
                 "sl": alert.sl,
-                "tp_a": alert.tp2,
-                "tp_b": alert.tp1
+                "tp": alert.tp1
             }
             
         except Exception as e:
-            self.logger.error(f"[5M Order Error] {e}")
+            self.logger.error(f"[1M Order Error] {e}")
             return {"status": "error", "message": str(e)}
     
     async def _process_shadow_entry(self, alert: ZepixV6Alert) -> Dict[str, Any]:
-        """Process entry in shadow mode"""
+        """Process entry in shadow mode (no real orders)"""
         self.logger.info(
-            f"[5M SHADOW] Entry: {alert.type} | {alert.ticker} {alert.direction} | "
+            f"[1M SHADOW] Entry: {alert.type} | {alert.ticker} {alert.direction} | "
             f"ADX={alert.adx} | Conf={alert.conf_score}"
         )
         
         return {
             "status": "shadow",
             "action": "entry",
-            "order_type": "DUAL_ORDERS",
+            "order_type": "ORDER_B_ONLY",
             "symbol": alert.ticker,
             "direction": alert.direction,
             "adx": alert.adx,
@@ -407,7 +392,7 @@ class PriceAction5MPlugin(BaseLogicPlugin, ISignalProcessor, IOrderExecutor):
     
     async def _process_shadow_exit(self, alert: ZepixV6Alert) -> Dict[str, Any]:
         """Process exit in shadow mode"""
-        self.logger.info(f"[5M SHADOW] Exit: {alert.type} | {alert.ticker}")
+        self.logger.info(f"[1M SHADOW] Exit: {alert.type} | {alert.ticker}")
         
         return {
             "status": "shadow",
@@ -418,7 +403,7 @@ class PriceAction5MPlugin(BaseLogicPlugin, ISignalProcessor, IOrderExecutor):
     
     async def _process_shadow_reversal(self, alert: ZepixV6Alert) -> Dict[str, Any]:
         """Process reversal in shadow mode"""
-        self.logger.info(f"[5M SHADOW] Reversal: {alert.type} | {alert.ticker}")
+        self.logger.info(f"[1M SHADOW] Reversal: {alert.type} | {alert.ticker}")
         
         return {
             "status": "shadow",
@@ -454,7 +439,7 @@ class PriceAction5MPlugin(BaseLogicPlugin, ISignalProcessor, IOrderExecutor):
             "filters": {
                 "adx_threshold": self.ADX_THRESHOLD,
                 "confidence_threshold": self.CONFIDENCE_THRESHOLD,
-                "require_15m_alignment": self.REQUIRE_15M_ALIGNMENT
+                "max_spread_pips": self.MAX_SPREAD_PIPS
             },
             "stats": self._stats
         })
@@ -468,7 +453,7 @@ class PriceAction5MPlugin(BaseLogicPlugin, ISignalProcessor, IOrderExecutor):
     
     def get_supported_timeframes(self) -> List[str]:
         """Return list of timeframes this plugin supports."""
-        return ['5m', '5']
+        return ['1m', '1']
     
     async def can_process_signal(self, signal_data: Dict[str, Any]) -> bool:
         """Check if this plugin can process the given signal."""
@@ -498,9 +483,9 @@ class PriceAction5MPlugin(BaseLogicPlugin, ISignalProcessor, IOrderExecutor):
     async def execute_order(self, order_data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         """Execute an order and return result."""
         try:
-            return await self._place_dual_orders(
+            return await self._place_order_b(
                 self._parse_alert(order_data),
-                order_data.get('lot_size', 0.02)
+                order_data.get('lot_size', 0.01)
             )
         except Exception as e:
             self.logger.error(f"Order execution failed: {e}")

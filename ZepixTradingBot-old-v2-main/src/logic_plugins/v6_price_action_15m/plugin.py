@@ -1,12 +1,12 @@
 """
-V6 Price Action 1M Plugin - Scalping Logic
+V6 Price Action 15M Plugin - Intraday Logic
 
-1-Minute Scalping Strategy:
-- Ultra-fast scalping for quick 10-20 pip moves
-- ORDER B ONLY (no main orders)
-- Strict filters: ADX > 20, Confidence >= 80, Spread < 2 pips
-- Risk Multiplier: 0.5x (half size due to noise)
-- Trend Pulse: IGNORED (1m too fast for alignment)
+15-Minute Intraday Strategy:
+- Core intraday trading for 50-100 pip moves
+- ORDER A ONLY (main order targeting TP2)
+- Requires Market State check (avoid CHOPPY/SIDEWAYS)
+- Requires Trend Pulse alignment
+- Risk Multiplier: 1.0x (standard size)
 
 Version: 1.0.0
 Date: 2026-01-14
@@ -24,33 +24,32 @@ from src.core.zepix_v6_alert import ZepixV6Alert, parse_v6_from_dict
 logger = logging.getLogger(__name__)
 
 
-class PriceAction1MPlugin(BaseLogicPlugin, ISignalProcessor, IOrderExecutor):
+class V6PriceAction15mPlugin(BaseLogicPlugin, ISignalProcessor, IOrderExecutor):
     """
-    V6 1-Minute Scalping Plugin
+    V6 15-Minute Intraday Plugin
     
     Strategy Profile:
-    - Type: Hyper-Scalping
-    - Goal: Capture quick 10-20 pip moves
-    - Risk Multiplier: 0.5x
-    - Order Routing: ORDER B ONLY
+    - Type: Intraday Trading
+    - Goal: Capture 50-100 pip intraday moves
+    - Risk Multiplier: 1.0x
+    - Order Routing: ORDER A ONLY
     
     Entry Filters:
-    - ADX > 20 (avoid choppy markets)
-    - Confidence >= 80 (high confidence required for 1m noise)
-    - Spread < 2 pips (spread kills scalping profit)
-    - Trend Pulse: IGNORED (1m too fast)
+    - Market State check (avoid CHOPPY/SIDEWAYS)
+    - Trend Pulse alignment required
+    - Confidence >= 60 (standard threshold)
     """
     
-    TIMEFRAME = "1"
-    ORDER_ROUTING = "ORDER_B_ONLY"
-    RISK_MULTIPLIER = 0.5
+    TIMEFRAME = "15"
+    ORDER_ROUTING = "ORDER_A_ONLY"
+    RISK_MULTIPLIER = 1.0
     
-    ADX_THRESHOLD = 20
-    CONFIDENCE_THRESHOLD = 80
-    MAX_SPREAD_PIPS = 2.0
+    CONFIDENCE_THRESHOLD = 60
+    REQUIRE_PULSE_ALIGNMENT = True
+    AVOID_MARKET_STATES = ["CHOPPY", "SIDEWAYS"]
     
     def __init__(self, plugin_id: str, config: Dict[str, Any], service_api):
-        """Initialize the 1M Scalping Plugin"""
+        """Initialize the 15M Intraday Plugin"""
         super().__init__(plugin_id, config, service_api)
         
         self._load_plugin_config()
@@ -66,16 +65,16 @@ class PriceAction1MPlugin(BaseLogicPlugin, ISignalProcessor, IOrderExecutor):
         }
         
         self.logger.info(
-            f"PriceAction1MPlugin initialized | "
+            f"V6PriceAction15mPlugin initialized | "
             f"Shadow Mode: {self.shadow_mode} | "
             f"Order Routing: {self.ORDER_ROUTING}"
         )
     
     def _load_plugin_config(self):
-        """Load plugin configuration from config.json or config/plugins/"""
+        """Load plugin configuration"""
         config_paths = [
             os.path.join(os.path.dirname(__file__), "config.json"),
-            os.path.join(os.path.dirname(__file__), "..", "..", "..", "config", "plugins", "price_action_1m_config.json")
+            os.path.join(os.path.dirname(__file__), "..", "..", "..", "config", "plugins", "price_action_15m_config.json")
         ]
         
         self.plugin_config = {}
@@ -95,9 +94,8 @@ class PriceAction1MPlugin(BaseLogicPlugin, ISignalProcessor, IOrderExecutor):
         entry_conditions = settings.get("entry_conditions", {})
         risk_mgmt = settings.get("risk_management", {})
         
-        self.ADX_THRESHOLD = entry_conditions.get("adx_threshold", self.ADX_THRESHOLD)
         self.CONFIDENCE_THRESHOLD = entry_conditions.get("confidence_threshold", self.CONFIDENCE_THRESHOLD)
-        self.MAX_SPREAD_PIPS = entry_conditions.get("max_spread_pips", self.MAX_SPREAD_PIPS)
+        self.REQUIRE_PULSE_ALIGNMENT = entry_conditions.get("require_pulse_alignment", self.REQUIRE_PULSE_ALIGNMENT)
         self.RISK_MULTIPLIER = risk_mgmt.get("risk_multiplier", self.RISK_MULTIPLIER)
     
     def _load_metadata(self) -> Dict[str, Any]:
@@ -105,8 +103,8 @@ class PriceAction1MPlugin(BaseLogicPlugin, ISignalProcessor, IOrderExecutor):
         return {
             "version": "1.0.0",
             "author": "Zepix Team",
-            "description": "V6 1M Scalping - ORDER B ONLY with strict filters",
-            "timeframe": "1m",
+            "description": "V6 15M Intraday - ORDER A ONLY with Pulse alignment",
+            "timeframe": "15m",
             "order_routing": self.ORDER_ROUTING,
             "supported_signals": [
                 "BULLISH_ENTRY",
@@ -118,14 +116,15 @@ class PriceAction1MPlugin(BaseLogicPlugin, ISignalProcessor, IOrderExecutor):
     
     async def process_entry_signal(self, alert) -> Dict[str, Any]:
         """
-        Process V6 1M entry signal.
+        Process V6 15M entry signal.
         
         Flow:
         1. Parse alert to ZepixV6Alert
-        2. Validate timeframe (must be "1")
-        3. Apply filters (ADX, Confidence, Spread)
-        4. Calculate lot size (0.5x multiplier)
-        5. Place ORDER B ONLY
+        2. Validate timeframe (must be "15")
+        3. Check Market State (avoid CHOPPY/SIDEWAYS)
+        4. Check Trend Pulse alignment
+        5. Calculate lot size (1.0x multiplier)
+        6. Place ORDER A ONLY
         
         Args:
             alert: Alert data (dict or ZepixV6Alert)
@@ -153,7 +152,7 @@ class PriceAction1MPlugin(BaseLogicPlugin, ISignalProcessor, IOrderExecutor):
             
             lot_size = await self._calculate_lot_size(v6_alert)
             
-            result = await self._place_order_b(v6_alert, lot_size)
+            result = await self._place_order_a(v6_alert, lot_size)
             
             if result.get("status") == "success":
                 self._stats["trades_placed"] += 1
@@ -161,16 +160,16 @@ class PriceAction1MPlugin(BaseLogicPlugin, ISignalProcessor, IOrderExecutor):
             return result
             
         except Exception as e:
-            self.logger.error(f"[1M Entry Error] {e}")
+            self.logger.error(f"[15M Entry Error] {e}")
             import traceback
             traceback.print_exc()
             return {"status": "error", "message": str(e)}
     
     async def process_exit_signal(self, alert) -> Dict[str, Any]:
         """
-        Process V6 1M exit signal.
+        Process V6 15M exit signal.
         
-        1M exits are IMMEDIATE - close all positions fast.
+        15M exits close all positions for the symbol.
         
         Args:
             alert: Exit alert data
@@ -184,7 +183,7 @@ class PriceAction1MPlugin(BaseLogicPlugin, ISignalProcessor, IOrderExecutor):
             if v6_alert.tf != self.TIMEFRAME:
                 return self._skip_result("wrong_timeframe", f"Expected {self.TIMEFRAME}, got {v6_alert.tf}")
             
-            self.logger.info(f"[1M Exit] {v6_alert.type} | {v6_alert.ticker}")
+            self.logger.info(f"[15M Exit] {v6_alert.type} | {v6_alert.ticker}")
             
             if self.shadow_mode:
                 return await self._process_shadow_exit(v6_alert)
@@ -207,16 +206,12 @@ class PriceAction1MPlugin(BaseLogicPlugin, ISignalProcessor, IOrderExecutor):
             }
             
         except Exception as e:
-            self.logger.error(f"[1M Exit Error] {e}")
+            self.logger.error(f"[15M Exit Error] {e}")
             return {"status": "error", "message": str(e)}
     
     async def process_reversal_signal(self, alert) -> Dict[str, Any]:
         """
-        Process V6 1M reversal signal.
-        
-        For 1M scalping, reversals are rare but handled as:
-        1. Close all opposite positions
-        2. Enter new direction
+        Process V6 15M reversal signal.
         
         Args:
             alert: Reversal alert data
@@ -230,13 +225,12 @@ class PriceAction1MPlugin(BaseLogicPlugin, ISignalProcessor, IOrderExecutor):
             if v6_alert.tf != self.TIMEFRAME:
                 return self._skip_result("wrong_timeframe", f"Expected {self.TIMEFRAME}, got {v6_alert.tf}")
             
-            self.logger.info(f"[1M Reversal] {v6_alert.type} | {v6_alert.ticker}")
+            self.logger.info(f"[15M Reversal] {v6_alert.type} | {v6_alert.ticker}")
             
             if self.shadow_mode:
                 return await self._process_shadow_reversal(v6_alert)
             
             exit_result = await self.process_exit_signal(alert)
-            
             entry_result = await self.process_entry_signal(alert)
             
             return {
@@ -247,19 +241,17 @@ class PriceAction1MPlugin(BaseLogicPlugin, ISignalProcessor, IOrderExecutor):
             }
             
         except Exception as e:
-            self.logger.error(f"[1M Reversal Error] {e}")
+            self.logger.error(f"[15M Reversal Error] {e}")
             return {"status": "error", "message": str(e)}
     
     async def _validate_entry(self, alert: ZepixV6Alert) -> Dict[str, Any]:
         """
-        Validate entry conditions for 1M scalping.
+        Validate entry conditions for 15M intraday.
         
         Filters:
-        1. ADX > 20 (avoid choppy markets)
-        2. Confidence >= 80 (high confidence for 1m noise)
-        3. Spread < 2 pips (spread kills scalping profit)
-        
-        Note: Trend Pulse is IGNORED for 1M (too fast)
+        1. Market State check (avoid CHOPPY/SIDEWAYS)
+        2. Trend Pulse alignment required
+        3. Confidence >= 60 (standard threshold)
         
         Args:
             alert: ZepixV6Alert to validate
@@ -267,35 +259,41 @@ class PriceAction1MPlugin(BaseLogicPlugin, ISignalProcessor, IOrderExecutor):
         Returns:
             dict: Validation result with reason if failed
         """
-        if alert.adx is None or alert.adx < self.ADX_THRESHOLD:
-            adx_val = alert.adx if alert.adx is not None else "NA"
-            self.logger.info(f"[1M Skip] ADX {adx_val} < {self.ADX_THRESHOLD} (choppy market)")
-            return {"valid": False, "reason": "adx_low"}
-        
         if alert.conf_score < self.CONFIDENCE_THRESHOLD:
-            self.logger.info(f"[1M Skip] Confidence {alert.conf_score} < {self.CONFIDENCE_THRESHOLD}")
+            self.logger.info(f"[15M Skip] Confidence {alert.conf_score} < {self.CONFIDENCE_THRESHOLD}")
             return {"valid": False, "reason": "confidence_low"}
         
         try:
-            spread = await self.service_api.get_current_spread(alert.ticker)
-            if spread is not None and spread > self.MAX_SPREAD_PIPS:
-                self.logger.info(f"[1M Skip] Spread {spread:.2f} > {self.MAX_SPREAD_PIPS} pips")
-                return {"valid": False, "reason": "spread_high"}
+            market_state = await self.service_api.get_market_state(alert.ticker)
+            if market_state and market_state.upper() in self.AVOID_MARKET_STATES:
+                self.logger.info(f"[15M Skip] Market state {market_state} is unfavorable")
+                return {"valid": False, "reason": "market_state_unfavorable"}
         except Exception as e:
-            self.logger.debug(f"[1M] Spread check skipped: {e}")
+            self.logger.debug(f"[15M] Market state check skipped: {e}")
+        
+        if self.REQUIRE_PULSE_ALIGNMENT:
+            try:
+                is_aligned = await self.service_api.check_pulse_alignment(
+                    symbol=alert.ticker,
+                    direction=alert.direction
+                )
+                if not is_aligned:
+                    self.logger.info(f"[15M Skip] Trend Pulse alignment failed for {alert.direction}")
+                    return {"valid": False, "reason": "pulse_alignment_failed"}
+            except Exception as e:
+                self.logger.debug(f"[15M] Pulse alignment check skipped: {e}")
         
         self.logger.info(
-            f"[1M Valid] ADX={alert.adx:.1f}, Conf={alert.conf_score}, "
-            f"Direction={alert.direction}"
+            f"[15M Valid] Conf={alert.conf_score}, Direction={alert.direction}"
         )
         
         return {"valid": True, "reason": None}
     
     async def _calculate_lot_size(self, alert: ZepixV6Alert) -> float:
         """
-        Calculate lot size for 1M scalping.
+        Calculate lot size for 15M intraday.
         
-        Uses 0.5x risk multiplier due to 1M noise.
+        Uses 1.0x risk multiplier (standard size).
         
         Args:
             alert: ZepixV6Alert with trade details
@@ -315,23 +313,23 @@ class PriceAction1MPlugin(BaseLogicPlugin, ISignalProcessor, IOrderExecutor):
             
             settings = self.plugin_config.get("settings", {})
             risk_mgmt = settings.get("risk_management", {})
-            max_lot = risk_mgmt.get("max_lot_size", 0.10)
+            max_lot = risk_mgmt.get("max_lot_size", 0.20)
             
             final_lot = min(final_lot, max_lot)
             
-            self.logger.debug(f"[1M Lot] Base={base_lot:.2f}, Final={final_lot:.2f} (0.5x)")
+            self.logger.debug(f"[15M Lot] Base={base_lot:.2f}, Final={final_lot:.2f}")
             
             return final_lot
             
         except Exception as e:
-            self.logger.error(f"[1M Lot Error] {e}")
-            return 0.01
+            self.logger.error(f"[15M Lot Error] {e}")
+            return 0.02
     
-    async def _place_order_b(self, alert: ZepixV6Alert, lot_size: float) -> Dict[str, Any]:
+    async def _place_order_a(self, alert: ZepixV6Alert, lot_size: float) -> Dict[str, Any]:
         """
-        Place ORDER B ONLY for 1M scalping.
+        Place ORDER A ONLY for 15M intraday.
         
-        1M uses only Order B (quick exit order) targeting TP1.
+        Order A targets TP2 for larger intraday moves.
         
         Args:
             alert: ZepixV6Alert with trade details
@@ -341,58 +339,57 @@ class PriceAction1MPlugin(BaseLogicPlugin, ISignalProcessor, IOrderExecutor):
             dict: Order execution result
         """
         try:
-            ticket = await self.service_api.place_single_order_b(
+            ticket = await self.service_api.place_single_order_a(
                 plugin_id=self.plugin_id,
                 symbol=alert.ticker,
                 direction=alert.direction,
                 lot_size=lot_size,
                 sl_price=alert.sl,
-                tp_price=alert.tp1,
-                comment=f"{self.plugin_id}_1m_scalp"
+                tp_price=alert.tp2,
+                comment=f"{self.plugin_id}_15m_intraday"
             )
             
             self.logger.info(
-                f"[1M ORDER B] #{ticket} | {alert.ticker} {alert.direction} | "
-                f"Lot={lot_size:.2f} | SL={alert.sl} | TP1={alert.tp1}"
+                f"[15M ORDER A] #{ticket} | {alert.ticker} {alert.direction} | "
+                f"Lot={lot_size:.2f} | SL={alert.sl} | TP2={alert.tp2}"
             )
             
             return {
                 "status": "success",
                 "action": "entry",
-                "order_type": "ORDER_B_ONLY",
+                "order_type": "ORDER_A_ONLY",
                 "ticket": ticket,
                 "symbol": alert.ticker,
                 "direction": alert.direction,
                 "lot_size": lot_size,
                 "sl": alert.sl,
-                "tp": alert.tp1
+                "tp": alert.tp2
             }
             
         except Exception as e:
-            self.logger.error(f"[1M Order Error] {e}")
+            self.logger.error(f"[15M Order Error] {e}")
             return {"status": "error", "message": str(e)}
     
     async def _process_shadow_entry(self, alert: ZepixV6Alert) -> Dict[str, Any]:
-        """Process entry in shadow mode (no real orders)"""
+        """Process entry in shadow mode"""
         self.logger.info(
-            f"[1M SHADOW] Entry: {alert.type} | {alert.ticker} {alert.direction} | "
-            f"ADX={alert.adx} | Conf={alert.conf_score}"
+            f"[15M SHADOW] Entry: {alert.type} | {alert.ticker} {alert.direction} | "
+            f"Conf={alert.conf_score}"
         )
         
         return {
             "status": "shadow",
             "action": "entry",
-            "order_type": "ORDER_B_ONLY",
+            "order_type": "ORDER_A_ONLY",
             "symbol": alert.ticker,
             "direction": alert.direction,
-            "adx": alert.adx,
             "confidence": alert.conf_score,
             "message": "Shadow mode - no real orders placed"
         }
     
     async def _process_shadow_exit(self, alert: ZepixV6Alert) -> Dict[str, Any]:
         """Process exit in shadow mode"""
-        self.logger.info(f"[1M SHADOW] Exit: {alert.type} | {alert.ticker}")
+        self.logger.info(f"[15M SHADOW] Exit: {alert.type} | {alert.ticker}")
         
         return {
             "status": "shadow",
@@ -403,7 +400,7 @@ class PriceAction1MPlugin(BaseLogicPlugin, ISignalProcessor, IOrderExecutor):
     
     async def _process_shadow_reversal(self, alert: ZepixV6Alert) -> Dict[str, Any]:
         """Process reversal in shadow mode"""
-        self.logger.info(f"[1M SHADOW] Reversal: {alert.type} | {alert.ticker}")
+        self.logger.info(f"[15M SHADOW] Reversal: {alert.type} | {alert.ticker}")
         
         return {
             "status": "shadow",
@@ -437,9 +434,9 @@ class PriceAction1MPlugin(BaseLogicPlugin, ISignalProcessor, IOrderExecutor):
             "order_routing": self.ORDER_ROUTING,
             "risk_multiplier": self.RISK_MULTIPLIER,
             "filters": {
-                "adx_threshold": self.ADX_THRESHOLD,
                 "confidence_threshold": self.CONFIDENCE_THRESHOLD,
-                "max_spread_pips": self.MAX_SPREAD_PIPS
+                "require_pulse_alignment": self.REQUIRE_PULSE_ALIGNMENT,
+                "avoid_market_states": self.AVOID_MARKET_STATES
             },
             "stats": self._stats
         })
@@ -453,7 +450,7 @@ class PriceAction1MPlugin(BaseLogicPlugin, ISignalProcessor, IOrderExecutor):
     
     def get_supported_timeframes(self) -> List[str]:
         """Return list of timeframes this plugin supports."""
-        return ['1m', '1']
+        return ['15m', '15']
     
     async def can_process_signal(self, signal_data: Dict[str, Any]) -> bool:
         """Check if this plugin can process the given signal."""
@@ -483,9 +480,9 @@ class PriceAction1MPlugin(BaseLogicPlugin, ISignalProcessor, IOrderExecutor):
     async def execute_order(self, order_data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         """Execute an order and return result."""
         try:
-            return await self._place_order_b(
+            return await self._place_order_a(
                 self._parse_alert(order_data),
-                order_data.get('lot_size', 0.01)
+                order_data.get('lot_size', 0.02)
             )
         except Exception as e:
             self.logger.error(f"Order execution failed: {e}")

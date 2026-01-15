@@ -188,7 +188,7 @@ class TestAutonomousService:
         service._concurrent_recovery_count = 1
         service._current_session_profit = 50.0
         
-        result = await service.check_recovery_allowed('combined_v3')
+        result = await service.check_recovery_allowed('v3_combined')
         
         assert result.allowed == True
         assert result.reason == "All safety checks passed"
@@ -202,7 +202,7 @@ class TestAutonomousService:
         service = AutonomousService()
         service._daily_recovery_count = 10  # At limit
         
-        result = await service.check_recovery_allowed('combined_v3')
+        result = await service.check_recovery_allowed('v3_combined')
         
         assert result.allowed == False
         assert "Daily recovery limit" in result.reason
@@ -214,7 +214,7 @@ class TestAutonomousService:
         service = AutonomousService()
         service._concurrent_recovery_count = 3  # At limit
         
-        result = await service.check_recovery_allowed('combined_v3')
+        result = await service.check_recovery_allowed('v3_combined')
         
         assert result.allowed == False
         assert "Concurrent recovery limit" in result.reason
@@ -226,7 +226,7 @@ class TestAutonomousService:
         service = AutonomousService()
         service._current_session_profit = 150.0  # Above threshold
         
-        result = await service.check_recovery_allowed('combined_v3')
+        result = await service.check_recovery_allowed('v3_combined')
         
         assert result.allowed == False
         assert "Profit protection" in result.reason
@@ -238,12 +238,12 @@ class TestAutonomousService:
         service = AutonomousService()
         service._daily_recovery_count = 5
         
-        new_count = await service.increment_recovery_count('combined_v3')
+        new_count = await service.increment_recovery_count('v3_combined')
         
         assert new_count == 6
         assert service._daily_recovery_count == 6
-        assert 'combined_v3' in service._plugin_stats
-        assert service._plugin_stats['combined_v3'].daily_recoveries == 1
+        assert 'v3_combined' in service._plugin_stats
+        assert service._plugin_stats['v3_combined'].daily_recoveries == 1
     
     @pytest.mark.asyncio
     async def test_reverse_shield_activation_no_rsm(self):
@@ -251,7 +251,7 @@ class TestAutonomousService:
         service = AutonomousService()
         
         status = await service.activate_reverse_shield(
-            plugin_id='combined_v3',
+            plugin_id='v3_combined',
             trade_id='trade_001',
             symbol='EURUSD',
             direction='BUY'
@@ -268,7 +268,7 @@ class TestAutonomousService:
         service = AutonomousService()
         
         # Add a shield to track
-        service._plugin_shields['combined_v3'] = {
+        service._plugin_shields['v3_combined'] = {
             'trade_001': ReverseShieldStatus(
                 active=True,
                 shield_id='shield_001',
@@ -278,10 +278,10 @@ class TestAutonomousService:
             )
         }
         
-        success = await service.deactivate_reverse_shield('combined_v3', 'trade_001')
+        success = await service.deactivate_reverse_shield('v3_combined', 'trade_001')
         
         assert success == True
-        assert 'trade_001' not in service._plugin_shields.get('combined_v3', {})
+        assert 'trade_001' not in service._plugin_shields.get('v3_combined', {})
     
     def test_should_protect_profit(self):
         """Test should_protect_profit method"""
@@ -301,16 +301,16 @@ class TestAutonomousService:
         service = AutonomousService()
         
         # No stats yet
-        stats = service.get_plugin_stats('combined_v3')
+        stats = service.get_plugin_stats('v3_combined')
         assert stats['daily_recoveries'] == 0
         
         # Add some stats
-        service._plugin_stats['combined_v3'] = RecoveryStats(
+        service._plugin_stats['v3_combined'] = RecoveryStats(
             daily_recoveries=5,
             shields_activated=3
         )
         
-        stats = service.get_plugin_stats('combined_v3')
+        stats = service.get_plugin_stats('v3_combined')
         assert stats['daily_recoveries'] == 5
         assert stats['shields_activated'] == 3
     
@@ -366,21 +366,21 @@ class TestV3PluginAutonomousCapable:
     
     def test_plugin_imports_autonomous_interface(self):
         """Test plugin imports autonomous interface"""
-        from src.logic_plugins.combined_v3.plugin import CombinedV3Plugin
+        from src.logic_plugins.v3_combined.plugin import CombinedV3Plugin
         
         # Check class inherits from IAutonomousCapable
         assert IAutonomousCapable in CombinedV3Plugin.__mro__
     
     def test_plugin_has_autonomous_service_field(self):
         """Test plugin has _autonomous_service field"""
-        from src.logic_plugins.combined_v3.plugin import CombinedV3Plugin
+        from src.logic_plugins.v3_combined.plugin import CombinedV3Plugin
         
         # Create mock dependencies
         mock_service_api = MagicMock()
         mock_service_api.get_config.return_value = {}
         
         plugin = CombinedV3Plugin(
-            plugin_id='combined_v3',
+            plugin_id='v3_combined',
             config={},
             service_api=mock_service_api
         )
@@ -390,13 +390,13 @@ class TestV3PluginAutonomousCapable:
     
     def test_plugin_has_active_shields_field(self):
         """Test plugin has _active_shields field"""
-        from src.logic_plugins.combined_v3.plugin import CombinedV3Plugin
+        from src.logic_plugins.v3_combined.plugin import CombinedV3Plugin
         
         mock_service_api = MagicMock()
         mock_service_api.get_config.return_value = {}
         
         plugin = CombinedV3Plugin(
-            plugin_id='combined_v3',
+            plugin_id='v3_combined',
             config={},
             service_api=mock_service_api
         )
@@ -406,13 +406,13 @@ class TestV3PluginAutonomousCapable:
     
     def test_plugin_has_set_autonomous_service_method(self):
         """Test plugin has set_autonomous_service method"""
-        from src.logic_plugins.combined_v3.plugin import CombinedV3Plugin
+        from src.logic_plugins.v3_combined.plugin import CombinedV3Plugin
         
         mock_service_api = MagicMock()
         mock_service_api.get_config.return_value = {}
         
         plugin = CombinedV3Plugin(
-            plugin_id='combined_v3',
+            plugin_id='v3_combined',
             config={},
             service_api=mock_service_api
         )
@@ -422,13 +422,13 @@ class TestV3PluginAutonomousCapable:
     
     def test_plugin_service_injection(self):
         """Test autonomous service injection"""
-        from src.logic_plugins.combined_v3.plugin import CombinedV3Plugin
+        from src.logic_plugins.v3_combined.plugin import CombinedV3Plugin
         
         mock_service_api = MagicMock()
         mock_service_api.get_config.return_value = {}
         
         plugin = CombinedV3Plugin(
-            plugin_id='combined_v3',
+            plugin_id='v3_combined',
             config={},
             service_api=mock_service_api
         )
@@ -440,25 +440,25 @@ class TestV3PluginAutonomousCapable:
     
     def test_plugin_has_check_recovery_allowed(self):
         """Test plugin has check_recovery_allowed method"""
-        from src.logic_plugins.combined_v3.plugin import CombinedV3Plugin
+        from src.logic_plugins.v3_combined.plugin import CombinedV3Plugin
         
         assert hasattr(CombinedV3Plugin, 'check_recovery_allowed')
     
     def test_plugin_has_activate_reverse_shield(self):
         """Test plugin has activate_reverse_shield method"""
-        from src.logic_plugins.combined_v3.plugin import CombinedV3Plugin
+        from src.logic_plugins.v3_combined.plugin import CombinedV3Plugin
         
         assert hasattr(CombinedV3Plugin, 'activate_reverse_shield')
     
     def test_plugin_has_deactivate_reverse_shield(self):
         """Test plugin has deactivate_reverse_shield method"""
-        from src.logic_plugins.combined_v3.plugin import CombinedV3Plugin
+        from src.logic_plugins.v3_combined.plugin import CombinedV3Plugin
         
         assert hasattr(CombinedV3Plugin, 'deactivate_reverse_shield')
     
     def test_plugin_has_get_active_shields(self):
         """Test plugin has get_active_shields method"""
-        from src.logic_plugins.combined_v3.plugin import CombinedV3Plugin
+        from src.logic_plugins.v3_combined.plugin import CombinedV3Plugin
         
         assert hasattr(CombinedV3Plugin, 'get_active_shields')
 
@@ -502,7 +502,7 @@ class TestSuccessCriteria:
     
     def test_criterion_3_plugin_implements_interface(self):
         """Criterion 3: V3 plugin implements autonomous checks"""
-        from src.logic_plugins.combined_v3.plugin import CombinedV3Plugin
+        from src.logic_plugins.v3_combined.plugin import CombinedV3Plugin
         from src.core.plugin_system.autonomous_interface import IAutonomousCapable
         
         assert IAutonomousCapable in CombinedV3Plugin.__mro__
@@ -607,15 +607,15 @@ class TestSafetyCheckIntegration:
         service = AutonomousService()
         
         # Initial state - should allow recovery
-        result = await service.check_recovery_allowed('combined_v3')
+        result = await service.check_recovery_allowed('v3_combined')
         assert result.allowed == True
         
         # Increment recovery count
-        count = await service.increment_recovery_count('combined_v3')
+        count = await service.increment_recovery_count('v3_combined')
         assert count == 1
         
         # Check stats updated
-        stats = service.get_plugin_stats('combined_v3')
+        stats = service.get_plugin_stats('v3_combined')
         assert stats['daily_recoveries'] == 1
     
     @pytest.mark.asyncio

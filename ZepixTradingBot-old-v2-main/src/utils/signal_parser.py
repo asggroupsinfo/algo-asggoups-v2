@@ -136,7 +136,7 @@ class SignalParser:
             'raw_alert': alert,
             
             # Plugin routing hints
-            'plugin_hint': 'combined_v3',
+            'plugin_hint': 'v3_combined',
             'requires_dual_order': True,
             'requires_reentry': True,
         }
@@ -183,7 +183,7 @@ class SignalParser:
             'raw_alert': alert,
             
             # Plugin routing hints
-            'plugin_hint': f'price_action_{timeframe}',
+            'plugin_hint': f'v6_price_action_{timeframe}',
             'requires_dual_order': False,
             'requires_reentry': False,
         }
