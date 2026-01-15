@@ -181,6 +181,102 @@ class TradingEngine:
                 '1d': None
             }
 
+    async def delegate_to_plugin(self, signal_data: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Delegate signal processing to the appropriate plugin.
+        This is the ONLY entry point for plugin-based signal processing.
+        
+        Args:
+            signal_data: Signal data dictionary
+            
+        Returns:
+            dict: Plugin execution result or error dict
+        """
+        # Find the right plugin
+        plugin = self.plugin_registry.get_plugin_for_signal(signal_data)
+        
+        if not plugin:
+            logger.warning(f"No plugin found for signal: {signal_data.get('strategy', 'unknown')}")
+            return {"status": "error", "message": "no_plugin_found"}
+        
+        # Log delegation
+        logger.info(f"🔌 Delegating signal to plugin: {plugin.plugin_id}")
+        
+        # Process signal through plugin
+        try:
+            # Determine signal type and route to appropriate handler
+            alert_type = signal_data.get('type', '')
+            
+            if 'entry' in alert_type.lower():
+                result = await plugin.process_entry_signal(signal_data)
+            elif 'exit' in alert_type.lower():
+                result = await plugin.process_exit_signal(signal_data)
+            elif 'reversal' in alert_type.lower():
+                result = await plugin.process_reversal_signal(signal_data)
+            else:
+                # Generic signal processing
+                if hasattr(plugin, 'process_signal'):
+                    result = await plugin.process_signal(signal_data)
+                else:
+                    result = await plugin.process_entry_signal(signal_data)
+            
+            # Track metrics
+            self._track_plugin_execution(plugin.plugin_id, signal_data, result)
+            
+            return result if result else {"status": "error", "message": "plugin_returned_none"}
+            
+        except Exception as e:
+            logger.error(f"Plugin {plugin.plugin_id} failed to process signal: {e}")
+            import traceback
+            traceback.print_exc()
+            self._handle_plugin_failure(plugin.plugin_id, e)
+            return {"status": "error", "message": str(e)}
+
+    def _track_plugin_execution(self, plugin_id: str, signal_data: Dict, result: Dict):
+        """Track plugin execution for metrics and debugging"""
+        execution_record = {
+            'plugin_id': plugin_id,
+            'signal': signal_data,
+            'result': result,
+            'timestamp': datetime.now().isoformat()
+        }
+        # Store in memory for recent executions
+        if not hasattr(self, '_execution_history'):
+            self._execution_history = []
+        self._execution_history.append(execution_record)
+        # Keep only last 100 executions
+        if len(self._execution_history) > 100:
+            self._execution_history = self._execution_history[-100:]
+
+    def _handle_plugin_failure(self, plugin_id: str, error: Exception):
+        """Handle plugin failure - log, notify, potentially disable"""
+        logger.error(f"Plugin failure: {plugin_id} - {error}")
+        # Increment failure counter
+        if not hasattr(self, '_plugin_failures'):
+            self._plugin_failures = {}
+        self._plugin_failures[plugin_id] = self._plugin_failures.get(plugin_id, 0) + 1
+        
+        # If too many failures, disable plugin
+        if self._plugin_failures[plugin_id] >= 5:
+            logger.critical(f"Disabling plugin {plugin_id} due to repeated failures")
+            plugin = self.plugin_registry.get_plugin(plugin_id)
+            if plugin:
+                plugin.enabled = False
+                self.telegram_bot.send_message(
+                    f"⚠️ Plugin {plugin_id} disabled due to repeated failures"
+                )
+
+    def _validate_signal(self, signal_data: Dict[str, Any]) -> bool:
+        """Validate signal data before processing"""
+        if not signal_data:
+            return False
+        if not isinstance(signal_data, dict):
+            return False
+        # Must have at least type or strategy
+        if not signal_data.get('type') and not signal_data.get('strategy'):
+            return False
+        return True
+
     async def process_alert(self, data: Dict[str, Any]) -> bool:
         """Enhanced alert router with v3 support"""
         
@@ -203,6 +299,9 @@ class TradingEngine:
 
         try:
             alert_type = data.get('type')
+            
+            # Check if plugin delegation is enabled (feature flag for rollback)
+            use_plugin_delegation = self.config.get("plugin_system", {}).get("use_delegation", True)
             
             # V3 ENTRY: BYPASS TREND CHECK + Check for reversals
             if alert_type == "entry_v3":
@@ -228,7 +327,17 @@ class TradingEngine:
                     reversal_result = await self.handle_v3_reversal(v3_alert)
                     logger.info(f"Reversal result: {reversal_result.get('status')}")
                 
-                # Execute WITHOUT checking trend alignment
+                # PLUGIN DELEGATION: Route to plugin if enabled
+                if use_plugin_delegation:
+                    # Add strategy for plugin lookup
+                    data['strategy'] = 'V3_COMBINED'
+                    result = await self.delegate_to_plugin(data)
+                    if result.get("status") != "error" or result.get("message") != "no_plugin_found":
+                        return result.get("status") == "success"
+                    # Fall back to legacy if no plugin found
+                    logger.warning("Plugin delegation failed, falling back to legacy V3 processing")
+                
+                # LEGACY: Execute WITHOUT checking trend alignment
                 result = await self.execute_v3_entry(v3_alert)
                 return result.get("status") == "success"
             
@@ -237,7 +346,15 @@ class TradingEngine:
                 v3_alert = ZepixV3Alert(**data)
                 logger.info(f"🚨 V3 Exit signal received: {v3_alert.signal_type}")
                 
-                # Call dedicated exit handler
+                # PLUGIN DELEGATION: Route to plugin if enabled
+                if use_plugin_delegation:
+                    data['strategy'] = 'V3_COMBINED'
+                    result = await self.delegate_to_plugin(data)
+                    if result.get("status") != "error" or result.get("message") != "no_plugin_found":
+                        return result.get("status") == "success"
+                    logger.warning("Plugin delegation failed, falling back to legacy V3 exit")
+                
+                # LEGACY: Call dedicated exit handler
                 result = await self.handle_v3_exit(v3_alert)
                 return result.get("status") == "success"
             

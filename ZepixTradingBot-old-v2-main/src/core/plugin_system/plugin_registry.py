@@ -1,10 +1,12 @@
 import importlib
+import importlib.util
 import asyncio
 import os
 from typing import Dict, Optional, List, Any
 import logging
 
 from .base_plugin import BaseLogicPlugin
+from .plugin_interface import ISignalProcessor
 
 logger = logging.getLogger(__name__)
 
@@ -128,6 +130,85 @@ class PluginRegistry:
             BaseLogicPlugin or None
         """
         return self.plugins.get(plugin_id)
+    
+    def get_plugin_for_signal(self, signal_data: Dict[str, Any]) -> Optional[BaseLogicPlugin]:
+        """
+        Find the appropriate plugin for a given signal.
+        Uses strategy name and timeframe to match.
+        
+        This is the primary method for signal-based plugin delegation.
+        
+        Args:
+            signal_data: Signal data containing 'strategy', 'timeframe', etc.
+            
+        Returns:
+            BaseLogicPlugin: Matching plugin or None if no match found
+        """
+        strategy = signal_data.get('strategy', '')
+        timeframe = signal_data.get('timeframe', signal_data.get('tf', ''))
+        
+        for plugin_id, plugin in self.plugins.items():
+            if not plugin.enabled:
+                continue
+            
+            # Check if plugin supports this strategy
+            if hasattr(plugin, 'get_supported_strategies'):
+                supported_strategies = plugin.get_supported_strategies()
+                if strategy in supported_strategies:
+                    # Check timeframe if specified
+                    if timeframe and hasattr(plugin, 'get_supported_timeframes'):
+                        supported_timeframes = plugin.get_supported_timeframes()
+                        if timeframe in supported_timeframes:
+                            logger.debug(f"Signal matched to plugin: {plugin_id} (strategy={strategy}, tf={timeframe})")
+                            return plugin
+                    else:
+                        logger.debug(f"Signal matched to plugin: {plugin_id} (strategy={strategy})")
+                        return plugin
+        
+        logger.warning(f"No plugin found for signal: strategy={strategy}, timeframe={timeframe}")
+        return None
+    
+    def get_plugins_by_priority(self) -> List[BaseLogicPlugin]:
+        """
+        Return all enabled plugins sorted by priority.
+        Higher priority plugins are returned first.
+        
+        Returns:
+            list: Enabled plugins sorted by priority (descending)
+        """
+        enabled_plugins = [p for p in self.plugins.values() if p.enabled]
+        return sorted(enabled_plugins, key=lambda p: getattr(p, 'priority', 0), reverse=True)
+    
+    def broadcast_signal(self, signal_data: Dict[str, Any]) -> List[BaseLogicPlugin]:
+        """
+        Find ALL plugins that can process a signal.
+        Used for shadow mode comparison.
+        
+        Args:
+            signal_data: Signal data
+            
+        Returns:
+            list: All plugins that can handle this signal
+        """
+        matching_plugins = []
+        for plugin_id, plugin in self.plugins.items():
+            if not plugin.enabled:
+                continue
+            if hasattr(plugin, 'can_process_signal'):
+                # can_process_signal might be async, handle sync check
+                try:
+                    if asyncio.iscoroutinefunction(plugin.can_process_signal):
+                        # For sync context, check via get_supported_strategies instead
+                        if hasattr(plugin, 'get_supported_strategies'):
+                            strategy = signal_data.get('strategy', '')
+                            if strategy in plugin.get_supported_strategies():
+                                matching_plugins.append(plugin)
+                    else:
+                        if plugin.can_process_signal(signal_data):
+                            matching_plugins.append(plugin)
+                except Exception as e:
+                    logger.error(f"Error checking plugin {plugin_id}: {e}")
+        return matching_plugins
     
     async def route_alert_to_plugin(self, alert, plugin_id: str) -> Dict[str, Any]:
         """

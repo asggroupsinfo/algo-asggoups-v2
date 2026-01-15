@@ -12,18 +12,19 @@ Version: 1.0.0
 Date: 2026-01-14
 """
 
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List
 import logging
 import json
 import os
 
 from src.core.plugin_system.base_plugin import BaseLogicPlugin
+from src.core.plugin_system.plugin_interface import ISignalProcessor, IOrderExecutor
 from src.core.zepix_v6_alert import ZepixV6Alert, parse_v6_from_dict
 
 logger = logging.getLogger(__name__)
 
 
-class PriceAction1HPlugin(BaseLogicPlugin):
+class PriceAction1HPlugin(BaseLogicPlugin, ISignalProcessor, IOrderExecutor):
     """
     V6 1-Hour Swing Plugin
     
@@ -431,3 +432,65 @@ class PriceAction1HPlugin(BaseLogicPlugin):
             "stats": self._stats
         })
         return base_status
+
+    # ========== ISignalProcessor Interface Implementation ==========
+    
+    def get_supported_strategies(self) -> List[str]:
+        """Return list of strategy names this plugin supports."""
+        return ['V6_PRICE_ACTION', 'PRICE_ACTION', 'V6']
+    
+    def get_supported_timeframes(self) -> List[str]:
+        """Return list of timeframes this plugin supports."""
+        return ['1h', '60']
+    
+    async def can_process_signal(self, signal_data: Dict[str, Any]) -> bool:
+        """Check if this plugin can process the given signal."""
+        strategy = signal_data.get('strategy', '')
+        timeframe = signal_data.get('timeframe', signal_data.get('tf', ''))
+        
+        if strategy in self.get_supported_strategies():
+            if timeframe in self.get_supported_timeframes():
+                return True
+        return False
+    
+    async def process_signal(self, signal_data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+        """Process the signal and return result."""
+        alert_type = signal_data.get('type', '')
+        
+        if 'entry' in alert_type.lower():
+            return await self.process_entry_signal(signal_data)
+        elif 'exit' in alert_type.lower():
+            return await self.process_exit_signal(signal_data)
+        elif 'reversal' in alert_type.lower():
+            return await self.process_reversal_signal(signal_data)
+        else:
+            return await self.process_entry_signal(signal_data)
+
+    # ========== IOrderExecutor Interface Implementation ==========
+    
+    async def execute_order(self, order_data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+        """Execute an order and return result."""
+        try:
+            return await self._place_order_a(
+                self._parse_alert(order_data),
+                order_data.get('lot_size', 0.01)
+            )
+        except Exception as e:
+            self.logger.error(f"Order execution failed: {e}")
+            return {"status": "error", "message": str(e)}
+    
+    async def modify_order(self, order_id: str, modifications: Dict[str, Any]) -> bool:
+        """Modify an existing order."""
+        try:
+            return await self.service_api.modify_order(order_id, modifications)
+        except Exception as e:
+            self.logger.error(f"Order modification failed: {e}")
+            return False
+    
+    async def close_order(self, order_id: str, reason: str) -> bool:
+        """Close an existing order."""
+        try:
+            return await self.service_api.close_order(order_id, reason)
+        except Exception as e:
+            self.logger.error(f"Order close failed: {e}")
+            return False

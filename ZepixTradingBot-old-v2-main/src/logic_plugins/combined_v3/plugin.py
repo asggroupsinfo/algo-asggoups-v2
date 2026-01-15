@@ -12,12 +12,13 @@ Version: 1.0.0
 Date: 2026-01-14
 """
 
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List
 import logging
 import json
 import os
 
 from src.core.plugin_system.base_plugin import BaseLogicPlugin
+from src.core.plugin_system.plugin_interface import ISignalProcessor, IOrderExecutor
 from .signal_handlers import V3SignalHandlers
 from .order_manager import V3OrderManager
 from .trend_validator import V3TrendValidator
@@ -25,12 +26,15 @@ from .trend_validator import V3TrendValidator
 logger = logging.getLogger(__name__)
 
 
-class CombinedV3Plugin(BaseLogicPlugin):
+class CombinedV3Plugin(BaseLogicPlugin, ISignalProcessor, IOrderExecutor):
     """
     V3 Combined Logic Plugin - Handles all 12 V3 signal types.
     
     This plugin migrates the V3 logic from trading_engine.py into a
     plugin-based architecture while maintaining 100% backward compatibility.
+    
+    Implements ISignalProcessor and IOrderExecutor interfaces for
+    TradingEngine delegation system.
     
     Signal Types:
     - Entry (7): Institutional_Launchpad, Liquidity_Trap, Momentum_Breakout,
@@ -465,3 +469,118 @@ class CombinedV3Plugin(BaseLogicPlugin):
             "logic_multipliers": self.plugin_config.get("logic_multipliers", {})
         })
         return base_status
+
+    # ========== ISignalProcessor Interface Implementation ==========
+    
+    def get_supported_strategies(self) -> List[str]:
+        """
+        Return list of strategy names this plugin supports.
+        Used by PluginRegistry for signal-based plugin lookup.
+        """
+        return ['V3_COMBINED', 'COMBINED_V3', 'V3']
+    
+    def get_supported_timeframes(self) -> List[str]:
+        """
+        Return list of timeframes this plugin supports.
+        V3 Combined supports all standard timeframes.
+        """
+        return ['5m', '15m', '1h', '5', '15', '60']
+    
+    async def can_process_signal(self, signal_data: Dict[str, Any]) -> bool:
+        """
+        Check if this plugin can process the given signal.
+        
+        Args:
+            signal_data: Signal data dictionary
+            
+        Returns:
+            bool: True if this plugin can handle the signal
+        """
+        strategy = signal_data.get('strategy', '')
+        alert_type = signal_data.get('type', '')
+        
+        # Check if strategy matches
+        if strategy in self.get_supported_strategies():
+            return True
+        
+        # Check if alert type is V3
+        if 'v3' in alert_type.lower():
+            return True
+        
+        return False
+    
+    async def process_signal(self, signal_data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+        """
+        Process the signal and return result.
+        Routes to appropriate handler based on signal type.
+        
+        Args:
+            signal_data: Signal data dictionary
+            
+        Returns:
+            dict: Execution result
+        """
+        alert_type = signal_data.get('type', '')
+        
+        if 'entry' in alert_type.lower():
+            return await self.process_entry_signal(signal_data)
+        elif 'exit' in alert_type.lower():
+            return await self.process_exit_signal(signal_data)
+        elif 'reversal' in alert_type.lower():
+            return await self.process_reversal_signal(signal_data)
+        else:
+            # Default to entry processing
+            return await self.process_entry_signal(signal_data)
+
+    # ========== IOrderExecutor Interface Implementation ==========
+    
+    async def execute_order(self, order_data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+        """
+        Execute an order and return result.
+        Delegates to order_manager for actual execution.
+        
+        Args:
+            order_data: Order parameters
+            
+        Returns:
+            dict: Order execution result
+        """
+        try:
+            return await self.order_manager.execute_order(order_data)
+        except Exception as e:
+            self.logger.error(f"Order execution failed: {e}")
+            return {"status": "error", "message": str(e)}
+    
+    async def modify_order(self, order_id: str, modifications: Dict[str, Any]) -> bool:
+        """
+        Modify an existing order.
+        
+        Args:
+            order_id: MT5 order/position ID
+            modifications: Fields to modify
+            
+        Returns:
+            bool: True if modification successful
+        """
+        try:
+            return await self.order_manager.modify_order(order_id, modifications)
+        except Exception as e:
+            self.logger.error(f"Order modification failed: {e}")
+            return False
+    
+    async def close_order(self, order_id: str, reason: str) -> bool:
+        """
+        Close an existing order.
+        
+        Args:
+            order_id: MT5 order/position ID
+            reason: Reason for closing
+            
+        Returns:
+            bool: True if close successful
+        """
+        try:
+            return await self.order_manager.close_order(order_id, reason)
+        except Exception as e:
+            self.logger.error(f"Order close failed: {e}")
+            return False
