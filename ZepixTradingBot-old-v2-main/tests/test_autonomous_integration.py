@@ -366,20 +366,20 @@ class TestV3PluginAutonomousCapable:
     
     def test_plugin_imports_autonomous_interface(self):
         """Test plugin imports autonomous interface"""
-        from src.logic_plugins.v3_combined.plugin import CombinedV3Plugin
+        from src.logic_plugins.v3_combined.plugin import V3CombinedPlugin
         
         # Check class inherits from IAutonomousCapable
-        assert IAutonomousCapable in CombinedV3Plugin.__mro__
+        assert IAutonomousCapable in V3CombinedPlugin.__mro__
     
     def test_plugin_has_autonomous_service_field(self):
         """Test plugin has _autonomous_service field"""
-        from src.logic_plugins.v3_combined.plugin import CombinedV3Plugin
+        from src.logic_plugins.v3_combined.plugin import V3CombinedPlugin
         
         # Create mock dependencies
         mock_service_api = MagicMock()
         mock_service_api.get_config.return_value = {}
         
-        plugin = CombinedV3Plugin(
+        plugin = V3CombinedPlugin(
             plugin_id='v3_combined',
             config={},
             service_api=mock_service_api
@@ -390,12 +390,12 @@ class TestV3PluginAutonomousCapable:
     
     def test_plugin_has_active_shields_field(self):
         """Test plugin has _active_shields field"""
-        from src.logic_plugins.v3_combined.plugin import CombinedV3Plugin
+        from src.logic_plugins.v3_combined.plugin import V3CombinedPlugin
         
         mock_service_api = MagicMock()
         mock_service_api.get_config.return_value = {}
         
-        plugin = CombinedV3Plugin(
+        plugin = V3CombinedPlugin(
             plugin_id='v3_combined',
             config={},
             service_api=mock_service_api
@@ -406,12 +406,12 @@ class TestV3PluginAutonomousCapable:
     
     def test_plugin_has_set_autonomous_service_method(self):
         """Test plugin has set_autonomous_service method"""
-        from src.logic_plugins.v3_combined.plugin import CombinedV3Plugin
+        from src.logic_plugins.v3_combined.plugin import V3CombinedPlugin
         
         mock_service_api = MagicMock()
         mock_service_api.get_config.return_value = {}
         
-        plugin = CombinedV3Plugin(
+        plugin = V3CombinedPlugin(
             plugin_id='v3_combined',
             config={},
             service_api=mock_service_api
@@ -422,12 +422,12 @@ class TestV3PluginAutonomousCapable:
     
     def test_plugin_service_injection(self):
         """Test autonomous service injection"""
-        from src.logic_plugins.v3_combined.plugin import CombinedV3Plugin
+        from src.logic_plugins.v3_combined.plugin import V3CombinedPlugin
         
         mock_service_api = MagicMock()
         mock_service_api.get_config.return_value = {}
         
-        plugin = CombinedV3Plugin(
+        plugin = V3CombinedPlugin(
             plugin_id='v3_combined',
             config={},
             service_api=mock_service_api
@@ -440,27 +440,27 @@ class TestV3PluginAutonomousCapable:
     
     def test_plugin_has_check_recovery_allowed(self):
         """Test plugin has check_recovery_allowed method"""
-        from src.logic_plugins.v3_combined.plugin import CombinedV3Plugin
+        from src.logic_plugins.v3_combined.plugin import V3CombinedPlugin
         
-        assert hasattr(CombinedV3Plugin, 'check_recovery_allowed')
+        assert hasattr(V3CombinedPlugin, 'check_recovery_allowed')
     
     def test_plugin_has_activate_reverse_shield(self):
         """Test plugin has activate_reverse_shield method"""
-        from src.logic_plugins.v3_combined.plugin import CombinedV3Plugin
+        from src.logic_plugins.v3_combined.plugin import V3CombinedPlugin
         
-        assert hasattr(CombinedV3Plugin, 'activate_reverse_shield')
+        assert hasattr(V3CombinedPlugin, 'activate_reverse_shield')
     
     def test_plugin_has_deactivate_reverse_shield(self):
         """Test plugin has deactivate_reverse_shield method"""
-        from src.logic_plugins.v3_combined.plugin import CombinedV3Plugin
+        from src.logic_plugins.v3_combined.plugin import V3CombinedPlugin
         
-        assert hasattr(CombinedV3Plugin, 'deactivate_reverse_shield')
+        assert hasattr(V3CombinedPlugin, 'deactivate_reverse_shield')
     
     def test_plugin_has_get_active_shields(self):
         """Test plugin has get_active_shields method"""
-        from src.logic_plugins.v3_combined.plugin import CombinedV3Plugin
+        from src.logic_plugins.v3_combined.plugin import V3CombinedPlugin
         
-        assert hasattr(CombinedV3Plugin, 'get_active_shields')
+        assert hasattr(V3CombinedPlugin, 'get_active_shields')
 
 
 class TestSuccessCriteria:
@@ -502,10 +502,10 @@ class TestSuccessCriteria:
     
     def test_criterion_3_plugin_implements_interface(self):
         """Criterion 3: V3 plugin implements autonomous checks"""
-        from src.logic_plugins.v3_combined.plugin import CombinedV3Plugin
+        from src.logic_plugins.v3_combined.plugin import V3CombinedPlugin
         from src.core.plugin_system.autonomous_interface import IAutonomousCapable
         
-        assert IAutonomousCapable in CombinedV3Plugin.__mro__
+        assert IAutonomousCapable in V3CombinedPlugin.__mro__
     
     @pytest.mark.asyncio
     async def test_criterion_4_daily_limit_enforced(self):

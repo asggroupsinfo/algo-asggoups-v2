@@ -246,70 +246,70 @@ class TestV3PluginReentryCapable:
     """Test V3 Plugin implements IReentryCapable"""
     
     def test_v3_plugin_implements_interface(self):
-        """Test CombinedV3Plugin implements IReentryCapable"""
-        from src.logic_plugins.v3_combined.plugin import CombinedV3Plugin
+        """Test V3CombinedPlugin implements IReentryCapable"""
+        from src.logic_plugins.v3_combined.plugin import V3CombinedPlugin
         
-        assert issubclass(CombinedV3Plugin, IReentryCapable)
+        assert issubclass(V3CombinedPlugin, IReentryCapable)
     
     def test_v3_plugin_has_chain_levels(self):
         """Test V3 plugin has chain level tracking"""
-        from src.logic_plugins.v3_combined.plugin import CombinedV3Plugin
+        from src.logic_plugins.v3_combined.plugin import V3CombinedPlugin
         
         # Check that _chain_levels is defined in __init__
         import inspect
-        source = inspect.getsource(CombinedV3Plugin.__init__)
+        source = inspect.getsource(V3CombinedPlugin.__init__)
         assert "_chain_levels" in source
     
     def test_v3_plugin_has_reentry_service(self):
         """Test V3 plugin has reentry service field"""
-        from src.logic_plugins.v3_combined.plugin import CombinedV3Plugin
+        from src.logic_plugins.v3_combined.plugin import V3CombinedPlugin
         
         # Check that _reentry_service is defined in __init__
         import inspect
-        source = inspect.getsource(CombinedV3Plugin.__init__)
+        source = inspect.getsource(V3CombinedPlugin.__init__)
         assert "_reentry_service" in source
     
     def test_v3_plugin_has_set_reentry_service(self):
         """Test V3 plugin has set_reentry_service method"""
-        from src.logic_plugins.v3_combined.plugin import CombinedV3Plugin
+        from src.logic_plugins.v3_combined.plugin import V3CombinedPlugin
         
-        assert hasattr(CombinedV3Plugin, 'set_reentry_service')
+        assert hasattr(V3CombinedPlugin, 'set_reentry_service')
     
     def test_v3_plugin_has_on_sl_hit(self):
         """Test V3 plugin has on_sl_hit method"""
-        from src.logic_plugins.v3_combined.plugin import CombinedV3Plugin
+        from src.logic_plugins.v3_combined.plugin import V3CombinedPlugin
         
-        assert hasattr(CombinedV3Plugin, 'on_sl_hit')
+        assert hasattr(V3CombinedPlugin, 'on_sl_hit')
     
     def test_v3_plugin_has_on_tp_hit(self):
         """Test V3 plugin has on_tp_hit method"""
-        from src.logic_plugins.v3_combined.plugin import CombinedV3Plugin
+        from src.logic_plugins.v3_combined.plugin import V3CombinedPlugin
         
-        assert hasattr(CombinedV3Plugin, 'on_tp_hit')
+        assert hasattr(V3CombinedPlugin, 'on_tp_hit')
     
     def test_v3_plugin_has_on_exit(self):
         """Test V3 plugin has on_exit method"""
-        from src.logic_plugins.v3_combined.plugin import CombinedV3Plugin
+        from src.logic_plugins.v3_combined.plugin import V3CombinedPlugin
         
-        assert hasattr(CombinedV3Plugin, 'on_exit')
+        assert hasattr(V3CombinedPlugin, 'on_exit')
     
     def test_v3_plugin_has_on_recovery_signal(self):
         """Test V3 plugin has on_recovery_signal method"""
-        from src.logic_plugins.v3_combined.plugin import CombinedV3Plugin
+        from src.logic_plugins.v3_combined.plugin import V3CombinedPlugin
         
-        assert hasattr(CombinedV3Plugin, 'on_recovery_signal')
+        assert hasattr(V3CombinedPlugin, 'on_recovery_signal')
     
     def test_v3_plugin_has_get_chain_level(self):
         """Test V3 plugin has get_chain_level method"""
-        from src.logic_plugins.v3_combined.plugin import CombinedV3Plugin
+        from src.logic_plugins.v3_combined.plugin import V3CombinedPlugin
         
-        assert hasattr(CombinedV3Plugin, 'get_chain_level')
+        assert hasattr(V3CombinedPlugin, 'get_chain_level')
     
     def test_v3_plugin_has_get_max_chain_level(self):
         """Test V3 plugin has get_max_chain_level method"""
-        from src.logic_plugins.v3_combined.plugin import CombinedV3Plugin
+        from src.logic_plugins.v3_combined.plugin import V3CombinedPlugin
         
-        assert hasattr(CombinedV3Plugin, 'get_max_chain_level')
+        assert hasattr(V3CombinedPlugin, 'get_max_chain_level')
 
 
 class TestOrderManagerReentryTriggers:
@@ -473,40 +473,40 @@ class TestSuccessCriteria:
     
     def test_criterion_3_plugins_implement_interface(self):
         """Criterion 3: Plugins implement IReentryCapable interface"""
-        from src.logic_plugins.v3_combined.plugin import CombinedV3Plugin
+        from src.logic_plugins.v3_combined.plugin import V3CombinedPlugin
         from src.core.plugin_system.reentry_interface import IReentryCapable
         
-        assert issubclass(CombinedV3Plugin, IReentryCapable)
+        assert issubclass(V3CombinedPlugin, IReentryCapable)
     
     def test_criterion_4_sl_hunt_works_via_plugins(self):
         """Criterion 4: SL Hunt Recovery works via plugins"""
-        from src.logic_plugins.v3_combined.plugin import CombinedV3Plugin
+        from src.logic_plugins.v3_combined.plugin import V3CombinedPlugin
         
-        assert hasattr(CombinedV3Plugin, 'on_sl_hit')
+        assert hasattr(V3CombinedPlugin, 'on_sl_hit')
         
         # Verify on_sl_hit is async
         import inspect
-        assert inspect.iscoroutinefunction(CombinedV3Plugin.on_sl_hit)
+        assert inspect.iscoroutinefunction(V3CombinedPlugin.on_sl_hit)
     
     def test_criterion_5_tp_continuation_works_via_plugins(self):
         """Criterion 5: TP Continuation works via plugins"""
-        from src.logic_plugins.v3_combined.plugin import CombinedV3Plugin
+        from src.logic_plugins.v3_combined.plugin import V3CombinedPlugin
         
-        assert hasattr(CombinedV3Plugin, 'on_tp_hit')
+        assert hasattr(V3CombinedPlugin, 'on_tp_hit')
         
         # Verify on_tp_hit is async
         import inspect
-        assert inspect.iscoroutinefunction(CombinedV3Plugin.on_tp_hit)
+        assert inspect.iscoroutinefunction(V3CombinedPlugin.on_tp_hit)
     
     def test_criterion_6_exit_continuation_works_via_plugins(self):
         """Criterion 6: Exit Continuation works via plugins"""
-        from src.logic_plugins.v3_combined.plugin import CombinedV3Plugin
+        from src.logic_plugins.v3_combined.plugin import V3CombinedPlugin
         
-        assert hasattr(CombinedV3Plugin, 'on_exit')
+        assert hasattr(V3CombinedPlugin, 'on_exit')
         
         # Verify on_exit is async
         import inspect
-        assert inspect.iscoroutinefunction(CombinedV3Plugin.on_exit)
+        assert inspect.iscoroutinefunction(V3CombinedPlugin.on_exit)
     
     def test_criterion_7_recovery_monitor_notifies_plugins(self):
         """Criterion 7: Recovery Window Monitor notifies plugins"""
@@ -524,14 +524,14 @@ class TestSuccessCriteria:
     
     def test_criterion_9_chain_levels_tracked(self):
         """Criterion 9: Chain levels tracked per plugin"""
-        from src.logic_plugins.v3_combined.plugin import CombinedV3Plugin
+        from src.logic_plugins.v3_combined.plugin import V3CombinedPlugin
         
-        assert hasattr(CombinedV3Plugin, 'get_chain_level')
-        assert hasattr(CombinedV3Plugin, 'get_max_chain_level')
+        assert hasattr(V3CombinedPlugin, 'get_chain_level')
+        assert hasattr(V3CombinedPlugin, 'get_max_chain_level')
         
         # Verify _chain_levels is in __init__
         import inspect
-        source = inspect.getsource(CombinedV3Plugin.__init__)
+        source = inspect.getsource(V3CombinedPlugin.__init__)
         assert "_chain_levels" in source
     
     def test_criterion_10_all_tests_pass(self):

@@ -567,62 +567,62 @@ class TestV3PluginProfitBookingCapable:
     """Test V3 Plugin implements IProfitBookingCapable"""
     
     def test_v3_plugin_implements_interface(self):
-        """Test CombinedV3Plugin implements IProfitBookingCapable"""
-        from src.logic_plugins.v3_combined.plugin import CombinedV3Plugin
+        """Test V3CombinedPlugin implements IProfitBookingCapable"""
+        from src.logic_plugins.v3_combined.plugin import V3CombinedPlugin
         
-        assert issubclass(CombinedV3Plugin, IProfitBookingCapable)
+        assert issubclass(V3CombinedPlugin, IProfitBookingCapable)
     
     def test_v3_plugin_has_profit_booking_service(self):
         """Test V3 plugin has profit booking service field"""
-        from src.logic_plugins.v3_combined.plugin import CombinedV3Plugin
+        from src.logic_plugins.v3_combined.plugin import V3CombinedPlugin
         
         import inspect
-        source = inspect.getsource(CombinedV3Plugin.__init__)
+        source = inspect.getsource(V3CombinedPlugin.__init__)
         assert "_profit_booking_service" in source
     
     def test_v3_plugin_has_order_to_chain(self):
         """Test V3 plugin has order to chain mapping"""
-        from src.logic_plugins.v3_combined.plugin import CombinedV3Plugin
+        from src.logic_plugins.v3_combined.plugin import V3CombinedPlugin
         
         import inspect
-        source = inspect.getsource(CombinedV3Plugin.__init__)
+        source = inspect.getsource(V3CombinedPlugin.__init__)
         assert "_order_to_chain" in source
     
     def test_v3_plugin_has_set_profit_booking_service(self):
         """Test V3 plugin has set_profit_booking_service method"""
-        from src.logic_plugins.v3_combined.plugin import CombinedV3Plugin
+        from src.logic_plugins.v3_combined.plugin import V3CombinedPlugin
         
-        assert hasattr(CombinedV3Plugin, 'set_profit_booking_service')
+        assert hasattr(V3CombinedPlugin, 'set_profit_booking_service')
     
     def test_v3_plugin_has_create_profit_chain(self):
         """Test V3 plugin has create_profit_chain method"""
-        from src.logic_plugins.v3_combined.plugin import CombinedV3Plugin
+        from src.logic_plugins.v3_combined.plugin import V3CombinedPlugin
         
-        assert hasattr(CombinedV3Plugin, 'create_profit_chain')
+        assert hasattr(V3CombinedPlugin, 'create_profit_chain')
     
     def test_v3_plugin_has_on_profit_target_hit(self):
         """Test V3 plugin has on_profit_target_hit method"""
-        from src.logic_plugins.v3_combined.plugin import CombinedV3Plugin
+        from src.logic_plugins.v3_combined.plugin import V3CombinedPlugin
         
-        assert hasattr(CombinedV3Plugin, 'on_profit_target_hit')
+        assert hasattr(V3CombinedPlugin, 'on_profit_target_hit')
     
     def test_v3_plugin_has_on_chain_sl_hit(self):
         """Test V3 plugin has on_chain_sl_hit method"""
-        from src.logic_plugins.v3_combined.plugin import CombinedV3Plugin
+        from src.logic_plugins.v3_combined.plugin import V3CombinedPlugin
         
-        assert hasattr(CombinedV3Plugin, 'on_chain_sl_hit')
+        assert hasattr(V3CombinedPlugin, 'on_chain_sl_hit')
     
     def test_v3_plugin_has_get_active_chains(self):
         """Test V3 plugin has get_active_chains method"""
-        from src.logic_plugins.v3_combined.plugin import CombinedV3Plugin
+        from src.logic_plugins.v3_combined.plugin import V3CombinedPlugin
         
-        assert hasattr(CombinedV3Plugin, 'get_active_chains')
+        assert hasattr(V3CombinedPlugin, 'get_active_chains')
     
     def test_v3_plugin_has_get_pyramid_config(self):
         """Test V3 plugin has get_pyramid_config method"""
-        from src.logic_plugins.v3_combined.plugin import CombinedV3Plugin
+        from src.logic_plugins.v3_combined.plugin import V3CombinedPlugin
         
-        assert hasattr(CombinedV3Plugin, 'get_pyramid_config')
+        assert hasattr(V3CombinedPlugin, 'get_pyramid_config')
 
 
 class TestSuccessCriteria:
@@ -654,10 +654,10 @@ class TestSuccessCriteria:
     
     def test_criterion_3_plugin_implements_interface(self):
         """Criterion 3: V3 plugin implements IProfitBookingCapable"""
-        from src.logic_plugins.v3_combined.plugin import CombinedV3Plugin
+        from src.logic_plugins.v3_combined.plugin import V3CombinedPlugin
         from src.core.plugin_system.profit_booking_interface import IProfitBookingCapable
         
-        assert issubclass(CombinedV3Plugin, IProfitBookingCapable)
+        assert issubclass(V3CombinedPlugin, IProfitBookingCapable)
     
     def test_criterion_4_pyramid_works(self):
         """Criterion 4: 5-level pyramid works correctly"""

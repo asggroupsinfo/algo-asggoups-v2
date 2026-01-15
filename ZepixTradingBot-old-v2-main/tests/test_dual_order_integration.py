@@ -390,68 +390,68 @@ class TestV3PluginDualOrderCapable:
     """Test V3 Plugin implements IDualOrderCapable"""
     
     def test_v3_plugin_implements_interface(self):
-        """Test CombinedV3Plugin implements IDualOrderCapable"""
-        from src.logic_plugins.v3_combined.plugin import CombinedV3Plugin
+        """Test V3CombinedPlugin implements IDualOrderCapable"""
+        from src.logic_plugins.v3_combined.plugin import V3CombinedPlugin
         
-        assert issubclass(CombinedV3Plugin, IDualOrderCapable)
+        assert issubclass(V3CombinedPlugin, IDualOrderCapable)
     
     def test_v3_plugin_has_dual_order_service(self):
         """Test V3 plugin has dual order service field"""
-        from src.logic_plugins.v3_combined.plugin import CombinedV3Plugin
+        from src.logic_plugins.v3_combined.plugin import V3CombinedPlugin
         
         import inspect
-        source = inspect.getsource(CombinedV3Plugin.__init__)
+        source = inspect.getsource(V3CombinedPlugin.__init__)
         assert "_dual_order_service" in source
     
     def test_v3_plugin_has_active_orders(self):
         """Test V3 plugin has active orders tracking"""
-        from src.logic_plugins.v3_combined.plugin import CombinedV3Plugin
+        from src.logic_plugins.v3_combined.plugin import V3CombinedPlugin
         
         import inspect
-        source = inspect.getsource(CombinedV3Plugin.__init__)
+        source = inspect.getsource(V3CombinedPlugin.__init__)
         assert "_active_orders" in source
     
     def test_v3_plugin_has_set_dual_order_service(self):
         """Test V3 plugin has set_dual_order_service method"""
-        from src.logic_plugins.v3_combined.plugin import CombinedV3Plugin
+        from src.logic_plugins.v3_combined.plugin import V3CombinedPlugin
         
-        assert hasattr(CombinedV3Plugin, 'set_dual_order_service')
+        assert hasattr(V3CombinedPlugin, 'set_dual_order_service')
     
     def test_v3_plugin_has_create_dual_orders(self):
         """Test V3 plugin has create_dual_orders method"""
-        from src.logic_plugins.v3_combined.plugin import CombinedV3Plugin
+        from src.logic_plugins.v3_combined.plugin import V3CombinedPlugin
         
-        assert hasattr(CombinedV3Plugin, 'create_dual_orders')
+        assert hasattr(V3CombinedPlugin, 'create_dual_orders')
     
     def test_v3_plugin_has_get_order_a_config(self):
         """Test V3 plugin has get_order_a_config method"""
-        from src.logic_plugins.v3_combined.plugin import CombinedV3Plugin
+        from src.logic_plugins.v3_combined.plugin import V3CombinedPlugin
         
-        assert hasattr(CombinedV3Plugin, 'get_order_a_config')
+        assert hasattr(V3CombinedPlugin, 'get_order_a_config')
     
     def test_v3_plugin_has_get_order_b_config(self):
         """Test V3 plugin has get_order_b_config method"""
-        from src.logic_plugins.v3_combined.plugin import CombinedV3Plugin
+        from src.logic_plugins.v3_combined.plugin import V3CombinedPlugin
         
-        assert hasattr(CombinedV3Plugin, 'get_order_b_config')
+        assert hasattr(V3CombinedPlugin, 'get_order_b_config')
     
     def test_v3_plugin_has_on_order_a_closed(self):
         """Test V3 plugin has on_order_a_closed method"""
-        from src.logic_plugins.v3_combined.plugin import CombinedV3Plugin
+        from src.logic_plugins.v3_combined.plugin import V3CombinedPlugin
         
-        assert hasattr(CombinedV3Plugin, 'on_order_a_closed')
+        assert hasattr(V3CombinedPlugin, 'on_order_a_closed')
     
     def test_v3_plugin_has_on_order_b_closed(self):
         """Test V3 plugin has on_order_b_closed method"""
-        from src.logic_plugins.v3_combined.plugin import CombinedV3Plugin
+        from src.logic_plugins.v3_combined.plugin import V3CombinedPlugin
         
-        assert hasattr(CombinedV3Plugin, 'on_order_b_closed')
+        assert hasattr(V3CombinedPlugin, 'on_order_b_closed')
     
     def test_v3_plugin_has_get_smart_lot_size(self):
         """Test V3 plugin has get_smart_lot_size method"""
-        from src.logic_plugins.v3_combined.plugin import CombinedV3Plugin
+        from src.logic_plugins.v3_combined.plugin import V3CombinedPlugin
         
-        assert hasattr(CombinedV3Plugin, 'get_smart_lot_size')
+        assert hasattr(V3CombinedPlugin, 'get_smart_lot_size')
 
 
 class TestOrderEventHandler:
@@ -514,29 +514,29 @@ class TestSuccessCriteria:
     
     def test_criterion_3_plugin_implements_interface(self):
         """Criterion 3: V3 plugin implements IDualOrderCapable"""
-        from src.logic_plugins.v3_combined.plugin import CombinedV3Plugin
+        from src.logic_plugins.v3_combined.plugin import V3CombinedPlugin
         from src.core.plugin_system.dual_order_interface import IDualOrderCapable
         
-        assert issubclass(CombinedV3Plugin, IDualOrderCapable)
+        assert issubclass(V3CombinedPlugin, IDualOrderCapable)
     
     def test_criterion_4_order_a_uses_v3_smart_sl(self):
         """Criterion 4: Order A uses V3 Smart SL with trailing"""
-        from src.logic_plugins.v3_combined.plugin import CombinedV3Plugin
+        from src.logic_plugins.v3_combined.plugin import V3CombinedPlugin
         
         # Verify get_order_a_config returns config with V3_SMART_SL
         import inspect
-        source = inspect.getsource(CombinedV3Plugin.get_order_a_config)
+        source = inspect.getsource(V3CombinedPlugin.get_order_a_config)
         
         assert "V3_SMART_SL" in source
         assert "trailing_enabled=True" in source
     
     def test_criterion_5_order_b_uses_fixed_risk_sl(self):
         """Criterion 5: Order B uses fixed $10 risk SL"""
-        from src.logic_plugins.v3_combined.plugin import CombinedV3Plugin
+        from src.logic_plugins.v3_combined.plugin import V3CombinedPlugin
         
         # Verify get_order_b_config returns config with FIXED_RISK_SL
         import inspect
-        source = inspect.getsource(CombinedV3Plugin.get_order_b_config)
+        source = inspect.getsource(V3CombinedPlugin.get_order_b_config)
         
         assert "FIXED_RISK_SL" in source
         assert "risk_amount=10.0" in source

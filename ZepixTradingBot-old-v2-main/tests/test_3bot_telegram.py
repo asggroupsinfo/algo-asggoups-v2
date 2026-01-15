@@ -454,13 +454,13 @@ class TestSuccessCriteria:
     def test_criterion_7_plugins_can_send_notifications(self):
         """Criterion 7: Plugins send notifications through new system"""
         # This is verified by the existence of notification methods in plugin
-        from src.logic_plugins.v3_combined.plugin import CombinedV3Plugin
+        from src.logic_plugins.v3_combined.plugin import V3CombinedPlugin
         
         # Verify plugin has notification methods
-        assert hasattr(CombinedV3Plugin, '_send_notification')
-        assert hasattr(CombinedV3Plugin, 'on_trade_opened')
-        assert hasattr(CombinedV3Plugin, 'on_trade_closed')
-        assert hasattr(CombinedV3Plugin, 'on_recovery_started')
+        assert hasattr(V3CombinedPlugin, '_send_notification')
+        assert hasattr(V3CombinedPlugin, 'on_trade_opened')
+        assert hasattr(V3CombinedPlugin, 'on_trade_closed')
+        assert hasattr(V3CombinedPlugin, 'on_recovery_started')
     
     def test_criterion_8_all_tests_pass(self):
         """Criterion 8: All tests pass (this test itself verifies the suite runs)"""
