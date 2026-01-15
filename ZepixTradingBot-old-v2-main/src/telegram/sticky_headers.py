@@ -18,6 +18,13 @@ from datetime import datetime
 from typing import Optional, Dict, Any, Callable, List
 from enum import Enum
 
+# Phase 9: Import clock system for IST time display
+try:
+    from src.modules.fixed_clock_system import get_clock_system
+    CLOCK_AVAILABLE = True
+except ImportError:
+    CLOCK_AVAILABLE = False
+
 logger = logging.getLogger(__name__)
 
 
@@ -625,6 +632,8 @@ def create_controller_content_generator(data_providers: Dict[str, Callable]) -> 
     """
     Create content generator for Controller Bot header.
     
+    Phase 9: Integrated with FixedClockSystem for IST time display
+    
     Args:
         data_providers: Dict of data provider functions
         
@@ -632,7 +641,15 @@ def create_controller_content_generator(data_providers: Dict[str, Callable]) -> 
         Content generator function
     """
     def generator() -> str:
-        now = datetime.now()
+        # Phase 9: Use FixedClockSystem for IST time if available
+        if CLOCK_AVAILABLE:
+            clock = get_clock_system()
+            time_str = clock.format_time_string()
+            date_str = clock.format_date_string()
+        else:
+            now = datetime.now()
+            time_str = now.strftime('%H:%M:%S')
+            date_str = now.strftime('%d %b %Y (%a)')
         
         # Get data from providers
         open_trades = data_providers.get("open_trades", lambda: 0)()
@@ -640,13 +657,18 @@ def create_controller_content_generator(data_providers: Dict[str, Callable]) -> 
         bot_status = data_providers.get("bot_status", lambda: "UNKNOWN")()
         active_plugins = data_providers.get("active_plugins", lambda: 0)()
         
+        # Phase 9: Get session info if available
+        current_session = data_providers.get("current_session", lambda: "Unknown")()
+        
         pnl_emoji = "+" if daily_pnl >= 0 else ""
         status_emoji = "" if bot_status == "RUNNING" else "" if bot_status == "PAUSED" else ""
         
         return (
             f"<b>ZEPIX CONTROLLER BOT</b>\n"
             f"{'=' * 24}\n"
-            f"Time: <b>{now.strftime('%H:%M:%S')}</b> | Date: {now.strftime('%d-%m-%Y')}\n"
+            f"Time: <b>{time_str}</b>\n"
+            f"Date: {date_str}\n"
+            f"Session: <b>{current_session}</b>\n"
             f"{'=' * 24}\n"
             f"{status_emoji} Status: <b>{bot_status}</b>\n"
             f"Open Trades: <b>{open_trades}</b>\n"
