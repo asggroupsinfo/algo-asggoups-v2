@@ -11,9 +11,10 @@ This documentation consolidates all knowledge from:
 ### DEEP DIVE SPECIFICATIONS (New)
 | Document | Description |
 |----------|-------------|
-| [V3_DEEP_DIVE.md](V3_DEEP_DIVE.md) | Complete V3 Combined Logic analysis - 12 signals, dual orders, re-entry |
-| [V6_DEEP_DIVE.md](V6_DEEP_DIVE.md) | Complete V6 Price Action analysis - 4 timeframe plugins |
+| [V3_LOGIC_DEEP_DIVE.md](V3_LOGIC_DEEP_DIVE.md) | Complete V3 Combined Logic analysis - 12 signals, dual orders, re-entry |
+| [V6_LOGIC_DEEP_DIVE.md](V6_LOGIC_DEEP_DIVE.md) | Complete V6 Price Action analysis - 4 timeframe plugins |
 | [ARCHITECTURE_DEEP_DIVE.md](ARCHITECTURE_DEEP_DIVE.md) | System architecture - TradingEngine, ServiceAPI, Plugins |
+| [BOT_WORKFLOW_CHAIN.md](BOT_WORKFLOW_CHAIN.md) | Complete execution flow - Startup -> Data -> Alert -> Plugin -> Trade |
 
 ### 01 - SYSTEM ARCHITECTURE
 | Document | Description | Source |
