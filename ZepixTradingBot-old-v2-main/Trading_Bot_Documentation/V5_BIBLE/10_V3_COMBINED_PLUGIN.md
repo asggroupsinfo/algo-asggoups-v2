@@ -1,14 +1,30 @@
 # V3 COMBINED LOGIC PLUGIN
 
 **File:** `src/logic_plugins/v3_combined/plugin.py`  
-**Lines:** 1836  
+**Lines:** 1951  
 **Purpose:** V3 Combined Logic Plugin implementing all 12 V3 signal types
+
+**Last Updated:** 2026-01-16 (MTF Parsing Fix + Score Validation)
 
 ---
 
 ## OVERVIEW
 
 The V3 Combined Plugin handles all V3 signal types from the TradingView Pine Script indicator. It implements the complete V3 trading logic with dual order support, re-entry capabilities, and profit booking integration.
+
+### CRITICAL: Pine Script Compatibility
+
+The plugin now correctly handles TWO different MTF string formats from Pine Script:
+
+**FORMAT A (5 values, REVERSE order) - Entry Signals:**
+- Pine: `mtfString = htfTrend5,htfTrend4,htfTrend3,htfTrend2,htfTrend1`
+- Meaning: `1D,4H,1H,15m,5m` (e.g., "1,1,-1,1,1")
+- Index mapping: [0]=1D, [1]=4H, [2]=1H, [3]=15m, [4]=5m
+
+**FORMAT B (6 values, FORWARD order) - Trend Pulse:**
+- Pine: `currentTrendString = htfTrend0,htfTrend1,htfTrend2,htfTrend3,htfTrend4,htfTrend5`
+- Meaning: `1m,5m,15m,1H,4H,1D` (e.g., "1,1,-1,1,1,1")
+- Index mapping: [0]=1m, [1]=5m, [2]=15m, [3]=1H, [4]=4H, [5]=1D
 
 ### Supported Signal Types
 
@@ -120,7 +136,7 @@ async def process_signal(self, signal_data: Dict[str, Any]) -> Optional[Dict[str
         return {"status": "skipped", "reason": "unknown_signal_type"}
 ```
 
-### Process Entry Signal (Lines 282-450)
+### Process Entry Signal (Lines 955-1028)
 
 ```python
 async def process_entry_signal(self, alert) -> Dict[str, Any]:
@@ -128,12 +144,15 @@ async def process_entry_signal(self, alert) -> Dict[str, Any]:
     Process entry signal and execute trade.
     
     Entry flow:
-    1. Validate signal
-    2. Check trend alignment (4-pillar)
-    3. Calculate lot size
-    4. Create dual orders (Order A + Order B)
-    5. Create re-entry chain
-    6. Create profit booking chain for Order B
+    1. Validate consensus score threshold (NEW)
+    2. Extract alert data including Pine Script SL/TP (NEW)
+    3. Check for aggressive reversal
+    4. Route to appropriate logic (LOGIC1/2/3)
+    5. Create dual orders (Order A + Order B)
+    
+    V3 entries BYPASS trend check because Pine Script has already
+    performed 5-layer pre-validation. Re-entries and autonomous
+    actions still REQUIRE trend check.
     
     Args:
         alert: Alert data (dict or typed alert object)
