@@ -59,6 +59,8 @@ This documentation consolidates all knowledge from:
 |----------|-------------|--------|
 | [03_TELEGRAM/COMMAND_INTEGRITY_REPORT.md](03_TELEGRAM/COMMAND_INTEGRITY_REPORT.md) | Command parity audit - 91/91 FOUND | Phase 13 Audit |
 | [03_TELEGRAM/COMPLETE_TELEGRAM_MANUAL.md](03_TELEGRAM/COMPLETE_TELEGRAM_MANUAL.md) | Complete user manual for all 91 commands | Phase 13 Audit |
+| [03_TELEGRAM/NOTIFICATION_INTEGRITY_REPORT.md](03_TELEGRAM/NOTIFICATION_INTEGRITY_REPORT.md) | Notification parity audit - 46 types, FULL COVERAGE | Phase 13-B Audit |
+| [03_TELEGRAM/COMPLETE_NOTIFICATION_MANUAL.md](03_TELEGRAM/COMPLETE_NOTIFICATION_MANUAL.md) | Complete notification system guide | Phase 13-B Audit |
 
 ### 40 - CONFIGURATION & SETUP
 | Document | Description | Source |
