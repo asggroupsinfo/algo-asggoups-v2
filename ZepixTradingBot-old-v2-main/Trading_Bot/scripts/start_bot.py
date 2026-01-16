@@ -5,8 +5,8 @@ import uvicorn
 import sys
 import os
 
-# Change to script directory
-os.chdir(os.path.dirname(os.path.abspath(__file__)))
+# Change to parent directory (Trading_Bot/) where src/ is located
+os.chdir(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # Set UTF-8 encoding for Windows console
 if sys.platform == 'win32':
@@ -25,7 +25,7 @@ if __name__ == "__main__":
     
     try:
             uvicorn.run(
-            "src.main:app",
+            "src.api.webhook_handler:app",
             host="0.0.0.0",
             port=5000,
             reload=False,
