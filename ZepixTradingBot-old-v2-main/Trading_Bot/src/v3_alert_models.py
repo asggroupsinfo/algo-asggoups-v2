@@ -37,9 +37,13 @@ class ZepixV3Alert(BaseModel):
     tp1_price: Optional[float] = None  # Closer target
     tp2_price: Optional[float] = None  # Extended target
     
-    # MTF Trends String Format: "1,1,-1,1,1,1"
-    # Indices: [0]=1m, [1]=5m, [2]=15m, [3]=1H, [4]=4H, [5]=1D
-    # Bot will extract ONLY indices [2,3,4,5]
+    # MTF Trends String - TWO FORMATS from Pine Script:
+    # FORMAT A (5 values, REVERSE order) - Entry Signals:
+    #   Pine: mtfString = htfTrend5,htfTrend4,htfTrend3,htfTrend2,htfTrend1
+    #   Meaning: 1D,4H,1H,15m,5m (e.g., "1,1,-1,1,1")
+    # FORMAT B (6 values, FORWARD order) - Trend Pulse:
+    #   Pine: currentTrendString = htfTrend0,htfTrend1,htfTrend2,htfTrend3,htfTrend4,htfTrend5
+    #   Meaning: 1m,5m,15m,1H,4H,1D (e.g., "1,1,-1,1,1,1")
     mtf_trends: Optional[str] = None
     
     # Market Context
@@ -55,6 +59,15 @@ class ZepixV3Alert(BaseModel):
     previous_trends: Optional[str] = None  # Previous MTF state
     changed_timeframes: Optional[str] = None  # Which TFs changed
     change_details: Optional[str] = None  # Details of changes
+    
+    # Additional Pine Script fields (for enhanced decision making)
+    fib_level: Optional[float] = None  # Golden Pocket Flip signal - Fibonacci level
+    adx_value: Optional[float] = None  # Sideways Breakout signal - ADX momentum
+    confidence: Optional[str] = None   # Signal confidence level (e.g., "HIGH", "MEDIUM")
+    full_alignment: Optional[bool] = None  # Screener signals - all indicators aligned
+    reason: Optional[str] = None       # Exit signal reason
+    message: Optional[str] = None      # Info signal message
+    trend_labels: Optional[str] = None # Trend Pulse labels (e.g., "1m,5m,15m,1H,4H,1D")
     
     # Additional metadata
     timestamp: Optional[str] = None
@@ -76,11 +89,19 @@ class ZepixV3Alert(BaseModel):
     
     @validator('mtf_trends')
     def validate_mtf_trends(cls, v):
-        """Validate MTF trends string format"""
+        """
+        Validate MTF trends string format.
+        
+        Pine Script sends TWO different formats:
+        - Entry signals (mtfString): 5 values in REVERSE order (1D,4H,1H,15m,5m)
+        - Trend Pulse (currentTrendString): 6 values in FORWARD order (1m,5m,15m,1H,4H,1D)
+        
+        We accept BOTH formats and normalize during pillar extraction.
+        """
         if v is not None:
             parts = v.split(',')
-            if len(parts) != 6:
-                raise ValueError(f"MTF trends must have 6 values (1m,5m,15m,1H,4H,1D), got {len(parts)}")
+            if len(parts) not in [5, 6]:
+                raise ValueError(f"MTF trends must have 5 or 6 values, got {len(parts)}")
             
             # Validate each value is 1, -1, or 0
             for part in parts:
@@ -95,7 +116,21 @@ class ZepixV3Alert(BaseModel):
     
     def get_mtf_pillars(self) -> dict:
         """
-        Extract ONLY the 4 stable pillars from MTF trends string
+        Extract ONLY the 4 stable pillars from MTF trends string.
+        
+        Handles TWO Pine Script formats:
+        
+        FORMAT A (5 values, REVERSE order) - Entry Signals:
+        - Pine: mtfString = htfTrend5,htfTrend4,htfTrend3,htfTrend2,htfTrend1
+        - Meaning: 1D,4H,1H,15m,5m
+        - Index mapping: [0]=1D, [1]=4H, [2]=1H, [3]=15m, [4]=5m
+        - Extract: [0]=1D, [1]=4H, [2]=1H, [3]=15m (ignore [4]=5m noise)
+        
+        FORMAT B (6 values, FORWARD order) - Trend Pulse:
+        - Pine: currentTrendString = htfTrend0,htfTrend1,htfTrend2,htfTrend3,htfTrend4,htfTrend5
+        - Meaning: 1m,5m,15m,1H,4H,1D
+        - Index mapping: [0]=1m, [1]=5m, [2]=15m, [3]=1H, [4]=4H, [5]=1D
+        - Extract: [2]=15m, [3]=1H, [4]=4H, [5]=1D (ignore [0]=1m, [1]=5m noise)
         
         Returns:
             dict: {"15m": 1, "1h": 1, "4h": -1, "1d": 1}
@@ -105,13 +140,26 @@ class ZepixV3Alert(BaseModel):
         
         trends = [int(t.strip()) for t in self.mtf_trends.split(',')]
         
-        # Extract ONLY indices [2,3,4,5] - ignore [0,1] (1m, 5m noise)
-        return {
-            "15m": trends[2],  # Index 2
-            "1h": trends[3],   # Index 3
-            "4h": trends[4],   # Index 4
-            "1d": trends[5]    # Index 5
-        }
+        if len(trends) == 5:
+            # FORMAT A: 5 values in REVERSE order (1D,4H,1H,15m,5m)
+            # Indices: [0]=1D, [1]=4H, [2]=1H, [3]=15m, [4]=5m
+            return {
+                "15m": trends[3],  # Index 3 = 15m
+                "1h": trends[2],   # Index 2 = 1H
+                "4h": trends[1],   # Index 1 = 4H
+                "1d": trends[0]    # Index 0 = 1D
+            }
+        elif len(trends) == 6:
+            # FORMAT B: 6 values in FORWARD order (1m,5m,15m,1H,4H,1D)
+            # Indices: [0]=1m, [1]=5m, [2]=15m, [3]=1H, [4]=4H, [5]=1D
+            return {
+                "15m": trends[2],  # Index 2 = 15m
+                "1h": trends[3],   # Index 3 = 1H
+                "4h": trends[4],   # Index 4 = 4H
+                "1d": trends[5]    # Index 5 = 1D
+            }
+        else:
+            return {}
     
     def is_aggressive_reversal_signal(self) -> bool:
         """Check if this signal should trigger aggressive reversal (close + reverse)"""

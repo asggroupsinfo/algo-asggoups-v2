@@ -965,6 +965,10 @@ class V3CombinedPlugin(BaseLogicPlugin, ISignalProcessor, IOrderExecutor, IReent
         - Screener_Full_Bullish/Bearish
         - Sideways_Breakout (bonus)
         
+        V3 entries BYPASS trend check because Pine Script has already
+        performed 5-layer pre-validation. Re-entries and autonomous
+        actions still REQUIRE trend check.
+        
         Args:
             alert: ZepixV3Alert or dict with signal data
             
@@ -980,6 +984,19 @@ class V3CombinedPlugin(BaseLogicPlugin, ISignalProcessor, IOrderExecutor, IReent
                 f"[V3 Entry] Signal: {signal_type} | "
                 f"Symbol: {symbol} | Direction: {direction}"
             )
+            
+            # Step 1: Validate consensus score threshold
+            if not self._validate_score_thresholds(alert):
+                return {
+                    "status": "rejected",
+                    "reason": "low_consensus_score",
+                    "signal_type": signal_type,
+                    "symbol": symbol
+                }
+            
+            # Step 2: Extract all alert data (including Pine Script SL/TP)
+            alert_data = self._extract_alert_data(alert)
+            self.logger.debug(f"[V3 Entry] Extracted alert data: {alert_data}")
             
             if self._is_aggressive_reversal_signal(alert):
                 reversal_result = await self._handle_aggressive_reversal(alert)
@@ -1301,6 +1318,104 @@ class V3CombinedPlugin(BaseLogicPlugin, ISignalProcessor, IOrderExecutor, IReent
         if isinstance(alert, dict):
             return alert.get('consensus_score', 0)
         return 0
+    
+    def _validate_score_thresholds(self, alert) -> bool:
+        """
+        Validate consensus score meets minimum threshold.
+        
+        Pine Script consensus_score range: 0-9
+        - 0-4: Low confidence (REJECT)
+        - 5-6: Medium confidence (ACCEPT)
+        - 7-9: High confidence (ACCEPT with priority)
+        
+        Args:
+            alert: Alert data (dict or ZepixV3Alert)
+            
+        Returns:
+            bool: True if score meets threshold, False to reject
+        """
+        score = self._get_consensus_score(alert)
+        min_score = self.plugin_config.get('min_consensus_score', 5)
+        
+        if score < min_score:
+            self.logger.warning(
+                f"[V3 Score Filter] Signal REJECTED: consensus_score {score} < min {min_score}"
+            )
+            return False
+        
+        self.logger.debug(f"[V3 Score Filter] Score {score} >= min {min_score} - ACCEPTED")
+        return True
+    
+    def _extract_alert_data(self, alert) -> Dict[str, Any]:
+        """
+        Extract and validate all alert data from Pine Script signal.
+        
+        CRITICAL: alert.sl_price MUST override internal calculation for Order A.
+        Order B uses fixed $10 risk SL regardless of alert.sl_price.
+        
+        Args:
+            alert: Alert data (dict or ZepixV3Alert)
+            
+        Returns:
+            dict: Normalized alert data with all fields
+        """
+        # Handle both dict and object formats
+        if hasattr(alert, 'symbol'):
+            # ZepixV3Alert object
+            return {
+                'symbol': alert.symbol,
+                'direction': alert.direction,
+                'price': alert.price,
+                'signal_type': alert.signal_type,
+                'tf': str(alert.tf),
+                'consensus_score': alert.consensus_score,
+                'position_multiplier': getattr(alert, 'position_multiplier', 1.0),
+                
+                # CRITICAL: SL/TP from Pine Script
+                'sl_price': getattr(alert, 'sl_price', None),  # Order A uses this
+                'tp1_price': getattr(alert, 'tp1_price', None),  # Order B target
+                'tp2_price': getattr(alert, 'tp2_price', None),  # Order A target
+                
+                # MTF trends (handles both 5 and 6 value formats)
+                'mtf_trends': getattr(alert, 'mtf_trends', ''),
+                'market_trend': getattr(alert, 'market_trend', 0),
+                
+                # Extra Pine Script fields
+                'fib_level': getattr(alert, 'fib_level', None),
+                'adx_value': getattr(alert, 'adx_value', None),
+                'confidence': getattr(alert, 'confidence', None),
+                'full_alignment': getattr(alert, 'full_alignment', None),
+                'volume_delta_ratio': getattr(alert, 'volume_delta_ratio', None),
+                'price_in_ob': getattr(alert, 'price_in_ob', None),
+            }
+        else:
+            # Dict format
+            return {
+                'symbol': alert.get('symbol', ''),
+                'direction': alert.get('direction', ''),
+                'price': alert.get('price', 0.0),
+                'signal_type': alert.get('signal_type', ''),
+                'tf': str(alert.get('tf', '15')),
+                'consensus_score': alert.get('consensus_score', 0),
+                'position_multiplier': alert.get('position_multiplier', 1.0),
+                
+                # CRITICAL: SL/TP from Pine Script
+                'sl_price': alert.get('sl_price'),  # Order A uses this
+                'tp1_price': alert.get('tp1_price'),  # Order B target
+                'tp2_price': alert.get('tp2_price'),  # Order A target
+                
+                # MTF trends (handles both 5 and 6 value formats)
+                'mtf_trends': alert.get('mtf_trends', ''),
+                'market_trend': alert.get('market_trend', 0),
+                
+                # Extra Pine Script fields
+                'fib_level': alert.get('fib_level'),
+                'adx_value': alert.get('adx_value'),
+                'confidence': alert.get('confidence'),
+                'full_alignment': alert.get('full_alignment'),
+                'volume_delta_ratio': alert.get('volume_delta_ratio'),
+                'price_in_ob': alert.get('price_in_ob'),
+            }
     
     def get_status(self) -> Dict[str, Any]:
         """Get plugin status"""
