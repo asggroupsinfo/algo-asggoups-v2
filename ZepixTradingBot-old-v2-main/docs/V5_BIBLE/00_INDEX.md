@@ -54,6 +54,12 @@ This documentation consolidates all knowledge from:
 | [VOICE_NOTIFICATION_SYSTEM_V3.md](VOICE_NOTIFICATION_SYSTEM_V3.md) | Voice notification V3 | DOCUMENTATION |
 | [VOICE_ALERT_CONFIGURATION.md](VOICE_ALERT_CONFIGURATION.md) | Voice alert config | DOCUMENTATION |
 
+### 03_TELEGRAM - TELEGRAM AUDIT (Phase 13)
+| Document | Description | Source |
+|----------|-------------|--------|
+| [03_TELEGRAM/COMMAND_INTEGRITY_REPORT.md](03_TELEGRAM/COMMAND_INTEGRITY_REPORT.md) | Command parity audit - 91/91 FOUND | Phase 13 Audit |
+| [03_TELEGRAM/COMPLETE_TELEGRAM_MANUAL.md](03_TELEGRAM/COMPLETE_TELEGRAM_MANUAL.md) | Complete user manual for all 91 commands | Phase 13 Audit |
+
 ### 40 - CONFIGURATION & SETUP
 | Document | Description | Source |
 |----------|-------------|--------|
