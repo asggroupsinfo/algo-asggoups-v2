@@ -312,7 +312,7 @@ class V3CombinedPlugin(BaseLogicPlugin, ISignalProcessor, IOrderExecutor, IReent
         
         return result
     
-    async def get_order_a_config(self, signal: Dict[str, Any]) -> OrderConfig:
+    async def get_order_a_config(self, signal: Dict[str, Any], defined_sl: Optional[float] = None) -> OrderConfig:
         """
         Get Order A configuration (TP_TRAIL with V3 Smart SL).
         
@@ -321,9 +321,11 @@ class V3CombinedPlugin(BaseLogicPlugin, ISignalProcessor, IOrderExecutor, IReent
         - Trailing starts at 50% of SL in profit
         - Trails in 25% steps
         - Has TP target (2:1 RR)
+        - CRITICAL: Uses Pine Script SL when provided (defined_sl)
         
         Args:
             signal: Trading signal
+            defined_sl: Optional SL price from Pine Script alert
             
         Returns:
             OrderConfig for Order A
@@ -332,8 +334,18 @@ class V3CombinedPlugin(BaseLogicPlugin, ISignalProcessor, IOrderExecutor, IReent
         base_lot = self._get_base_lot(logic)
         smart_lot = self.get_smart_lot_size(base_lot)
         
-        # V3 Smart SL configuration
-        sl_pips = self._get_sl_pips(signal.get('symbol', 'EURUSD'), logic)
+        # USE PINE SL IF PROVIDED, OTHERWISE CALCULATE
+        if defined_sl:
+            sl_price = defined_sl
+            # Calculate pips from price difference
+            current_price = signal.get('price', 0)
+            sl_pips = abs(current_price - sl_price) * 10000  # For forex pairs
+            self.logger.info(f"[Order A] Using Pine Script SL: {sl_price} ({sl_pips:.1f} pips)")
+        else:
+            sl_pips = self._get_sl_pips(signal.get('symbol', 'EURUSD'), logic)
+            sl_price = None  # Will be calculated by order service
+            self.logger.info(f"[Order A] Using calculated SL: {sl_pips} pips")
+        
         tp_pips = sl_pips * 2  # 2:1 RR for Order A
         
         return OrderConfig(
@@ -341,6 +353,7 @@ class V3CombinedPlugin(BaseLogicPlugin, ISignalProcessor, IOrderExecutor, IReent
             sl_type=SLType.V3_SMART_SL,
             lot_size=smart_lot,
             sl_pips=sl_pips,
+            sl_price=sl_price,  # Pass Pine SL price if available
             tp_pips=tp_pips,
             trailing_enabled=True,
             trailing_start_pips=sl_pips * 0.5,  # Start trailing at 50% of SL
@@ -348,7 +361,8 @@ class V3CombinedPlugin(BaseLogicPlugin, ISignalProcessor, IOrderExecutor, IReent
             plugin_id=self.plugin_id,
             metadata={
                 'logic': logic,
-                'original_sl': sl_pips
+                'original_sl': sl_pips,
+                'pine_sl_used': defined_sl is not None
             }
         )
     
@@ -1328,6 +1342,10 @@ class V3CombinedPlugin(BaseLogicPlugin, ISignalProcessor, IOrderExecutor, IReent
         - 5-6: Medium confidence (ACCEPT)
         - 7-9: High confidence (ACCEPT with priority)
         
+        Special Rules:
+        - Institutional_Launchpad BUY: Requires score >= 7
+        - All other signals: Requires score >= 5 (configurable)
+        
         Args:
             alert: Alert data (dict or ZepixV3Alert)
             
@@ -1335,6 +1353,20 @@ class V3CombinedPlugin(BaseLogicPlugin, ISignalProcessor, IOrderExecutor, IReent
             bool: True if score meets threshold, False to reject
         """
         score = self._get_consensus_score(alert)
+        signal_type = self._get_signal_type(alert)
+        direction = self._get_direction(alert)
+        
+        # Special threshold for Institutional Launchpad BUY
+        if "Institutional_Launchpad" in signal_type and direction == "buy":
+            if score < 7:
+                self.logger.warning(
+                    f"[V3 Score Filter] Launchpad BUY REJECTED: score {score} < 7"
+                )
+                return False
+            self.logger.info(f"[V3 Score Filter] Launchpad BUY ACCEPTED: score {score} >= 7")
+            return True
+        
+        # Global minimum threshold
         min_score = self.plugin_config.get('min_consensus_score', 5)
         
         if score < min_score:
@@ -1387,6 +1419,13 @@ class V3CombinedPlugin(BaseLogicPlugin, ISignalProcessor, IOrderExecutor, IReent
                 'full_alignment': getattr(alert, 'full_alignment', None),
                 'volume_delta_ratio': getattr(alert, 'volume_delta_ratio', None),
                 'price_in_ob': getattr(alert, 'price_in_ob', None),
+                
+                # V3 Enhanced Pine Script fields
+                'volume_profile': getattr(alert, 'volume_profile', None),
+                'order_block_strength': getattr(alert, 'order_block_strength', None),
+                'liquidity_zone_distance': getattr(alert, 'liquidity_zone_distance', None),
+                'smart_money_flow': getattr(alert, 'smart_money_flow', None),
+                'institutional_footprint': getattr(alert, 'institutional_footprint', None),
             }
         else:
             # Dict format
@@ -1415,6 +1454,13 @@ class V3CombinedPlugin(BaseLogicPlugin, ISignalProcessor, IOrderExecutor, IReent
                 'full_alignment': alert.get('full_alignment'),
                 'volume_delta_ratio': alert.get('volume_delta_ratio'),
                 'price_in_ob': alert.get('price_in_ob'),
+                
+                # V3 Enhanced Pine Script fields
+                'volume_profile': alert.get('volume_profile'),
+                'order_block_strength': alert.get('order_block_strength'),
+                'liquidity_zone_distance': alert.get('liquidity_zone_distance'),
+                'smart_money_flow': alert.get('smart_money_flow'),
+                'institutional_footprint': alert.get('institutional_footprint'),
             }
     
     def get_status(self) -> Dict[str, Any]:

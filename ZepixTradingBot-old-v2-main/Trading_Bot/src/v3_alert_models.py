@@ -61,13 +61,31 @@ class ZepixV3Alert(BaseModel):
     change_details: Optional[str] = None  # Details of changes
     
     # Additional Pine Script fields (for enhanced decision making)
-    fib_level: Optional[float] = None  # Golden Pocket Flip signal - Fibonacci level
-    adx_value: Optional[float] = None  # Sideways Breakout signal - ADX momentum
+    fib_level: Optional[float] = None  # Golden Pocket Flip signal - Fibonacci level (0.236, 0.382, 0.5, 0.618, 0.786)
+    adx_value: Optional[float] = None  # Sideways Breakout signal - ADX momentum/trend strength
     confidence: Optional[str] = None   # Signal confidence level (e.g., "HIGH", "MEDIUM")
     full_alignment: Optional[bool] = None  # Screener signals - all indicators aligned
     reason: Optional[str] = None       # Exit signal reason
     message: Optional[str] = None      # Info signal message
     trend_labels: Optional[str] = None # Trend Pulse labels (e.g., "1m,5m,15m,1H,4H,1D")
+    
+    # ===== EXTRA PINE SCRIPT FIELDS (V3 Enhanced) =====
+    # These fields capture advanced Pine Script indicators
+    
+    # Volume Profile - High/Low/POC
+    volume_profile: Optional[str] = None  # "high", "low", "poc"
+    
+    # Order Block Strength (0-100)
+    order_block_strength: Optional[float] = None
+    
+    # Liquidity Zone proximity (distance in pips)
+    liquidity_zone_distance: Optional[float] = None
+    
+    # Smart Money Flow indicator (-100 to +100)
+    smart_money_flow: Optional[float] = None
+    
+    # Institutional Footprint score (0-10)
+    institutional_footprint: Optional[int] = None
     
     # Additional metadata
     timestamp: Optional[str] = None
