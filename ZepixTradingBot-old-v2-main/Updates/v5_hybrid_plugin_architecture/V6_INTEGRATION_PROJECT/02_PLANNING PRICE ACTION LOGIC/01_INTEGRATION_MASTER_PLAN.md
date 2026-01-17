@@ -97,4 +97,40 @@ This ensures that a "Session Close" in Group 2 does NOT accidentally close Group
 
 ---
 
+## 6. DATA-DRIVEN FILTERING (PINE SCRIPT SUPREMACY)
+
+**Principle:** For fresh entry validation, V6 plugins MUST use data from the alert payload (calculated by Pine Script) instead of querying internal TrendManager.
+
+### Data Source Matrix
+
+| Data Point | Source | Field | Format |
+|------------|--------|-------|--------|
+| MTF Alignment | Alert Payload | `alert.alignment` | "bull_count/bear_count" (e.g., "3/0") |
+| ADX Value | Alert Payload | `alert.adx` | Float (e.g., 25.5) |
+| Confidence Score | Alert Payload | `alert.conf_score` | Integer 0-100 |
+| Stop Loss | Alert Payload | `alert.sl` | Float price |
+| Take Profits | Alert Payload | `alert.tp1`, `alert.tp2`, `alert.tp3` | Float prices |
+
+### Alignment Thresholds by Timeframe
+
+| Timeframe | Threshold | Example |
+|-----------|-----------|---------|
+| 1M | N/A (ignored) | Too fast for alignment |
+| 5M | 3+ | BUY requires bull_count >= 3 |
+| 15M | 3+ | BUY requires bull_count >= 3 |
+| 1H | 4+ | BUY requires bull_count >= 4 (higher for swing) |
+
+### Why Pine Script Supremacy?
+
+1. **Single Source of Truth:** Pine Script calculates ALL intelligence (ADX, MTF Alignment, Confidence)
+2. **Consistency:** Bot reads and executes, doesn't recalculate
+3. **Latency:** No additional API calls to TrendManager during entry validation
+4. **Testability:** Payload data is deterministic and testable
+
+### Implementation Note (Mandate 22)
+
+The V6 plugins (5M, 15M, 1H) have been updated to use `alert.get_pulse_counts()` method which parses the `alignment` field from the payload. TrendManager is still available for re-entry validation but NOT used for fresh entry filtering.
+
+---
+
 **Status:** PLANNING COMPLETE. Ready for Implementation.

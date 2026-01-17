@@ -270,16 +270,27 @@ class V6PriceAction5mPlugin(BaseLogicPlugin, ISignalProcessor, IOrderExecutor):
             return {"valid": False, "reason": "confidence_low"}
         
         if self.REQUIRE_15M_ALIGNMENT:
-            try:
-                is_aligned = await self.service_api.check_pulse_alignment(
-                    symbol=alert.ticker,
-                    direction=alert.direction
-                )
+            bull_count, bear_count = alert.get_pulse_counts()
+            
+            if alert.alignment == "0/0" or (bull_count == 0 and bear_count == 0):
+                self.logger.warning(f"[5M] No MTF alignment data in payload, proceeding with caution")
+            else:
+                if alert.direction.upper() == "BUY":
+                    is_aligned = bull_count >= 3
+                else:
+                    is_aligned = bear_count >= 3
+                
                 if not is_aligned:
-                    self.logger.info(f"[5M Skip] 15M alignment failed for {alert.direction}")
-                    return {"valid": False, "reason": "alignment_failed"}
-            except Exception as e:
-                self.logger.debug(f"[5M] Alignment check skipped: {e}")
+                    self.logger.info(
+                        f"[5M Skip] Payload alignment weak: {alert.alignment} "
+                        f"(need 3+ for {alert.direction})"
+                    )
+                    return {"valid": False, "reason": "alignment_weak"}
+                
+                self.logger.debug(
+                    f"[5M] Using payload alignment: {alert.alignment} "
+                    f"(Bull={bull_count}, Bear={bear_count})"
+                )
         
         self.logger.info(
             f"[5M Valid] ADX={alert.adx:.1f}, Conf={alert.conf_score}, "

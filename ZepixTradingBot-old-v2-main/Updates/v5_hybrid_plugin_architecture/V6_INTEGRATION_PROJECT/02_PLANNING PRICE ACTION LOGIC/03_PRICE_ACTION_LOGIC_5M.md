@@ -52,20 +52,36 @@
 class PriceActionLogic5M:
     """
     5-Minute Momentum Logic
-    Requires ADX > 25 and Trend Alignment
+    Requires ADX > 25 and Trend Alignment from PAYLOAD
+    
+    PINE SCRIPT SUPREMACY: Uses alert.alignment from payload
+    instead of TrendManager for fresh entry validation.
     """
     
-    def validate_entry(self, alert: ZepixV6Alert, trend_state: TrendState) -> bool:
+    def validate_entry(self, alert: ZepixV6Alert) -> bool:
         # Rule 1: Momentum Strength
         if alert.adx < 25: 
-            logger.info("❌ 5M Skiped: Low Momentum (ADX < 25)")
+            logger.info("[5M Skip] Low Momentum (ADX < 25)")
             return False
             
-        # Rule 2: Immediate Higher TF Alignment (15m)
-        tf_15m_trend = trend_state.get_trend("15")
-        if tf_15m_trend != alert.direction:
-             logger.info(f"❌ 5M Skiped: 15m Trend Mismatch ({tf_15m_trend} vs {alert.direction})")
-             return False
+        # Rule 2: Alignment from PAYLOAD (Pine Script Supremacy)
+        # alert.alignment format: "bull_count/bear_count" (e.g., "3/0")
+        bull_count, bear_count = alert.get_pulse_counts()
+        
+        # Handle missing alignment data
+        if alert.alignment == "0/0" or (bull_count == 0 and bear_count == 0):
+            logger.warning("[5M] No MTF alignment data in payload, proceeding with caution")
+            return True
+        
+        # For 5M, require 3+ alignment
+        if alert.direction.upper() == "BUY":
+            is_aligned = bull_count >= 3
+        else:
+            is_aligned = bear_count >= 3
+        
+        if not is_aligned:
+            logger.info(f"[5M Skip] Payload alignment weak: {alert.alignment} (need 3+)")
+            return False
              
         return True
 
