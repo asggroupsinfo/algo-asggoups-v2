@@ -271,17 +271,27 @@ class V6PriceAction1hPlugin(BaseLogicPlugin, ISignalProcessor, IOrderExecutor):
             return {"valid": False, "reason": "confidence_low"}
         
         if self.REQUIRE_4H_ALIGNMENT:
-            try:
-                is_aligned = await self.service_api.check_timeframe_alignment(
-                    symbol=alert.ticker,
-                    direction=alert.direction,
-                    higher_tf="240"
-                )
+            bull_count, bear_count = alert.get_pulse_counts()
+            
+            if alert.alignment == "0/0" or (bull_count == 0 and bear_count == 0):
+                self.logger.warning(f"[1H] No MTF alignment data in payload, proceeding with caution")
+            else:
+                if alert.direction.upper() == "BUY":
+                    is_aligned = bull_count >= 4
+                else:
+                    is_aligned = bear_count >= 4
+                
                 if not is_aligned:
-                    self.logger.info(f"[1H Skip] 4H alignment failed for {alert.direction}")
-                    return {"valid": False, "reason": "4h_alignment_failed"}
-            except Exception as e:
-                self.logger.debug(f"[1H] 4H alignment check skipped: {e}")
+                    self.logger.info(
+                        f"[1H Skip] Payload alignment weak: {alert.alignment} "
+                        f"(need 4+ for {alert.direction})"
+                    )
+                    return {"valid": False, "reason": "alignment_weak"}
+                
+                self.logger.debug(
+                    f"[1H] Using payload alignment: {alert.alignment} "
+                    f"(Bull={bull_count}, Bear={bear_count})"
+                )
         
         self.logger.info(
             f"[1H Valid] Conf={alert.conf_score}, Direction={alert.direction}"

@@ -51,17 +51,30 @@ class PriceActionLogic1H:
     """
     1H Swing Logic
     Patient, Trend-Following, Wide Stops
+    
+    PINE SCRIPT SUPREMACY: Uses alert.alignment from payload
+    instead of TrendManager for fresh entry validation.
     """
     
-    def validate_entry(self, alert: ZepixV6Alert, trend_state: TrendState) -> bool:
-        # Rule 1: 4H Alignment
-        tf_4h_trend = trend_state.get_trend("240")
+    def validate_entry(self, alert: ZepixV6Alert) -> bool:
+        # Rule 1: 4H Alignment from PAYLOAD (Pine Script Supremacy)
+        # alert.alignment format: "bull_count/bear_count" (e.g., "4/0")
+        bull_count, bear_count = alert.get_pulse_counts()
         
-        # If signal is 1H, check 4H
-        if alert.tf == "60":
-            if tf_4h_trend != alert.direction:
-                logger.info(f"❌ 1H Skiped: 4H Trend Mismatch")
-                return False
+        # Handle missing alignment data
+        if alert.alignment == "0/0" or (bull_count == 0 and bear_count == 0):
+            logger.warning("[1H] No MTF alignment data in payload, proceeding with caution")
+            return True
+        
+        # For 1H, require 4+ alignment (higher threshold for swing trades)
+        if alert.direction.upper() == "BUY":
+            is_aligned = bull_count >= 4
+        else:
+            is_aligned = bear_count >= 4
+        
+        if not is_aligned:
+            logger.info(f"[1H Skip] Payload alignment weak: {alert.alignment} (need 4+)")
+            return False
         
         return True
 

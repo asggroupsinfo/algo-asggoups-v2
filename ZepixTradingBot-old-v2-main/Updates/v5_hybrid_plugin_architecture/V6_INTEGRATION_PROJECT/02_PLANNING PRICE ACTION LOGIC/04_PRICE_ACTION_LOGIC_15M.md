@@ -50,20 +50,30 @@
 class PriceActionLogic15M:
     """
     15-Minute Intraday Logic
-    Relies on Global Market State and Pulse Alignment
+    Relies on Pulse Alignment from PAYLOAD
+    
+    PINE SCRIPT SUPREMACY: Uses alert.alignment from payload
+    instead of TrendManager for fresh entry validation.
     """
     
-    def validate_entry(self, alert: ZepixV6Alert, trend_state: TrendState) -> bool:
-        # Rule 1: Market State Check
-        # State like 'TRENDING_BULLISH' implies Buy Only
-        algo_state = trend_state.get_market_state()
+    def validate_entry(self, alert: ZepixV6Alert) -> bool:
+        # Rule 1: Pulse Alignment from PAYLOAD (Pine Script Supremacy)
+        # alert.alignment format: "bull_count/bear_count" (e.g., "3/0")
+        bull_count, bear_count = alert.get_pulse_counts()
         
-        if alert.direction == "BUY" and "BEARISH" in algo_state:
-            logger.info(f"❌ 15M Skiped: Market State is {algo_state}")
-            return False
-            
-        if alert.direction == "SELL" and "BULLISH" in algo_state:
-            logger.info(f"❌ 15M Skiped: Market State is {algo_state}")
+        # Handle missing alignment data
+        if alert.alignment == "0/0" or (bull_count == 0 and bear_count == 0):
+            logger.warning("[15M] No MTF alignment data in payload, proceeding with caution")
+            return True
+        
+        # For 15M, require 3+ alignment
+        if alert.direction.upper() == "BUY":
+            is_aligned = bull_count >= 3
+        else:
+            is_aligned = bear_count >= 3
+        
+        if not is_aligned:
+            logger.info(f"[15M Skip] Payload alignment weak: {alert.alignment} (need 3+)")
             return False
              
         return True
