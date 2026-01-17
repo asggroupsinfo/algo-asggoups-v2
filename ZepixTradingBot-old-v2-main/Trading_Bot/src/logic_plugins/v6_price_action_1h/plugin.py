@@ -5,7 +5,8 @@ V6 Price Action 1H Plugin - Swing Logic
 - Swing trading for larger 100-200+ pip moves
 - ORDER A ONLY (main order targeting TP3)
 - Requires 4H alignment (must align with higher TF)
-- Risk Multiplier: 0.6x (reduced due to wider stops)
+- Risk Multiplier: 1.5x (swing trades with higher conviction)
+- ADX >= 15 (need trending market)
 - Longer hold times, fewer trades
 
 Version: 1.0.0
@@ -31,10 +32,11 @@ class V6PriceAction1hPlugin(BaseLogicPlugin, ISignalProcessor, IOrderExecutor):
     Strategy Profile:
     - Type: Swing Trading
     - Goal: Capture larger 100-200+ pip moves
-    - Risk Multiplier: 0.6x (reduced due to wider stops)
+    - Risk Multiplier: 1.5x (swing trades with higher conviction)
     - Order Routing: ORDER A ONLY
     
     Entry Filters:
+    - ADX >= 15 (need trending market)
     - 4H Alignment required (must align with higher TF)
     - Confidence >= 60 (standard threshold)
     - Trend Pulse alignment checked
@@ -42,8 +44,9 @@ class V6PriceAction1hPlugin(BaseLogicPlugin, ISignalProcessor, IOrderExecutor):
     
     TIMEFRAME = "60"
     ORDER_ROUTING = "ORDER_A_ONLY"
-    RISK_MULTIPLIER = 0.6
+    RISK_MULTIPLIER = 1.5
     
+    ADX_THRESHOLD = 15
     CONFIDENCE_THRESHOLD = 60
     REQUIRE_4H_ALIGNMENT = True
     
@@ -93,6 +96,7 @@ class V6PriceAction1hPlugin(BaseLogicPlugin, ISignalProcessor, IOrderExecutor):
         entry_conditions = settings.get("entry_conditions", {})
         risk_mgmt = settings.get("risk_management", {})
         
+        self.ADX_THRESHOLD = entry_conditions.get("adx_threshold", self.ADX_THRESHOLD)
         self.CONFIDENCE_THRESHOLD = entry_conditions.get("confidence_threshold", self.CONFIDENCE_THRESHOLD)
         self.REQUIRE_4H_ALIGNMENT = entry_conditions.get("require_4h_alignment", self.REQUIRE_4H_ALIGNMENT)
         self.RISK_MULTIPLIER = risk_mgmt.get("risk_multiplier", self.RISK_MULTIPLIER)
@@ -247,8 +251,9 @@ class V6PriceAction1hPlugin(BaseLogicPlugin, ISignalProcessor, IOrderExecutor):
         Validate entry conditions for 1H swing.
         
         Filters:
-        1. Confidence >= 60 (standard threshold)
-        2. 4H Alignment required (must align with higher TF)
+        1. ADX >= 15 (need trending market)
+        2. Confidence >= 60 (standard threshold)
+        3. 4H Alignment required (must align with higher TF)
         
         Args:
             alert: ZepixV6Alert to validate
@@ -256,6 +261,11 @@ class V6PriceAction1hPlugin(BaseLogicPlugin, ISignalProcessor, IOrderExecutor):
         Returns:
             dict: Validation result with reason if failed
         """
+        if alert.adx is None or alert.adx < self.ADX_THRESHOLD:
+            adx_val = alert.adx if alert.adx is not None else "NA"
+            self.logger.info(f"[1H Skip] ADX {adx_val} < {self.ADX_THRESHOLD} (need trending market)")
+            return {"valid": False, "reason": "adx_low"}
+        
         if alert.conf_score < self.CONFIDENCE_THRESHOLD:
             self.logger.info(f"[1H Skip] Confidence {alert.conf_score} < {self.CONFIDENCE_THRESHOLD}")
             return {"valid": False, "reason": "confidence_low"}
@@ -283,7 +293,7 @@ class V6PriceAction1hPlugin(BaseLogicPlugin, ISignalProcessor, IOrderExecutor):
         """
         Calculate lot size for 1H swing.
         
-        Uses 0.6x risk multiplier due to wider stops.
+        Uses 1.5x risk multiplier (swing trades with higher conviction).
         
         Args:
             alert: ZepixV6Alert with trade details
@@ -307,7 +317,7 @@ class V6PriceAction1hPlugin(BaseLogicPlugin, ISignalProcessor, IOrderExecutor):
             
             final_lot = min(final_lot, max_lot)
             
-            self.logger.debug(f"[1H Lot] Base={base_lot:.2f}, Final={final_lot:.2f} (0.6x)")
+            self.logger.debug(f"[1H Lot] Base={base_lot:.2f}, Final={final_lot:.2f} (1.5x)")
             
             return final_lot
             
@@ -426,6 +436,7 @@ class V6PriceAction1hPlugin(BaseLogicPlugin, ISignalProcessor, IOrderExecutor):
             "order_routing": self.ORDER_ROUTING,
             "risk_multiplier": self.RISK_MULTIPLIER,
             "filters": {
+                "adx_threshold": self.ADX_THRESHOLD,
                 "confidence_threshold": self.CONFIDENCE_THRESHOLD,
                 "require_4h_alignment": self.REQUIRE_4H_ALIGNMENT
             },
