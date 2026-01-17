@@ -35,16 +35,18 @@ class V6PriceAction15mPlugin(BaseLogicPlugin, ISignalProcessor, IOrderExecutor):
     - Order Routing: ORDER A ONLY
     
     Entry Filters:
+    - ADX >= 20 (need trending market)
     - Market State check (avoid CHOPPY/SIDEWAYS)
     - Trend Pulse alignment required
-    - Confidence >= 60 (standard threshold)
+    - Confidence >= 65 (elevated threshold)
     """
     
     TIMEFRAME = "15"
     ORDER_ROUTING = "ORDER_A_ONLY"
-    RISK_MULTIPLIER = 1.0
+    RISK_MULTIPLIER = 1.2
     
-    CONFIDENCE_THRESHOLD = 60
+    ADX_THRESHOLD = 20
+    CONFIDENCE_THRESHOLD = 65
     REQUIRE_PULSE_ALIGNMENT = True
     AVOID_MARKET_STATES = ["CHOPPY", "SIDEWAYS"]
     
@@ -94,6 +96,7 @@ class V6PriceAction15mPlugin(BaseLogicPlugin, ISignalProcessor, IOrderExecutor):
         entry_conditions = settings.get("entry_conditions", {})
         risk_mgmt = settings.get("risk_management", {})
         
+        self.ADX_THRESHOLD = entry_conditions.get("adx_threshold", self.ADX_THRESHOLD)
         self.CONFIDENCE_THRESHOLD = entry_conditions.get("confidence_threshold", self.CONFIDENCE_THRESHOLD)
         self.REQUIRE_PULSE_ALIGNMENT = entry_conditions.get("require_pulse_alignment", self.REQUIRE_PULSE_ALIGNMENT)
         self.RISK_MULTIPLIER = risk_mgmt.get("risk_multiplier", self.RISK_MULTIPLIER)
@@ -249,9 +252,10 @@ class V6PriceAction15mPlugin(BaseLogicPlugin, ISignalProcessor, IOrderExecutor):
         Validate entry conditions for 15M intraday.
         
         Filters:
-        1. Market State check (avoid CHOPPY/SIDEWAYS)
-        2. Trend Pulse alignment required
-        3. Confidence >= 60 (standard threshold)
+        1. ADX >= 20 (need trending market)
+        2. Market State check (avoid CHOPPY/SIDEWAYS)
+        3. Trend Pulse alignment required
+        4. Confidence >= 65 (elevated threshold)
         
         Args:
             alert: ZepixV6Alert to validate
@@ -259,6 +263,11 @@ class V6PriceAction15mPlugin(BaseLogicPlugin, ISignalProcessor, IOrderExecutor):
         Returns:
             dict: Validation result with reason if failed
         """
+        if alert.adx is None or alert.adx < self.ADX_THRESHOLD:
+            adx_val = alert.adx if alert.adx is not None else "NA"
+            self.logger.info(f"[15M Skip] ADX {adx_val} < {self.ADX_THRESHOLD} (need trending market)")
+            return {"valid": False, "reason": "adx_low"}
+        
         if alert.conf_score < self.CONFIDENCE_THRESHOLD:
             self.logger.info(f"[15M Skip] Confidence {alert.conf_score} < {self.CONFIDENCE_THRESHOLD}")
             return {"valid": False, "reason": "confidence_low"}
@@ -434,6 +443,7 @@ class V6PriceAction15mPlugin(BaseLogicPlugin, ISignalProcessor, IOrderExecutor):
             "order_routing": self.ORDER_ROUTING,
             "risk_multiplier": self.RISK_MULTIPLIER,
             "filters": {
+                "adx_threshold": self.ADX_THRESHOLD,
                 "confidence_threshold": self.CONFIDENCE_THRESHOLD,
                 "require_pulse_alignment": self.REQUIRE_PULSE_ALIGNMENT,
                 "avoid_market_states": self.AVOID_MARKET_STATES
