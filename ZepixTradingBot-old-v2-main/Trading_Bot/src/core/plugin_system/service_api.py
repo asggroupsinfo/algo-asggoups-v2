@@ -596,7 +596,7 @@ class ServiceAPI:
 
     def place_order(self, symbol: str, direction: str, lot_size: float, 
                    sl_price: float = 0.0, tp_price: float = 0.0, 
-                   comment: str = "") -> Optional[int]:
+                   comment: str = "", **kwargs) -> Optional[int]:
         """
         Place a new order (backward compatible).
         
@@ -607,6 +607,7 @@ class ServiceAPI:
             sl_price: Stop loss price
             tp_price: Take profit price
             comment: Order comment
+            **kwargs: Additional arguments (plugin_id, entry_price, metadata) - ignored for backward compatibility
         
         Returns:
             MT5 ticket number or None
@@ -624,6 +625,59 @@ class ServiceAPI:
             tp=tp_price,
             comment=f"{self._plugin_id}|{comment}" if comment else self._plugin_id
         )
+    
+    async def place_order_async(
+        self,
+        symbol: str,
+        direction: str,
+        lot_size: float,
+        entry_price: float = 0.0,
+        sl_price: float = 0.0,
+        tp_price: float = 0.0,
+        comment: str = "",
+        metadata: Dict[str, Any] = None,
+        plugin_id: str = None
+    ) -> Dict[str, Any]:
+        """
+        Place a new order (async version for V3 plugin).
+        
+        Args:
+            symbol: Trading symbol
+            direction: "BUY" or "SELL"
+            lot_size: Position size
+            entry_price: Entry price (0 for market order)
+            sl_price: Stop loss price
+            tp_price: Take profit price
+            comment: Order comment
+            metadata: Additional order metadata
+            plugin_id: Plugin ID (ignored - uses self._plugin_id)
+        
+        Returns:
+            Dict with success status and trade_id or error
+        """
+        if not self._engine.trading_enabled:
+            self._logger.warning("Trading is paused. Order rejected.")
+            return {"success": False, "error": "Trading is paused"}
+
+        try:
+            ticket = self._mt5.place_order(
+                symbol=symbol,
+                order_type=direction.upper(),
+                lot_size=lot_size,
+                price=entry_price,
+                sl=sl_price,
+                tp=tp_price,
+                comment=f"{self._plugin_id}|{comment}" if comment else self._plugin_id
+            )
+            
+            if ticket:
+                self._logger.info(f"[ServiceAPI] Order placed: {ticket} | {symbol} {direction} {lot_size}")
+                return {"success": True, "trade_id": ticket}
+            else:
+                return {"success": False, "error": "Order placement failed"}
+        except Exception as e:
+            self._logger.error(f"[ServiceAPI] Order placement error: {e}")
+            return {"success": False, "error": str(e)}
     
     async def place_dual_orders_v3(
         self,
@@ -831,6 +885,42 @@ class ServiceAPI:
         
         return results
     
+    async def close_positions_by_direction(
+        self,
+        symbol: str,
+        direction: str,
+        plugin_id: str = None
+    ) -> Dict[str, Any]:
+        """
+        Close all positions for a symbol in a specific direction.
+        
+        Used by V3 plugin for aggressive reversal (close opposite positions).
+        
+        Args:
+            symbol: Trading symbol
+            direction: Direction to close ('buy' or 'sell')
+            plugin_id: Plugin ID (ignored - uses self._plugin_id)
+        
+        Returns:
+            Dict with closed positions count and details
+        """
+        try:
+            results = await self.close_positions(symbol=symbol, direction=direction)
+            closed_count = sum(1 for r in results if r.get('closed'))
+            
+            self._logger.info(
+                f"[ServiceAPI] Closed {closed_count} {direction.upper()} positions for {symbol}"
+            )
+            
+            return {
+                "success": True,
+                "closed_count": closed_count,
+                "results": results
+            }
+        except Exception as e:
+            self._logger.error(f"[ServiceAPI] close_positions_by_direction error: {e}")
+            return {"success": False, "error": str(e), "closed_count": 0}
+    
     async def close_position(self, order_id: int, reason: str = 'Manual') -> Dict[str, Any]:
         """
         Close entire position with tracking.
@@ -929,21 +1019,69 @@ class ServiceAPI:
     # RISK MANAGEMENT METHODS (RiskManagementService)
     # =========================================================================
 
-    def calculate_lot_size(self, symbol: str, stop_loss_pips: float = 0.0) -> float:
+    def calculate_lot_size(self, symbol: str = None, stop_loss_pips: float = 0.0, plugin_id: str = None, **kwargs) -> Dict[str, Any]:
         """
         Calculate recommended lot size (backward compatible).
         
         Args:
             symbol: Trading symbol
             stop_loss_pips: Stop loss in pips
+            plugin_id: Plugin ID (ignored - uses self._plugin_id)
+            **kwargs: Additional arguments (ignored for backward compatibility)
         
         Returns:
-            Calculated lot size
+            Dict with lot_size or float for backward compatibility
         """
         balance = self.get_balance()
         if hasattr(self._risk, 'calculate_lot_size') and stop_loss_pips > 0:
-            return self._risk.calculate_lot_size(balance, stop_loss_pips)
-        return self._risk.get_fixed_lot_size(balance)
+            lot_size = self._risk.calculate_lot_size(balance, stop_loss_pips)
+        else:
+            lot_size = self._risk.get_fixed_lot_size(balance)
+        
+        return {"lot_size": lot_size, "balance": balance}
+    
+    async def calculate_sl_price(
+        self,
+        price: float,
+        direction: str,
+        lot_size: float,
+        plugin_id: str = None,
+        **kwargs
+    ) -> Dict[str, Any]:
+        """
+        Calculate stop loss price based on risk parameters.
+        
+        Used by V3 plugin for fallback SL calculation when Pine SL is not provided.
+        
+        Args:
+            price: Entry price
+            direction: Trade direction ('buy' or 'sell')
+            lot_size: Lot size
+            plugin_id: Plugin ID (ignored - uses self._plugin_id)
+            **kwargs: Additional arguments
+        
+        Returns:
+            Dict with sl_price
+        """
+        try:
+            risk_config = self._config.get('risk_config', {})
+            default_sl_pips = risk_config.get('default_sl_pips', 50)
+            
+            point_value = 0.01 if price > 100 else 0.0001
+            sl_distance = default_sl_pips * point_value
+            
+            if direction.lower() == 'buy':
+                sl_price = price - sl_distance
+            else:
+                sl_price = price + sl_distance
+            
+            return {"sl_price": sl_price, "sl_pips": default_sl_pips}
+        except Exception as e:
+            self._logger.error(f"[ServiceAPI] calculate_sl_price error: {e}")
+            if direction.lower() == 'buy':
+                return {"sl_price": price * 0.99, "sl_pips": 0}
+            else:
+                return {"sl_price": price * 1.01, "sl_pips": 0}
     
     async def calculate_lot_size_async(
         self,
@@ -1387,9 +1525,43 @@ class ServiceAPI:
     # COMMUNICATION METHODS
     # =========================================================================
 
-    def send_notification(self, message: str):
-        """Send message via Telegram (backward compatible)"""
+    def send_notification(self, message: str, plugin_id: str = None, priority: str = "normal", **kwargs):
+        """
+        Send message via Telegram (backward compatible).
+        
+        Args:
+            message: Message to send
+            plugin_id: Plugin ID (ignored - uses self._plugin_id)
+            priority: Message priority (normal, high, low)
+            **kwargs: Additional arguments (ignored for backward compatibility)
+        """
         self._telegram.send_message(message)
+    
+    async def send_notification_async(
+        self,
+        message: str,
+        plugin_id: str = None,
+        priority: str = "normal",
+        **kwargs
+    ) -> bool:
+        """
+        Send message via Telegram (async version).
+        
+        Args:
+            message: Message to send
+            plugin_id: Plugin ID (ignored - uses self._plugin_id)
+            priority: Message priority (normal, high, low)
+            **kwargs: Additional arguments
+        
+        Returns:
+            True if sent successfully
+        """
+        try:
+            self._telegram.send_message(message)
+            return True
+        except Exception as e:
+            self._logger.error(f"[ServiceAPI] Notification error: {e}")
+            return False
 
     def log(self, message: str, level: str = "info"):
         """Log message with plugin context"""

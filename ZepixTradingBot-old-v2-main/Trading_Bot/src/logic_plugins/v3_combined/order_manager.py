@@ -155,8 +155,7 @@ class V3OrderManager:
             float: Base lot size
         """
         try:
-            lot_info = await self.service_api.calculate_lot_size(
-                plugin_id=self.plugin.plugin_id,
+            lot_info = self.service_api.calculate_lot_size(
                 symbol=symbol
             )
             return lot_info.get("lot_size", 0.01)
@@ -405,8 +404,7 @@ class V3OrderManager:
                 self.logger.info(f"[SHADOW] Order A would be placed: {params}")
                 return {"placed": False, "shadow": True}
             
-            result = await self.service_api.place_order(
-                plugin_id=self.plugin.plugin_id,
+            result = await self.service_api.place_order_async(
                 symbol=symbol,
                 direction=direction,
                 lot_size=params["lot_size"],
@@ -462,8 +460,7 @@ class V3OrderManager:
                 self.logger.info(f"[SHADOW] Order B would be placed: {params}")
                 return {"placed": False, "shadow": True}
             
-            result = await self.service_api.place_order(
-                plugin_id=self.plugin.plugin_id,
+            result = await self.service_api.place_order_async(
                 symbol=symbol,
                 direction=direction,
                 lot_size=params["lot_size"],
@@ -547,8 +544,7 @@ class V3OrderManager:
                 )
                 priority = "critical"
             
-            await self.service_api.send_notification(
-                plugin_id=self.plugin.plugin_id,
+            self.service_api.send_notification(
                 message=message,
                 priority=priority
             )
@@ -748,8 +744,7 @@ class V3OrderManager:
                 return True
             
             # Place recovery order
-            result = await self.service_api.place_order(
-                plugin_id=self.plugin.plugin_id,
+            result = await self.service_api.place_order_async(
                 symbol=symbol,
                 direction=direction,
                 lot_size=recovery_lot,
@@ -770,8 +765,7 @@ class V3OrderManager:
                 self.logger.info(f"Recovery order placed: {result.get('trade_id')}")
                 
                 # Send notification
-                await self.service_api.send_notification(
-                    plugin_id=self.plugin.plugin_id,
+                self.service_api.send_notification(
                     message=(
                         f"RECOVERY ORDER PLACED\n"
                         f"Type: {recovery_type}\n"
