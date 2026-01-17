@@ -4,7 +4,7 @@ V6 Price Action 1M Plugin - Scalping Logic
 1-Minute Scalping Strategy:
 - Ultra-fast scalping for quick 10-20 pip moves
 - ORDER B ONLY (no main orders)
-- Strict filters: ADX > 20, Confidence >= 80, Spread < 2 pips
+- Strict filters: ADX >= 30, Confidence >= 80, Spread < 2 pips
 - Risk Multiplier: 0.5x (half size due to noise)
 - Trend Pulse: IGNORED (1m too fast for alignment)
 
@@ -35,7 +35,7 @@ class V6PriceAction1mPlugin(BaseLogicPlugin, ISignalProcessor, IOrderExecutor):
     - Order Routing: ORDER B ONLY
     
     Entry Filters:
-    - ADX > 20 (avoid choppy markets)
+    - ADX >= 30 (avoid choppy markets - strict for 1M noise)
     - Confidence >= 80 (high confidence required for 1m noise)
     - Spread < 2 pips (spread kills scalping profit)
     - Trend Pulse: IGNORED (1m too fast)
@@ -45,7 +45,7 @@ class V6PriceAction1mPlugin(BaseLogicPlugin, ISignalProcessor, IOrderExecutor):
     ORDER_ROUTING = "ORDER_B_ONLY"
     RISK_MULTIPLIER = 0.5
     
-    ADX_THRESHOLD = 20
+    ADX_THRESHOLD = 30
     CONFIDENCE_THRESHOLD = 80
     MAX_SPREAD_PIPS = 2.0
     
@@ -255,7 +255,7 @@ class V6PriceAction1mPlugin(BaseLogicPlugin, ISignalProcessor, IOrderExecutor):
         Validate entry conditions for 1M scalping.
         
         Filters:
-        1. ADX > 20 (avoid choppy markets)
+        1. ADX >= 30 (avoid choppy markets - strict for 1M noise)
         2. Confidence >= 80 (high confidence for 1m noise)
         3. Spread < 2 pips (spread kills scalping profit)
         
