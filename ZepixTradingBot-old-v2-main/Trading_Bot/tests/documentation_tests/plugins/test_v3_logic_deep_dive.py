@@ -12,13 +12,8 @@ import os
 import sys
 from pathlib import Path
 
-# Add project root to path
-PROJECT_ROOT = Path(__file__).parent.parent.parent.parent.parent
-sys.path.insert(0, str(PROJECT_ROOT / "Trading_Bot"))
-
-# Base paths
-TRADING_BOT_ROOT = PROJECT_ROOT / "Trading_Bot"
-SRC_ROOT = TRADING_BOT_ROOT / "src"
+# Import paths from conftest.py for robust path resolution
+from tests.documentation_tests.conftest import PROJECT_ROOT, TRADING_BOT_ROOT, SRC_ROOT
 DOC_FILE = "Trading_Bot_Documentation/V5_BIBLE/V3_LOGIC_DEEP_DIVE.md"
 
 
