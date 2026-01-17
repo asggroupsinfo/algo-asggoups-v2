@@ -81,7 +81,7 @@ class TestProjectOverview:
         DOC CLAIM: main.py entry point
         TEST TYPE: File Existence
         """
-        file_path = TRADING_BOT_ROOT / "main.py"
+        file_path = SRC_ROOT / "main.py"
         assert file_path.exists(), f"File not found: {file_path}"
     
     def test_overview_008_config_file_exists(self):
@@ -89,7 +89,7 @@ class TestProjectOverview:
         DOC CLAIM: config.json configuration
         TEST TYPE: File Existence
         """
-        file_path = TRADING_BOT_ROOT / "config.json"
+        file_path = TRADING_BOT_ROOT / "config" / "config.json"
         assert file_path.exists(), f"File not found: {file_path}"
     
     def test_overview_009_trading_engine_file_exists(self):

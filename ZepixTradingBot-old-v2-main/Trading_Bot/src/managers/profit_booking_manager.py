@@ -38,8 +38,17 @@ class ProfitBookingManager:
         self.enabled = self.profit_config.get("enabled", True)
         # NEW: Fixed $7 minimum profit for all levels (replaces progressive targets)
         self.min_profit = self.profit_config.get("min_profit", 7.0)  # $7 minimum per order
+        self.min_profit_target = self.min_profit  # Alias for compatibility
         self.multipliers = self.profit_config.get("multipliers", [1, 2, 4, 8, 16])
         self.max_level = self.profit_config.get("max_level", 4)
+        
+        # Pyramid configuration for profit booking levels
+        self.pyramid_config = {
+            "min_profit_target": self.min_profit,
+            "max_level": self.max_level,
+            "orders_per_level": self.multipliers,
+            "fixed_risk_sl": 10.0  # $10 fixed SL for profit booking orders
+        }
         
         # Import profit booking SL calculator
         from src.utils.profit_sl_calculator import ProfitBookingSLCalculator
@@ -138,6 +147,93 @@ class ProfitBookingManager:
         """Get profit target for a specific level (DEPRECATED - kept for compatibility)"""
         # Always return min_profit for all levels
         return self.min_profit
+    
+    def _calculate_profit_target(self, symbol: str, direction: str, 
+                                  entry_price: float, lot_size: float) -> float:
+        """
+        Calculate profit target price for a given entry.
+        
+        Args:
+            symbol: Trading symbol
+            direction: 'buy' or 'sell'
+            entry_price: Entry price
+            lot_size: Lot size
+            
+        Returns:
+            Target price for profit booking
+        """
+        try:
+            symbol_config = self.config["symbol_config"][symbol]
+            pip_size = symbol_config["pip_size"]
+            pip_value = symbol_config["pip_value_per_std_lot"] * lot_size
+            
+            if pip_value > 0:
+                # Calculate pips needed for min_profit target
+                tp_pips = self.min_profit / pip_value
+                
+                if direction == "buy":
+                    return entry_price + (tp_pips * pip_size)
+                else:
+                    return entry_price - (tp_pips * pip_size)
+            
+            # Fallback: use default TP distance
+            default_tp_pips = 50
+            if direction == "buy":
+                return entry_price + (default_tp_pips * pip_size)
+            else:
+                return entry_price - (default_tp_pips * pip_size)
+                
+        except Exception as e:
+            self.logger.error(f"Error calculating profit target: {str(e)}")
+            return entry_price
+    
+    def _load_persisted_chains(self):
+        """
+        Load persisted profit booking chains from database on startup.
+        Restores active chains from previous session.
+        """
+        try:
+            # Get all active chains from database
+            persisted_chains = self.db.get_active_profit_chains()
+            
+            for chain_data in persisted_chains:
+                chain_id = chain_data.get("chain_id")
+                if chain_id and chain_id not in self.active_chains:
+                    # Reconstruct chain from persisted data
+                    chain = ProfitBookingChain(
+                        chain_id=chain_id,
+                        symbol=chain_data.get("symbol"),
+                        direction=chain_data.get("direction"),
+                        initial_order_id=chain_data.get("initial_order_id"),
+                        initial_lot_size=chain_data.get("initial_lot_size", 0.01),
+                        initial_entry_price=chain_data.get("initial_entry_price", 0),
+                        current_level=chain_data.get("current_level", 0),
+                        status=chain_data.get("status", "ACTIVE"),
+                        created_at=chain_data.get("created_at"),
+                        updated_at=chain_data.get("updated_at"),
+                        total_profit=chain_data.get("total_profit", 0),
+                        metadata=chain_data.get("metadata", {})
+                    )
+                    self.active_chains[chain_id] = chain
+                    self.logger.info(f"Restored chain from database: {chain_id}")
+            
+            self.logger.info(f"Loaded {len(persisted_chains)} persisted chains")
+            
+        except Exception as e:
+            self.logger.error(f"Error loading persisted chains: {str(e)}")
+    
+    def _persist_chain(self, chain: ProfitBookingChain):
+        """
+        Persist a profit booking chain to database.
+        
+        Args:
+            chain: The chain to persist
+        """
+        try:
+            self.db.save_profit_chain(chain)
+            self.logger.debug(f"Persisted chain: {chain.chain_id}")
+        except Exception as e:
+            self.logger.error(f"Error persisting chain {chain.chain_id}: {str(e)}")
     
     def get_order_multiplier(self, level: int) -> int:
         """Get order multiplier for a specific level"""
@@ -1019,6 +1115,200 @@ class ProfitBookingManager:
         except Exception as e:
             self.logger.error(f"Error cleaning up stale chains: {str(e)}")
 
+    async def handle_profit_target_hit(self, chain_id: str, order_id: int, 
+                                       profit_amount: float, trading_engine) -> bool:
+        """
+        Handle when a profit target is hit for an order in a chain.
+        
+        Args:
+            chain_id: The profit booking chain ID
+            order_id: The MT5 order ID that hit profit target
+            profit_amount: The profit amount realized
+            trading_engine: Reference to trading engine for order execution
+            
+        Returns:
+            True if handled successfully, False otherwise
+        """
+        try:
+            chain = self.get_chain(chain_id)
+            if not chain:
+                self.logger.error(f"Chain {chain_id} not found")
+                return False
+            
+            # Update chain profit
+            chain.total_profit += profit_amount
+            chain.updated_at = datetime.now().isoformat()
+            
+            # Save profit booking event
+            self.db.save_profit_booking_event(
+                chain_id,
+                chain.current_level,
+                profit_amount,
+                1,  # 1 order closed
+                0   # Orders placed will be handled by progression
+            )
+            
+            self.db.save_profit_chain(chain)
+            
+            self.logger.info(
+                f"Profit target hit: Chain {chain_id} Order {order_id} "
+                f"Profit: ${profit_amount:.2f}"
+            )
+            
+            return True
+            
+        except Exception as e:
+            self.logger.error(f"Error handling profit target hit: {str(e)}")
+            return False
+    
+    async def _create_level_order(self, chain: 'ProfitBookingChain', 
+                                  lot_size: float, sl_price: float,
+                                  trading_engine) -> Optional[int]:
+        """
+        Create a new order for the current level in a profit booking chain.
+        
+        Args:
+            chain: The profit booking chain
+            lot_size: Lot size for the order
+            sl_price: Stop loss price
+            trading_engine: Reference to trading engine
+            
+        Returns:
+            Order ID if successful, None otherwise
+        """
+        try:
+            current_price = self.mt5_client.get_current_price(chain.symbol)
+            if current_price == 0:
+                self.logger.error(f"Failed to get current price for {chain.symbol}")
+                return None
+            
+            # Calculate TP based on profit target
+            profit_target = self.get_profit_target(chain.current_level)
+            symbol_config = self.config["symbol_config"][chain.symbol]
+            pip_value = symbol_config["pip_value_per_std_lot"] * lot_size
+            
+            if pip_value > 0:
+                tp_pips = profit_target / pip_value
+                pip_size = symbol_config["pip_size"]
+                
+                if chain.direction == "buy":
+                    tp_price = current_price + (tp_pips * pip_size)
+                else:
+                    tp_price = current_price - (tp_pips * pip_size)
+            else:
+                tp_price = None
+            
+            # Place the order
+            order_result = await trading_engine.place_order(
+                symbol=chain.symbol,
+                direction=chain.direction,
+                lot_size=lot_size,
+                sl=sl_price,
+                tp=tp_price,
+                order_type="PROFIT_BOOKING",
+                strategy=chain.metadata.get("strategy", "combinedlogic-1")
+            )
+            
+            if order_result and order_result.get("order_id"):
+                return order_result["order_id"]
+            
+            return None
+            
+        except Exception as e:
+            self.logger.error(f"Error creating level order: {str(e)}")
+            return None
+    
+    def _calculate_fixed_risk_sl(self, symbol: str, direction: str, 
+                                  entry_price: float, lot_size: float) -> float:
+        """
+        Calculate fixed risk stop loss price ($10 risk per order).
+        
+        Args:
+            symbol: Trading symbol
+            direction: 'buy' or 'sell'
+            entry_price: Entry price
+            lot_size: Lot size
+            
+        Returns:
+            Stop loss price
+        """
+        try:
+            fixed_risk = self.pyramid_config.get("fixed_risk_sl", 10.0)
+            symbol_config = self.config["symbol_config"][symbol]
+            pip_size = symbol_config["pip_size"]
+            pip_value = symbol_config["pip_value_per_std_lot"] * lot_size
+            
+            if pip_value > 0:
+                sl_pips = fixed_risk / pip_value
+                
+                if direction == "buy":
+                    sl_price = entry_price - (sl_pips * pip_size)
+                else:
+                    sl_price = entry_price + (sl_pips * pip_size)
+                
+                return sl_price
+            
+            # Fallback: use default SL distance
+            default_sl_pips = 50
+            if direction == "buy":
+                return entry_price - (default_sl_pips * pip_size)
+            else:
+                return entry_price + (default_sl_pips * pip_size)
+                
+        except Exception as e:
+            self.logger.error(f"Error calculating fixed risk SL: {str(e)}")
+            return entry_price  # Return entry as fallback
+    
+    async def handle_chain_sl_hit(self, chain_id: str, order_id: int,
+                                   loss_amount: float, trading_engine) -> bool:
+        """
+        Handle when a stop loss is hit for an order in a profit booking chain.
+        
+        Args:
+            chain_id: The profit booking chain ID
+            order_id: The MT5 order ID that hit SL
+            loss_amount: The loss amount (negative value)
+            trading_engine: Reference to trading engine
+            
+        Returns:
+            True if handled successfully, False otherwise
+        """
+        try:
+            chain = self.get_chain(chain_id)
+            if not chain:
+                self.logger.error(f"Chain {chain_id} not found")
+                return False
+            
+            # Mark loss for this level (for strict mode)
+            chain.metadata[f"loss_level_{chain.current_level}"] = True
+            chain.updated_at = datetime.now().isoformat()
+            
+            # Update chain profit (loss is negative)
+            chain.total_profit += loss_amount
+            
+            self.db.save_profit_chain(chain)
+            
+            self.logger.warning(
+                f"Chain SL hit: Chain {chain_id} Order {order_id} "
+                f"Loss: ${abs(loss_amount):.2f}"
+            )
+            
+            # Check if recovery is enabled
+            recovery_config = self.config.get("re_entry_config", {}).get(
+                "autonomous_config", {}
+            ).get("profit_sl_hunt", {})
+            
+            if recovery_config.get("enabled", False):
+                self.logger.info(f"Recovery enabled - waiting for recovery attempt")
+            else:
+                self.logger.info(f"Recovery disabled - loss confirmed")
+            
+            return True
+            
+        except Exception as e:
+            self.logger.error(f"Error handling chain SL hit: {str(e)}")
+            return False
+    
     async def handle_trade_close(self, trade: Trade, open_trades: List[Trade], trading_engine):
         """
         Public method called by TradingEngine when a profit booking trade closes.

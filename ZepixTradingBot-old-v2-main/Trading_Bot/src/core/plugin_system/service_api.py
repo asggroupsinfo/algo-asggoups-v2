@@ -127,6 +127,7 @@ class ServiceAPI:
         self._engine = trading_engine
         self._plugin_id = plugin_id
         self._config = trading_engine.config
+        self.config = trading_engine.config  # Alias for compatibility
         self._mt5 = trading_engine.mt5_client
         self._risk = trading_engine.risk_manager
         self._telegram = trading_engine.telegram_bot
@@ -801,6 +802,35 @@ class ServiceAPI:
         """Close an existing trade (backward compatible)"""
         return self._mt5.close_position(trade_id)
     
+    async def close_positions(self, symbol: str = None, direction: str = None) -> List[Dict[str, Any]]:
+        """
+        Close multiple positions based on filters.
+        
+        Args:
+            symbol: Optional symbol filter
+            direction: Optional direction filter ('buy' or 'sell')
+        
+        Returns:
+            List of closed position results
+        """
+        results = []
+        positions = self._mt5.get_positions()
+        
+        for pos in positions:
+            if symbol and pos.get('symbol') != symbol:
+                continue
+            if direction and pos.get('type', '').lower() != direction.lower():
+                continue
+            
+            result = self._mt5.close_position(pos.get('ticket'))
+            results.append({
+                'ticket': pos.get('ticket'),
+                'symbol': pos.get('symbol'),
+                'closed': result
+            })
+        
+        return results
+    
     async def close_position(self, order_id: int, reason: str = 'Manual') -> Dict[str, Any]:
         """
         Close entire position with tracking.
@@ -1017,6 +1047,106 @@ class ServiceAPI:
         if self._risk_service:
             return await self._risk_service.check_daily_limit(self._plugin_id)
         return {"can_trade": True, "daily_loss": 0.0, "daily_limit": 0.0}
+    
+    async def check_risk_limits(self, symbol: str, lot_size: float, direction: str) -> Dict[str, Any]:
+        """
+        Check if trade meets all risk limits.
+        
+        Args:
+            symbol: Trading symbol
+            lot_size: Proposed lot size
+            direction: Trade direction ('buy' or 'sell')
+        
+        Returns:
+            Dict with allowed status and any limit violations
+        """
+        result = {
+            'allowed': True,
+            'violations': [],
+            'daily_limit_ok': True,
+            'lot_size_ok': True,
+            'margin_ok': True
+        }
+        
+        # Check daily limit
+        daily_check = await self.check_daily_limit()
+        if not daily_check.get('can_trade', True):
+            result['allowed'] = False
+            result['daily_limit_ok'] = False
+            result['violations'].append('Daily loss limit exceeded')
+        
+        # Check lot size limits
+        max_lot = self._config.get('risk_config', {}).get('max_lot_size', 10.0)
+        if lot_size > max_lot:
+            result['allowed'] = False
+            result['lot_size_ok'] = False
+            result['violations'].append(f'Lot size {lot_size} exceeds max {max_lot}')
+        
+        return result
+    
+    async def get_spread(self, symbol: str) -> float:
+        """
+        Get current spread for a symbol in pips.
+        
+        Args:
+            symbol: Trading symbol
+        
+        Returns:
+            Spread in pips
+        """
+        return await self.get_current_spread(symbol)
+    
+    async def get_atr(self, symbol: str, period: int = 14, timeframe: str = '1H') -> float:
+        """
+        Get ATR (Average True Range) for a symbol.
+        
+        Args:
+            symbol: Trading symbol
+            period: ATR period (default 14)
+            timeframe: Timeframe for ATR calculation
+        
+        Returns:
+            ATR value in price units
+        """
+        if self._market_service:
+            return await self._market_service.get_atr(symbol, period, timeframe)
+        
+        # Fallback: estimate ATR based on symbol
+        if symbol in ['XAUUSD', 'XAGUSD']:
+            return 15.0  # Gold/Silver typical ATR
+        return 0.0015  # Forex typical ATR
+    
+    def _validate_order_params(self, order_params: Dict[str, Any]) -> Tuple[bool, str]:
+        """
+        Validate order parameters before execution.
+        
+        Args:
+            order_params: Order parameters dict
+        
+        Returns:
+            Tuple of (is_valid, error_message)
+        """
+        required_fields = ['symbol', 'direction', 'lot_size']
+        
+        for field in required_fields:
+            if field not in order_params:
+                return False, f"Missing required field: {field}"
+        
+        # Validate direction
+        direction = order_params.get('direction', '').upper()
+        if direction not in ['BUY', 'SELL']:
+            return False, f"Invalid direction: {direction}"
+        
+        # Validate lot size
+        lot_size = order_params.get('lot_size', 0)
+        if lot_size <= 0:
+            return False, f"Invalid lot size: {lot_size}"
+        
+        max_lot = self._config.get('risk_config', {}).get('max_lot_size', 10.0)
+        if lot_size > max_lot:
+            return False, f"Lot size {lot_size} exceeds max {max_lot}"
+        
+        return True, ""
     
     async def check_lifetime_limit(self) -> Dict[str, Any]:
         """

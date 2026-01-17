@@ -60,13 +60,9 @@ class ConfigManager:
     - Thread-safe access
     """
     
-    def __init__(
-        self,
-        config_path: str = "config/config.json",
-        plugin_config_dir: str = "config/plugins",
-        watch_interval: float = 2.0,
-        enable_watching: bool = True
-    ):
+    def __init__(self, config_path: str = "config/config.json",
+                 plugin_config_dir: str = "config/plugins",
+                 watch_interval: float = 2.0, enable_watching: bool = True):
         self.config_path = config_path
         self.plugin_config_dir = plugin_config_dir
         self.watch_interval = watch_interval
@@ -93,6 +89,9 @@ class ConfigManager:
             "mt5_password",
             "mt5_server"
         ]
+        
+        # Previous config for rollback support
+        self.previous_config: Dict[str, Any] = {}
         
         self.load_config()
         self.load_all_plugin_configs()
@@ -571,6 +570,93 @@ class ConfigManager:
         """
         with self._lock:
             return self._change_history[-limit:]
+    
+    def batch_update(self, updates: Dict[str, Any], save: bool = True) -> bool:
+        """
+        Update multiple config values at once.
+        
+        Args:
+            updates: Dict of key-value pairs to update
+            save: Whether to save to file
+            
+        Returns:
+            True if all updates successful
+        """
+        with self._lock:
+            try:
+                # Store previous config for rollback
+                self.previous_config = self.config.copy()
+                
+                changes = []
+                for key, value in updates.items():
+                    old_value = self.get(key)
+                    
+                    # Update the value
+                    keys = key.split('.')
+                    config = self.config
+                    for k in keys[:-1]:
+                        if k not in config:
+                            config[k] = {}
+                        config = config[k]
+                    config[keys[-1]] = value
+                    
+                    # Record the change
+                    change = ConfigChange(
+                        key=key,
+                        change_type=ConfigChangeType.MODIFIED if old_value else ConfigChangeType.ADDED,
+                        old_value=old_value,
+                        new_value=value,
+                        timestamp=datetime.now()
+                    )
+                    changes.append(change)
+                    self._record_change(change)
+                
+                if save:
+                    self._save_config()
+                
+                self._notify_observers(changes)
+                logger.info(f"Batch update: {len(updates)} values updated")
+                return True
+                
+            except Exception as e:
+                logger.error(f"Error in batch update: {e}")
+                # Rollback
+                self.config = self.previous_config.copy()
+                return False
+    
+    def _record_change(self, change: ConfigChange):
+        """
+        Record a single config change to history.
+        
+        Args:
+            change: ConfigChange object to record
+        """
+        self._change_history.append(change)
+        if len(self._change_history) > self._max_history:
+            self._change_history = self._change_history[-self._max_history:]
+    
+    def get_section(self, section: str) -> Dict[str, Any]:
+        """
+        Get a config section by name.
+        
+        Args:
+            section: Section name (e.g., 'risk_config', 'telegram')
+            
+        Returns:
+            Dict containing section config or empty dict
+        """
+        with self._lock:
+            return self.config.get(section, {}).copy()
+    
+    def get_all(self) -> Dict[str, Any]:
+        """
+        Get entire configuration.
+        
+        Returns:
+            Complete config dict copy
+        """
+        with self._lock:
+            return self.config.copy()
     
     def get_status(self) -> Dict[str, Any]:
         """

@@ -69,7 +69,7 @@ class Test30Telegram3BotSystem:
         DOC LOCATION: Line 526
         TEST TYPE: File Existence
         """
-        file_path = SRC_ROOT / "telegram" / "telegram_bot_fixed.py"
+        file_path = SRC_ROOT / "clients" / "telegram_bot_fixed.py"
         assert file_path.exists(), f"File not found: {file_path}"
     
     # ==================== CLASS EXISTENCE TESTS ====================

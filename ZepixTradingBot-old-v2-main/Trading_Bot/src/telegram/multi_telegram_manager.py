@@ -19,6 +19,9 @@ Date: 2026-01-15
 
 from typing import Dict, Any, Optional
 import logging
+import asyncio
+from datetime import datetime
+from queue import Queue
 
 from .base_telegram_bot import BaseTelegramBot
 from .controller_bot import ControllerBot
@@ -73,6 +76,12 @@ class MultiTelegramManager:
         self._legacy_bot = None
         self._single_bot_mode = False
         
+        # Multi-bot mode flag (True when using multiple bot tokens)
+        self.multi_bot_mode = False
+        
+        # Message queue for async message routing
+        self.message_queue = asyncio.Queue()
+        
         self._initialize_bots()
         self._initialize_router()
         
@@ -126,6 +135,40 @@ class MultiTelegramManager:
             analytics_bot=self.analytics_bot,
             fallback_bot=self.main_bot
         )
+    
+    def _get_target_bot(self, notification_type: str):
+        """
+        Get the target bot for a notification type.
+        
+        Args:
+            notification_type: Type of notification (e.g., 'trade', 'alert', 'report')
+            
+        Returns:
+            The appropriate bot instance for the notification type
+        """
+        if notification_type in ['trade', 'alert', 'entry', 'exit', 'sl_hit', 'tp_hit']:
+            return self.notification_bot or self.main_bot
+        elif notification_type in ['report', 'summary', 'analytics', 'statistics']:
+            return self.analytics_bot or self.main_bot
+        elif notification_type in ['command', 'admin', 'control', 'status']:
+            return self.controller_bot or self.main_bot
+        else:
+            return self.main_bot
+    
+    def register_command_handlers(self, trading_engine):
+        """
+        Register command handlers with the trading engine.
+        
+        Args:
+            trading_engine: The trading engine instance to register handlers with
+        """
+        if self.controller_bot and hasattr(self.controller_bot, 'register_handlers'):
+            self.controller_bot.register_handlers(trading_engine)
+        
+        if self._legacy_bot and hasattr(self._legacy_bot, 'register_command_handlers'):
+            self._legacy_bot.register_command_handlers(trading_engine)
+        
+        logger.info("[MultiTelegramManager] Command handlers registered")
     
     def set_legacy_bot(self, legacy_bot):
         """

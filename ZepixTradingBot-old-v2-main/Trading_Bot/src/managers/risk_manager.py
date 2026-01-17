@@ -493,6 +493,92 @@ class RiskManager:
         else:
             return f"⚪ ${pnl:.2f}"
     
+    def calculate_lot_size(self, symbol: str, risk_percent: float = 1.0, sl_pips: float = 50.0) -> float:
+        """
+        Calculate lot size based on risk percentage and stop loss.
+        
+        Args:
+            symbol: Trading symbol
+            risk_percent: Risk percentage of account (default 1%)
+            sl_pips: Stop loss in pips
+            
+        Returns:
+            Calculated lot size
+        """
+        if not self.mt5_client:
+            return 0.01
+        
+        account_balance = self.mt5_client.get_account_balance()
+        
+        # Get symbol config
+        symbol_config = self.config.get("symbol_config", {}).get(symbol, {})
+        pip_value_std = symbol_config.get("pip_value_per_std_lot", 10.0)
+        
+        # Calculate risk amount
+        risk_amount = account_balance * (risk_percent / 100.0)
+        
+        # Calculate lot size
+        if sl_pips > 0 and pip_value_std > 0:
+            lot_size = risk_amount / (sl_pips * pip_value_std)
+        else:
+            lot_size = self.get_fixed_lot_size(account_balance)
+        
+        # Apply max lot limit
+        max_lot = self.config.get("risk_config", {}).get("max_lot_size", 10.0)
+        lot_size = min(lot_size, max_lot)
+        
+        # Round to 2 decimal places
+        lot_size = round(max(0.01, lot_size), 2)
+        
+        return lot_size
+    
+    def record_loss(self, loss_amount: float, symbol: str = None):
+        """
+        Record a loss to daily and lifetime totals.
+        
+        Args:
+            loss_amount: Loss amount (positive value)
+            symbol: Optional symbol for tracking
+        """
+        loss = abs(loss_amount)
+        self.daily_loss += loss
+        self.lifetime_loss += loss
+        self.save_stats()
+        logger.info(f"Loss recorded: ${loss:.2f} (Daily: ${self.daily_loss:.2f}, Lifetime: ${self.lifetime_loss:.2f})")
+    
+    def check_daily_limit(self, symbol: str = None) -> bool:
+        """
+        Check if daily loss limit has been reached.
+        
+        Args:
+            symbol: Optional symbol for symbol-specific limits
+            
+        Returns:
+            True if trading is allowed (limit not reached)
+        """
+        if not self.mt5_client:
+            return True
+        
+        account_balance = self.mt5_client.get_account_balance()
+        risk_tier = self.get_risk_tier(account_balance)
+        
+        if risk_tier not in self.config.get("risk_tiers", {}):
+            return True
+        
+        risk_params = self.config["risk_tiers"][risk_tier]
+        daily_limit = risk_params.get("daily_loss_limit", 1000.0)
+        
+        if self.daily_loss >= daily_limit:
+            logger.warning(f"Daily loss limit reached: ${self.daily_loss:.2f} >= ${daily_limit:.2f}")
+            return False
+        
+        return True
+    
+    @property
+    def max_lot(self) -> float:
+        """Get maximum lot size from config"""
+        return self.config.get("risk_config", {}).get("max_lot_size", 10.0)
+    
     def get_win_rate(self) -> float:
         """
         Calculate win rate percentage

@@ -19,6 +19,7 @@ sys.path.insert(0, str(PROJECT_ROOT / "Trading_Bot"))
 # Base paths
 TRADING_BOT_ROOT = PROJECT_ROOT / "Trading_Bot"
 SRC_ROOT = TRADING_BOT_ROOT / "src"
+API_ROOT = SRC_ROOT / "api"
 DOC_FILE = "Trading_Bot_Documentation/V5_BIBLE/API_INTEGRATION.md"
 
 
@@ -33,7 +34,7 @@ class TestAPIIntegration:
         DOC LOCATION: Line 11
         TEST TYPE: File Existence
         """
-        file_path = TRADING_BOT_ROOT / "main.py"
+        file_path = SRC_ROOT / "main.py"
         assert file_path.exists(), f"File not found: {file_path}"
     
     def test_api_002_mt5_client_file_exists(self):
@@ -58,7 +59,7 @@ class TestAPIIntegration:
         DOC LOCATION: Line 499
         TEST TYPE: File Existence
         """
-        file_path = SRC_ROOT / "telegram" / "telegram_bot_fixed.py"
+        file_path = SRC_ROOT / "clients" / "telegram_bot_fixed.py"
         assert file_path.exists(), f"File not found: {file_path}"
     
     # ==================== CLASS EXISTENCE TESTS ====================
@@ -69,7 +70,7 @@ class TestAPIIntegration:
         DOC LOCATION: Line 15
         TEST TYPE: Class Existence
         """
-        file_path = TRADING_BOT_ROOT / "main.py"
+        file_path = API_ROOT / "webhook_handler.py"
         with open(file_path, 'r') as f:
             content = f.read()
         assert "FastAPI" in content or "fastapi" in content.lower(), "FastAPI app not found"
@@ -80,7 +81,7 @@ class TestAPIIntegration:
         DOC LOCATION: Line 499
         TEST TYPE: Class Existence
         """
-        file_path = SRC_ROOT / "telegram" / "telegram_bot_fixed.py"
+        file_path = SRC_ROOT / "clients" / "telegram_bot_fixed.py"
         with open(file_path, 'r') as f:
             content = f.read()
         assert "class TelegramBot" in content or "TelegramBot" in content, \
@@ -94,7 +95,7 @@ class TestAPIIntegration:
         DOC LOCATION: Line 27
         TEST TYPE: Endpoint Existence
         """
-        file_path = TRADING_BOT_ROOT / "main.py"
+        file_path = API_ROOT / "webhook_handler.py"
         with open(file_path, 'r') as f:
             content = f.read()
         assert "webhook" in content.lower(), "Webhook endpoint not found"
@@ -105,7 +106,7 @@ class TestAPIIntegration:
         DOC LOCATION: Line 85
         TEST TYPE: Endpoint Existence
         """
-        file_path = TRADING_BOT_ROOT / "main.py"
+        file_path = API_ROOT / "webhook_handler.py"
         with open(file_path, 'r') as f:
             content = f.read()
         assert "health" in content.lower() or "status" in content.lower(), \
@@ -119,7 +120,7 @@ class TestAPIIntegration:
         DOC LOCATION: Line 505
         TEST TYPE: Method Existence
         """
-        file_path = SRC_ROOT / "telegram" / "telegram_bot_fixed.py"
+        file_path = SRC_ROOT / "clients" / "telegram_bot_fixed.py"
         with open(file_path, 'r') as f:
             content = f.read()
         assert "send_message" in content, "send_message method not found"
@@ -130,7 +131,7 @@ class TestAPIIntegration:
         DOC LOCATION: Line 524
         TEST TYPE: Method Existence
         """
-        file_path = SRC_ROOT / "telegram" / "telegram_bot_fixed.py"
+        file_path = SRC_ROOT / "clients" / "telegram_bot_fixed.py"
         with open(file_path, 'r') as f:
             content = f.read()
         assert "format" in content.lower() or "notification" in content.lower(), \
@@ -144,7 +145,7 @@ class TestAPIIntegration:
         DOC LOCATION: Line 15
         TEST TYPE: Import Existence
         """
-        file_path = TRADING_BOT_ROOT / "main.py"
+        file_path = API_ROOT / "webhook_handler.py"
         with open(file_path, 'r') as f:
             content = f.read()
         assert "fastapi" in content.lower(), "FastAPI import not found"
@@ -154,8 +155,10 @@ class TestAPIIntegration:
         DOC CLAIM: "uvicorn.run(app, host='0.0.0.0', port=8000)"
         DOC LOCATION: Line 22
         TEST TYPE: Import Existence
+        NOTE: uvicorn is used in scripts/start_bot.py, not in webhook_handler.py
         """
-        file_path = TRADING_BOT_ROOT / "main.py"
+        # Check scripts/start_bot.py for uvicorn usage
+        file_path = TRADING_BOT_ROOT / "scripts" / "start_bot.py"
         with open(file_path, 'r') as f:
             content = f.read()
         assert "uvicorn" in content.lower(), "uvicorn import not found"
@@ -166,7 +169,7 @@ class TestAPIIntegration:
         DOC LOCATION: Line 497
         TEST TYPE: Import Existence
         """
-        file_path = SRC_ROOT / "telegram" / "telegram_bot_fixed.py"
+        file_path = SRC_ROOT / "clients" / "telegram_bot_fixed.py"
         with open(file_path, 'r') as f:
             content = f.read()
         assert "requests" in content or "httpx" in content or "aiohttp" in content, \
@@ -180,7 +183,7 @@ class TestAPIIntegration:
         DOC LOCATION: Line 501
         TEST TYPE: Config Existence
         """
-        file_path = SRC_ROOT / "telegram" / "telegram_bot_fixed.py"
+        file_path = SRC_ROOT / "clients" / "telegram_bot_fixed.py"
         with open(file_path, 'r') as f:
             content = f.read()
         assert "token" in content.lower(), "telegram_token config not found"
@@ -191,7 +194,7 @@ class TestAPIIntegration:
         DOC LOCATION: Line 502
         TEST TYPE: Config Existence
         """
-        file_path = SRC_ROOT / "telegram" / "telegram_bot_fixed.py"
+        file_path = SRC_ROOT / "clients" / "telegram_bot_fixed.py"
         with open(file_path, 'r') as f:
             content = f.read()
         assert "chat_id" in content.lower(), "telegram_chat_id config not found"
@@ -202,7 +205,7 @@ class TestAPIIntegration:
         DOC LOCATION: Line 503
         TEST TYPE: Config Existence
         """
-        file_path = SRC_ROOT / "telegram" / "telegram_bot_fixed.py"
+        file_path = SRC_ROOT / "clients" / "telegram_bot_fixed.py"
         with open(file_path, 'r') as f:
             content = f.read()
         assert "api.telegram.org" in content or "base_url" in content, \

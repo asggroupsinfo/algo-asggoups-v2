@@ -372,3 +372,97 @@ class PluginRegistry:
         """Get status of specific plugin"""
         plugin = self.get_plugin(plugin_id)
         return plugin.get_status() if plugin else None
+    
+    def enable_plugin(self, plugin_id: str) -> bool:
+        """
+        Enable a plugin by ID.
+        
+        Args:
+            plugin_id: Plugin identifier
+            
+        Returns:
+            True if plugin was enabled successfully
+        """
+        plugin = self.get_plugin(plugin_id)
+        if plugin:
+            plugin.enabled = True
+            logger.info(f"Plugin enabled: {plugin_id}")
+            return True
+        logger.warning(f"Plugin not found: {plugin_id}")
+        return False
+    
+    def disable_plugin(self, plugin_id: str) -> bool:
+        """
+        Disable a plugin by ID.
+        
+        Args:
+            plugin_id: Plugin identifier
+            
+        Returns:
+            True if plugin was disabled successfully
+        """
+        plugin = self.get_plugin(plugin_id)
+        if plugin:
+            plugin.enabled = False
+            logger.info(f"Plugin disabled: {plugin_id}")
+            return True
+        logger.warning(f"Plugin not found: {plugin_id}")
+        return False
+    
+    async def on_sl_hit(self, trade_data: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Handle stop loss hit event across all enabled plugins.
+        
+        Args:
+            trade_data: Trade data including symbol, direction, profit, etc.
+            
+        Returns:
+            Dict with results from all plugins
+        """
+        results = {}
+        for plugin_id, plugin in self.plugins.items():
+            if not plugin.enabled:
+                continue
+            
+            if hasattr(plugin, 'on_sl_hit'):
+                try:
+                    handler = getattr(plugin, 'on_sl_hit')
+                    if asyncio.iscoroutinefunction(handler):
+                        result = await handler(trade_data)
+                    else:
+                        result = handler(trade_data)
+                    results[plugin_id] = result
+                except Exception as e:
+                    logger.error(f"Error in plugin {plugin_id} on_sl_hit: {e}")
+                    results[plugin_id] = {"error": str(e)}
+        
+        return results
+    
+    async def on_tp_hit(self, trade_data: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Handle take profit hit event across all enabled plugins.
+        
+        Args:
+            trade_data: Trade data including symbol, direction, profit, etc.
+            
+        Returns:
+            Dict with results from all plugins
+        """
+        results = {}
+        for plugin_id, plugin in self.plugins.items():
+            if not plugin.enabled:
+                continue
+            
+            if hasattr(plugin, 'on_tp_hit'):
+                try:
+                    handler = getattr(plugin, 'on_tp_hit')
+                    if asyncio.iscoroutinefunction(handler):
+                        result = await handler(trade_data)
+                    else:
+                        result = handler(trade_data)
+                    results[plugin_id] = result
+                except Exception as e:
+                    logger.error(f"Error in plugin {plugin_id} on_tp_hit: {e}")
+                    results[plugin_id] = {"error": str(e)}
+        
+        return results

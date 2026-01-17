@@ -4,8 +4,10 @@ import threading
 import time
 import sys
 import logging
+import asyncio
 from datetime import datetime
-from typing import Dict, Any, TYPE_CHECKING
+from typing import Dict, Any, TYPE_CHECKING, List, Optional
+from queue import Queue
 from src.config import Config
 from src.managers.risk_manager import RiskManager
 from src.services.analytics_engine import AnalyticsEngine
@@ -131,6 +133,11 @@ class TelegramBot:
         self.risk_manager = None
         self.trading_engine = None
         self.analytics_engine = AnalyticsEngine()
+        
+        # 3-Bot system support
+        self.multi_bot_mode = config.get("telegram_3bot", {}).get("enabled", False)
+        self.message_queue: Queue = Queue()
+        self._bot_instances: Dict[str, Any] = {}  # bot_type -> bot instance
         
         # Initialize menu system
         from src.menu import MenuManager
@@ -358,6 +365,38 @@ class TelegramBot:
         """Set trend manager"""
         self.trend_manager = trend_manager
         self.logger.info("SUCCESS: Trend manager set in Telegram bot")
+    
+    def get_target_bot(self, message_type: str = "trade") -> 'TelegramBot':
+        """
+        Get the appropriate bot instance for a message type.
+        
+        In 3-bot mode, routes to specific bot:
+        - trade: Trade execution bot
+        - alert: Alert notification bot
+        - admin: Admin/control bot
+        
+        Args:
+            message_type: Type of message (trade, alert, admin)
+            
+        Returns:
+            TelegramBot instance for the message type
+        """
+        if not self.multi_bot_mode:
+            return self
+        
+        # In multi-bot mode, return appropriate bot instance
+        return self._bot_instances.get(message_type, self)
+    
+    def register_command_handlers(self, handlers: Dict[str, callable] = None):
+        """
+        Register additional command handlers.
+        
+        Args:
+            handlers: Dict mapping command strings to handler functions
+        """
+        if handlers:
+            self.command_handlers.update(handlers)
+            self.logger.info(f"Registered {len(handlers)} additional command handlers")
     
 
 

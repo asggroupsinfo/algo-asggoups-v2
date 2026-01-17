@@ -178,7 +178,7 @@ class TestErrorHandling:
         DOC CLAIM: Configuration validation
         TEST TYPE: Validation Existence
         """
-        file_path = SRC_ROOT / "managers" / "config_manager.py"
+        file_path = SRC_ROOT / "core" / "config_manager.py"
         with open(file_path, 'r') as f:
             content = f.read()
         assert "validate" in content.lower() or "valid" in content.lower(), \

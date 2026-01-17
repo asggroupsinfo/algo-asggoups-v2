@@ -62,6 +62,7 @@ class ShadowModeManager:
     def __init__(self, config: Dict[str, Any] = None):
         self.config = config or {}
         self.mode = ExecutionMode.LEGACY_ONLY
+        self.execution_mode = ExecutionMode.LEGACY_ONLY  # Alias for compatibility
         
         # Decision storage
         self._decisions: Dict[str, List[Decision]] = {}  # signal_id -> decisions
@@ -76,12 +77,18 @@ class ShadowModeManager:
             'plugin_executes': 0,
             'shadow_signals': 0
         }
+        self.stats = self._stats  # Alias for compatibility
         
         # Enabled plugins for shadow mode
         self._shadow_plugins: set = set()
+        self.registered_plugins: Dict[str, Any] = {}  # Plugin registry
         
         # Virtual orders (shadow trades)
         self._virtual_orders: List[Dict[str, Any]] = []
+        
+        # Execution history and mismatches
+        self.execution_history: List[Dict[str, Any]] = []
+        self.mismatches: List[Dict[str, Any]] = []
         
         logger.info("ShadowModeManager initialized")
     
@@ -91,11 +98,20 @@ class ShadowModeManager:
         """Set execution mode"""
         old_mode = self.mode
         self.mode = mode
+        self.execution_mode = mode  # Alias for compatibility
         logger.info(f"Execution mode changed: {old_mode.value} -> {mode.value}")
     
     def get_mode(self) -> ExecutionMode:
         """Get current execution mode"""
         return self.mode
+    
+    def set_execution_mode(self, mode: ExecutionMode):
+        """Set execution mode (alias for set_mode)"""
+        self.set_mode(mode)
+    
+    def get_execution_mode(self) -> ExecutionMode:
+        """Get current execution mode (alias for get_mode)"""
+        return self.get_mode()
     
     def enable_shadow_plugin(self, plugin_id: str):
         """Enable a plugin for shadow mode"""
@@ -106,6 +122,17 @@ class ShadowModeManager:
         """Disable a plugin from shadow mode"""
         self._shadow_plugins.discard(plugin_id)
         logger.info(f"Plugin disabled from shadow mode: {plugin_id}")
+    
+    def register_plugin(self, plugin_id: str, plugin: Any):
+        """Register a plugin for shadow mode tracking"""
+        self.registered_plugins[plugin_id] = plugin
+        logger.info(f"Plugin registered: {plugin_id}")
+    
+    def unregister_plugin(self, plugin_id: str):
+        """Unregister a plugin from shadow mode tracking"""
+        if plugin_id in self.registered_plugins:
+            del self.registered_plugins[plugin_id]
+            logger.info(f"Plugin unregistered: {plugin_id}")
     
     def is_plugin_in_shadow(self, plugin_id: str) -> bool:
         """Check if plugin is in shadow mode"""
@@ -322,6 +349,45 @@ class ShadowModeManager:
         """Get recent discrepancies"""
         discrepancies = [c for c in self._comparisons if not c.match]
         return discrepancies[-limit:]
+    
+    def compare_results(self, legacy_result: Dict[str, Any], plugin_result: Dict[str, Any], signal_id: str) -> Dict[str, Any]:
+        """Compare legacy and plugin results for a signal"""
+        match = legacy_result.get('action') == plugin_result.get('action')
+        
+        comparison = {
+            'signal_id': signal_id,
+            'timestamp': datetime.now().isoformat(),
+            'match': match,
+            'legacy': legacy_result,
+            'plugin': plugin_result
+        }
+        
+        if not match:
+            comparison['discrepancy_type'] = 'action_mismatch'
+            comparison['discrepancy_details'] = f"Legacy: {legacy_result.get('action')}, Plugin: {plugin_result.get('action')}"
+            self.mismatches.append(comparison)
+        
+        self.execution_history.append(comparison)
+        return comparison
+    
+    def record_plugin_execution(self, plugin_id: str, signal_id: str, result: Dict[str, Any]):
+        """Record a plugin execution result"""
+        execution = {
+            'plugin_id': plugin_id,
+            'signal_id': signal_id,
+            'timestamp': datetime.now().isoformat(),
+            'result': result
+        }
+        self.execution_history.append(execution)
+        logger.debug(f"Plugin execution recorded: {plugin_id} -> {result.get('action', 'unknown')}")
+    
+    def get_recent_mismatches(self, count: int = 10) -> List[Dict[str, Any]]:
+        """Get recent mismatches between legacy and plugin decisions"""
+        return self.mismatches[-count:]
+    
+    def get_execution_history(self, count: int = 100) -> List[Dict[str, Any]]:
+        """Get recent execution history"""
+        return self.execution_history[-count:]
     
     def generate_report(self) -> str:
         """Generate shadow mode report"""

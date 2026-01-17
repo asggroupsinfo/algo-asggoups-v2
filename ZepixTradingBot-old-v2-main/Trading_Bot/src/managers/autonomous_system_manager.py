@@ -75,7 +75,13 @@ class AutonomousSystemManager:
         # Track candidates for Exit Continuation
         self.exit_continuation_candidates = {}  # trade_id -> recovery_metadata
         
-        print("✅ Autonomous System Manager initialized")
+        # Reverse shield tracking
+        self.reverse_shields: Dict[str, Dict] = {}  # symbol -> shield_data
+        
+        # Autonomous configuration
+        self.autonomous_config = config.get("re_entry_config", {}).get("autonomous_config", {})
+        
+        print("Autonomous System Manager initialized")
     
     def check_daily_limits(self) -> bool:
         """
@@ -1136,6 +1142,166 @@ class AutonomousSystemManager:
                 return
         print(f"⚠️ Recovery timeout for unknown order #{order_id}")
 
+    async def _execute_recovery_trade(self, chain, recovery_result: Dict[str, Any],
+                                       trading_engine) -> bool:
+        """
+        Execute a recovery trade based on recovery result.
+        
+        Args:
+            chain: The chain being recovered
+            recovery_result: Dict with recovery parameters
+            trading_engine: Reference to trading engine
+            
+        Returns:
+            True if recovery trade placed successfully
+        """
+        try:
+            symbol = chain.symbol
+            direction = chain.direction
+            
+            # Get current price
+            current_price = self.mt5_client.get_current_price(symbol)
+            if current_price == 0:
+                print(f"Failed to get current price for {symbol}")
+                return False
+            
+            # Calculate SL and TP from recovery result
+            sl_price = recovery_result.get("sl_price", 0)
+            tp_price = recovery_result.get("tp_price", 0)
+            lot_size = recovery_result.get("lot_size", 0.01)
+            
+            # Place recovery order
+            order_result = await trading_engine.place_order(
+                symbol=symbol,
+                direction=direction,
+                lot_size=lot_size,
+                sl=sl_price,
+                tp=tp_price,
+                order_type="RECOVERY",
+                strategy=recovery_result.get("strategy", "AUTONOMOUS_RECOVERY")
+            )
+            
+            if order_result and order_result.get("order_id"):
+                print(f"Recovery trade placed: Order #{order_result['order_id']}")
+                return True
+            
+            return False
+            
+        except Exception as e:
+            print(f"Error executing recovery trade: {e}")
+            return False
+    
+    async def check_safety_limits(self) -> Dict[str, Any]:
+        """
+        Check all safety limits and return status.
+        
+        Returns:
+            Dict with safety limit status
+        """
+        daily_ok = self.check_daily_limits()
+        concurrent_ok = self.check_concurrent_recovery_limit()
+        
+        safety_limits = self.autonomous_config.get("safety_limits", {})
+        
+        return {
+            "daily_limits_ok": daily_ok,
+            "concurrent_limits_ok": concurrent_ok,
+            "can_trade": daily_ok and concurrent_ok,
+            "daily_stats": self.daily_stats.copy(),
+            "max_daily_attempts": safety_limits.get("daily_recovery_attempts", 10),
+            "max_daily_losses": safety_limits.get("daily_recovery_losses", 5),
+            "max_concurrent": safety_limits.get("max_concurrent_recoveries", 3)
+        }
+    
+    def deactivate_reverse_shield(self, symbol: str) -> bool:
+        """
+        Deactivate reverse shield for a symbol.
+        
+        Args:
+            symbol: Trading symbol
+            
+        Returns:
+            True if deactivated successfully
+        """
+        if symbol in self.reverse_shields:
+            del self.reverse_shields[symbol]
+            print(f"Reverse shield deactivated for {symbol}")
+            return True
+        return False
+    
+    def is_direction_blocked(self, symbol: str, direction: str) -> bool:
+        """
+        Check if a direction is blocked by reverse shield.
+        
+        Args:
+            symbol: Trading symbol
+            direction: 'buy' or 'sell'
+            
+        Returns:
+            True if direction is blocked
+        """
+        if symbol not in self.reverse_shields:
+            return False
+        
+        shield = self.reverse_shields[symbol]
+        blocked_direction = shield.get("blocked_direction")
+        
+        return blocked_direction == direction
+    
+    def register_tp_continuation(self, trade: Trade, tp_price: float) -> bool:
+        """
+        Register a trade for TP continuation monitoring.
+        
+        Args:
+            trade: The trade that hit TP
+            tp_price: The TP price that was hit
+            
+        Returns:
+            True if registered successfully
+        """
+        try:
+            # Check if TP continuation is enabled
+            tp_config = self.autonomous_config.get("tp_continuation", {})
+            if not tp_config.get("enabled", False):
+                return False
+            
+            # Register with reentry manager
+            if self.reentry_manager:
+                chain = self.reentry_manager.get_chain_for_trade(trade)
+                if chain:
+                    chain.metadata["last_tp_price"] = tp_price
+                    chain.metadata["last_tp_time"] = datetime.now().isoformat()
+                    print(f"TP continuation registered for {trade.symbol}")
+                    return True
+            
+            return False
+            
+        except Exception as e:
+            print(f"Error registering TP continuation: {e}")
+            return False
+    
+    def get_safety_stats(self) -> Dict[str, Any]:
+        """
+        Get current safety statistics.
+        
+        Returns:
+            Dict with safety stats
+        """
+        safety_limits = self.autonomous_config.get("safety_limits", {})
+        
+        return {
+            "daily_recovery_attempts": self.daily_stats.get("recovery_attempts", 0),
+            "daily_recovery_losses": self.daily_stats.get("recovery_losses", 0),
+            "active_recoveries": len(self.daily_stats.get("active_recoveries", set())),
+            "last_reset": str(self.daily_stats.get("last_reset", "")),
+            "limits": {
+                "max_daily_attempts": safety_limits.get("daily_recovery_attempts", 10),
+                "max_daily_losses": safety_limits.get("daily_recovery_losses", 5),
+                "max_concurrent": safety_limits.get("max_concurrent_recoveries", 3)
+            },
+            "reverse_shields_active": len(self.reverse_shields)
+        }
+    
     def register_exit_continuation(self, trade: Trade, reason: str):
         """
         Register a closed trade for Exit Continuation monitoring.

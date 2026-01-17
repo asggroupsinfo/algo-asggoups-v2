@@ -4,7 +4,7 @@ Session Manager - Tracks trading sessions from entry to exit
 
 import uuid
 import logging
-from datetime import datetime
+from datetime import datetime, time
 from typing import Optional, Dict, Any, List
 
 logger = logging.getLogger(__name__)
@@ -13,17 +13,33 @@ logger = logging.getLogger(__name__)
 class SessionManager:
     """Manages trading sessions - from entry signal to complete exit"""
     
+    # Session time definitions (IST - Asia/Kolkata timezone)
+    SESSIONS = {
+        'asian': {'start': time(5, 30), 'end': time(14, 30), 'name': 'Asian'},
+        'london': {'start': time(13, 0), 'end': time(22, 0), 'name': 'London'},
+        'overlap': {'start': time(18, 0), 'end': time(20, 30), 'name': 'Overlap'},
+        'dead_zone': {'start': time(2, 0), 'end': time(5, 30), 'name': 'Dead Zone'}
+    }
+    
     def __init__(self, config, db, mt5_client):
         self.config = config
         self.db = db
         self.mt5_client = mt5_client
         self.active_session_id: Optional[str] = None
         
+        # Session configuration
+        session_config = config.get("session_manager", {})
+        self.master_switch = session_config.get("master_switch", True)
+        self.timezone = session_config.get("timezone", "Asia/Kolkata")
+        self.allowed_symbols = session_config.get("allowed_symbols", ["XAUUSD", "USDJPY", "AUDUSD", "EURJPY"])
+        self.advance_alert_enabled = session_config.get("advance_alert_enabled", True)
+        self.force_close_enabled = session_config.get("force_close_enabled", False)
+        
         # Try to recover active session on startup
         active = self.db.get_active_session()
         if active:
             self.active_session_id = active.get('session_id')
-            logger.info(f"✅ Recovered active session: {self.active_session_id}")
+            logger.info(f"Recovered active session: {self.active_session_id}")
     
     def create_session(self, symbol: str, direction: str, signal: str, logic: str = "combinedlogic-1") -> str:
         """
@@ -126,6 +142,100 @@ class SessionManager:
     def get_active_session(self) -> Optional[str]:
         """Get current active session ID"""
         return self.active_session_id
+    
+    def get_current_session(self) -> str:
+        """
+        Get the current trading session based on time.
+        
+        Returns:
+            Session name: 'asian', 'london', 'overlap', 'dead_zone', or 'off_hours'
+        """
+        now = datetime.now().time()
+        
+        for session_name, session_times in self.SESSIONS.items():
+            start = session_times['start']
+            end = session_times['end']
+            
+            # Handle sessions that don't cross midnight
+            if start <= end:
+                if start <= now <= end:
+                    return session_name
+            else:
+                # Handle sessions that cross midnight
+                if now >= start or now <= end:
+                    return session_name
+        
+        return 'off_hours'
+    
+    def is_symbol_allowed(self, symbol: str) -> bool:
+        """
+        Check if a symbol is allowed for trading in current session.
+        
+        Args:
+            symbol: Trading symbol (e.g., 'XAUUSD')
+            
+        Returns:
+            True if symbol is allowed, False otherwise
+        """
+        if not self.master_switch:
+            return False
+        
+        current_session = self.get_current_session()
+        if current_session == 'dead_zone':
+            return False
+        
+        return symbol in self.allowed_symbols
+    
+    def get_session_info(self) -> Dict[str, Any]:
+        """
+        Get current session information.
+        
+        Returns:
+            Dict with session details
+        """
+        current_session = self.get_current_session()
+        session_data = self.SESSIONS.get(current_session, {})
+        
+        return {
+            'current_session': current_session,
+            'session_name': session_data.get('name', 'Off Hours'),
+            'master_switch': self.master_switch,
+            'timezone': self.timezone,
+            'allowed_symbols': self.allowed_symbols,
+            'advance_alert_enabled': self.advance_alert_enabled,
+            'force_close_enabled': self.force_close_enabled,
+            'active_session_id': self.active_session_id
+        }
+    
+    def check_advance_alerts(self) -> Optional[str]:
+        """
+        Check if advance alert should be sent for upcoming session.
+        
+        Returns:
+            Alert message if alert should be sent, None otherwise
+        """
+        if not self.advance_alert_enabled:
+            return None
+        
+        now = datetime.now().time()
+        
+        # Check if we're 15 minutes before any session start
+        for session_name, session_times in self.SESSIONS.items():
+            start = session_times['start']
+            
+            # Calculate 15 minutes before start
+            start_minutes = start.hour * 60 + start.minute
+            alert_minutes = start_minutes - 15
+            if alert_minutes < 0:
+                alert_minutes += 24 * 60
+            
+            now_minutes = now.hour * 60 + now.minute
+            
+            # Check if we're within the alert window (15 min before)
+            if abs(now_minutes - alert_minutes) <= 1:
+                return f"Session Alert: {session_times['name']} session starting in 15 minutes"
+        
+        return None
     
     def update_session(self):
         """Update session stats (call after trades close)"""

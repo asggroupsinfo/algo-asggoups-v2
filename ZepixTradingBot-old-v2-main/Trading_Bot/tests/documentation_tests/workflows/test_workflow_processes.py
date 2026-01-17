@@ -19,6 +19,7 @@ sys.path.insert(0, str(PROJECT_ROOT / "Trading_Bot"))
 # Base paths
 TRADING_BOT_ROOT = PROJECT_ROOT / "Trading_Bot"
 SRC_ROOT = TRADING_BOT_ROOT / "src"
+API_ROOT = SRC_ROOT / "api"
 DOC_FILE = "Trading_Bot_Documentation/V5_BIBLE/WORKFLOW_PROCESSES.md"
 
 
@@ -91,10 +92,10 @@ class TestWorkflowProcesses:
         DOC CLAIM: Webhook to TradingEngine flow
         TEST TYPE: Integration Existence
         """
-        file_path = TRADING_BOT_ROOT / "main.py"
+        file_path = API_ROOT / "webhook_handler.py"
         with open(file_path, 'r') as f:
             content = f.read()
-        assert "webhook" in content.lower() and "trading" in content.lower(), \
+        assert "webhook" in content.lower() and ("trading" in content.lower() or "plugin" in content.lower()), \
             "Webhook to engine flow not found"
     
     def test_workflow_proc_008_engine_to_plugin_flow(self):

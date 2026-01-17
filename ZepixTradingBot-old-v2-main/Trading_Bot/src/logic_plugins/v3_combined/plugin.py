@@ -80,6 +80,14 @@ class V3CombinedPlugin(BaseLogicPlugin, ISignalProcessor, IOrderExecutor, IReent
         
         self.shadow_mode = self.plugin_config.get("shadow_mode", False)
         
+        # Signal type definitions
+        self.entry_signals = [
+            'Institutional_Launchpad', 'Liquidity_Trap', 'Momentum_Breakout',
+            'Mitigation_Test', 'Golden_Pocket_Flip', 'Screener_Full_Bullish', 'Screener_Full_Bearish'
+        ]
+        self.exit_signals = ['Bullish_Exit', 'Bearish_Exit']
+        self.info_signals = ['Volatility_Squeeze', 'Trend_Pulse']
+        
         # Re-entry system support (Plan 03)
         self._chain_levels: Dict[str, int] = {}  # trade_id -> chain_level
         self._reentry_service: Optional[ReentryService] = None
@@ -1474,6 +1482,35 @@ class V3CombinedPlugin(BaseLogicPlugin, ISignalProcessor, IOrderExecutor, IReent
         return base_status
 
     # ========== ISignalProcessor Interface Implementation ==========
+    
+    def _check_v3_trend_alignment(self, signal: Dict[str, Any]) -> bool:
+        """
+        Check V3 trend alignment using MTF 4-pillar validation.
+        
+        Args:
+            signal: Trading signal with timeframe and direction info
+            
+        Returns:
+            True if trend is aligned across timeframes
+        """
+        if not self.trend_validator:
+            return True
+        
+        symbol = signal.get('symbol', 'EURUSD')
+        direction = signal.get('direction', signal.get('signal_type', ''))
+        timeframe = signal.get('timeframe', signal.get('tf', '15m'))
+        
+        # Use trend validator for MTF alignment check
+        try:
+            alignment = self.trend_validator.validate_mtf_alignment(
+                symbol=symbol,
+                direction=direction,
+                entry_timeframe=timeframe
+            )
+            return alignment.get('aligned', True)
+        except Exception as e:
+            self.logger.warning(f"Trend alignment check failed: {e}")
+            return True  # Default to allowing trade if check fails
     
     def get_supported_strategies(self) -> List[str]:
         """

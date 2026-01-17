@@ -19,6 +19,7 @@ sys.path.insert(0, str(PROJECT_ROOT / "Trading_Bot"))
 # Base paths
 TRADING_BOT_ROOT = PROJECT_ROOT / "Trading_Bot"
 SRC_ROOT = TRADING_BOT_ROOT / "src"
+API_ROOT = SRC_ROOT / "api"
 DOC_FILE = "Trading_Bot_Documentation/V5_BIBLE/BOT_WORKFLOW_CHAIN.md"
 
 
@@ -32,7 +33,7 @@ class TestBotWorkflowChain:
         DOC CLAIM: main.py entry point
         TEST TYPE: File Existence
         """
-        file_path = TRADING_BOT_ROOT / "main.py"
+        file_path = SRC_ROOT / "main.py"
         assert file_path.exists(), f"File not found: {file_path}"
     
     def test_workflow_002_trading_engine_file_exists(self):
@@ -130,7 +131,7 @@ class TestBotWorkflowChain:
         DOC CLAIM: Webhook handler for TradingView alerts
         TEST TYPE: Integration Existence
         """
-        file_path = TRADING_BOT_ROOT / "main.py"
+        file_path = API_ROOT / "webhook_handler.py"
         with open(file_path, 'r') as f:
             content = f.read()
         assert "webhook" in content.lower(), "Webhook handler not found"

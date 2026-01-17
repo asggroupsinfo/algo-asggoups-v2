@@ -19,6 +19,7 @@ sys.path.insert(0, str(PROJECT_ROOT / "Trading_Bot"))
 # Base paths
 TRADING_BOT_ROOT = PROJECT_ROOT / "Trading_Bot"
 SRC_ROOT = TRADING_BOT_ROOT / "src"
+API_ROOT = SRC_ROOT / "api"
 DOC_FILE = "Trading_Bot_Documentation/V5_BIBLE/DEPLOYMENT_MAINTENANCE.md"
 
 
@@ -32,7 +33,7 @@ class TestDeploymentMaintenance:
         DOC CLAIM: main.py entry point
         TEST TYPE: File Existence
         """
-        file_path = TRADING_BOT_ROOT / "main.py"
+        file_path = SRC_ROOT / "main.py"
         assert file_path.exists(), f"File not found: {file_path}"
     
     def test_deploy_002_config_file_exists(self):
@@ -40,7 +41,7 @@ class TestDeploymentMaintenance:
         DOC CLAIM: config.json configuration
         TEST TYPE: File Existence
         """
-        file_path = TRADING_BOT_ROOT / "config.json"
+        file_path = TRADING_BOT_ROOT / "config" / "config.json"
         assert file_path.exists(), f"File not found: {file_path}"
     
     def test_deploy_003_requirements_file_exists(self):
@@ -103,7 +104,7 @@ class TestDeploymentMaintenance:
         DOC CLAIM: Health check endpoint
         TEST TYPE: Endpoint Existence
         """
-        file_path = TRADING_BOT_ROOT / "main.py"
+        file_path = API_ROOT / "webhook_handler.py"
         with open(file_path, 'r') as f:
             content = f.read()
         assert "health" in content.lower() or "status" in content.lower(), \

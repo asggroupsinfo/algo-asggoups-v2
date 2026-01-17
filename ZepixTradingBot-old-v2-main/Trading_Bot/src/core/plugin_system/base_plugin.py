@@ -1,8 +1,85 @@
 from abc import ABC, abstractmethod
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List
 import logging
 
 logger = logging.getLogger(__name__)
+
+
+# ==================== Interface Definitions ====================
+# These interfaces define the contracts for plugin capabilities
+
+class ISignalProcessor(ABC):
+    """Interface for plugins that process trading signals."""
+    
+    @abstractmethod
+    async def process_signal(self, signal_data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+        """Process a trading signal and return result."""
+        pass
+    
+    @abstractmethod
+    def get_supported_strategies(self) -> List[str]:
+        """Return list of strategy names this plugin supports."""
+        pass
+
+
+class IOrderExecutor(ABC):
+    """Interface for plugins that execute orders."""
+    
+    @abstractmethod
+    async def execute_order(self, order_data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+        """Execute an order and return result."""
+        pass
+
+
+class IReentryCapable(ABC):
+    """Interface for plugins that support re-entry on SL/TP hit."""
+    
+    @abstractmethod
+    async def on_sl_hit(self, event: Any) -> bool:
+        """Handle stop loss hit event."""
+        pass
+    
+    @abstractmethod
+    async def on_tp_hit(self, event: Any) -> bool:
+        """Handle take profit hit event."""
+        pass
+
+
+class IDualOrderCapable(ABC):
+    """Interface for plugins that support dual order system."""
+    
+    @abstractmethod
+    async def create_dual_orders(self, signal: Dict[str, Any]) -> Any:
+        """Create both Order A and Order B for a signal."""
+        pass
+
+
+class IProfitBookingCapable(ABC):
+    """Interface for plugins that support profit booking chains."""
+    
+    @abstractmethod
+    async def create_profit_chain(self, order_b_id: str, signal: Dict[str, Any]) -> Any:
+        """Create a profit booking chain for Order B."""
+        pass
+
+
+class IAutonomousCapable(ABC):
+    """Interface for plugins that support autonomous safety features."""
+    
+    @abstractmethod
+    async def check_recovery_allowed(self, trade_id: str) -> bool:
+        """Check if recovery is allowed for a trade."""
+        pass
+
+
+class IDatabaseCapable(ABC):
+    """Interface for plugins that support database operations."""
+    
+    @abstractmethod
+    async def save_trade(self, trade_data: Dict[str, Any]) -> bool:
+        """Save trade data to database."""
+        pass
+
 
 class BaseLogicPlugin(ABC):
     """

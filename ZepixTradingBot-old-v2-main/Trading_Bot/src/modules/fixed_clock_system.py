@@ -226,6 +226,10 @@ class FixedClockSystem:
         self._stop_event.set()
         logger.info("Clock stop requested")
     
+    def stop_clock_loop(self):
+        """Stop the clock loop (alias for stop_clock)."""
+        self.stop_clock()
+    
     def get_status(self) -> dict:
         """
         Get clock system status.

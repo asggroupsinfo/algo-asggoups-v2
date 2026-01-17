@@ -19,6 +19,7 @@ sys.path.insert(0, str(PROJECT_ROOT / "Trading_Bot"))
 # Base paths
 TRADING_BOT_ROOT = PROJECT_ROOT / "Trading_Bot"
 SRC_ROOT = TRADING_BOT_ROOT / "src"
+API_ROOT = SRC_ROOT / "api"
 DOC_FILE = "Trading_Bot_Documentation/V5_BIBLE/FEATURES_SPECIFICATION.md"
 
 
@@ -114,7 +115,7 @@ class TestFeaturesSpecification:
         DOC CLAIM: Config Hot-Reload feature
         TEST TYPE: Feature Existence
         """
-        file_path = SRC_ROOT / "managers" / "config_manager.py"
+        file_path = SRC_ROOT / "core" / "config_manager.py"
         with open(file_path, 'r') as f:
             content = f.read()
         assert "reload" in content.lower() or "watch" in content.lower(), \
@@ -145,7 +146,7 @@ class TestFeaturesSpecification:
         DOC CLAIM: TradingView Integration feature
         TEST TYPE: Feature Existence
         """
-        file_path = TRADING_BOT_ROOT / "main.py"
+        file_path = API_ROOT / "webhook_handler.py"
         with open(file_path, 'r') as f:
             content = f.read()
         assert "webhook" in content.lower(), "TradingView integration not found"

@@ -19,6 +19,7 @@ sys.path.insert(0, str(PROJECT_ROOT / "Trading_Bot"))
 # Base paths
 TRADING_BOT_ROOT = PROJECT_ROOT / "Trading_Bot"
 SRC_ROOT = TRADING_BOT_ROOT / "src"
+API_ROOT = SRC_ROOT / "api"
 DOC_FILE = "Trading_Bot_Documentation/V5_BIBLE/50_INTEGRATION_POINTS.md"
 
 
@@ -238,7 +239,7 @@ class Test50IntegrationPoints:
         TEST TYPE: Endpoint Existence
         """
         # Check main.py or webhook handler
-        main_path = TRADING_BOT_ROOT / "main.py"
+        main_path = API_ROOT / "webhook_handler.py"
         if main_path.exists():
             with open(main_path, 'r') as f:
                 content = f.read()
@@ -261,14 +262,14 @@ class Test50IntegrationPoints:
         TEST TYPE: Endpoint Existence
         """
         # Check main.py or api handler
-        main_path = TRADING_BOT_ROOT / "main.py"
+        main_path = API_ROOT / "webhook_handler.py"
         if main_path.exists():
             with open(main_path, 'r') as f:
                 content = f.read()
             assert "health" in content.lower() or "status" in content.lower(), \
                 "Health endpoint not found"
         else:
-            # Assume health endpoint exists if main.py doesn't exist
+            # Assume health endpoint exists if webhook_handler.py doesn't exist
             assert True
 
 

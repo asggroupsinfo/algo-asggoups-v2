@@ -32,7 +32,7 @@ class TestUINavigationGuide:
         DOC CLAIM: telegram_bot_fixed.py file
         TEST TYPE: File Existence
         """
-        file_path = SRC_ROOT / "telegram" / "telegram_bot_fixed.py"
+        file_path = SRC_ROOT / "clients" / "telegram_bot_fixed.py"
         assert file_path.exists(), f"File not found: {file_path}"
     
     def test_ui_002_multi_telegram_manager_exists(self):
@@ -50,7 +50,7 @@ class TestUINavigationGuide:
         DOC CLAIM: Command handlers for UI
         TEST TYPE: Handler Existence
         """
-        file_path = SRC_ROOT / "telegram" / "telegram_bot_fixed.py"
+        file_path = SRC_ROOT / "clients" / "telegram_bot_fixed.py"
         with open(file_path, 'r') as f:
             content = f.read()
         assert "handler" in content.lower() or "command" in content.lower(), \
@@ -61,7 +61,7 @@ class TestUINavigationGuide:
         DOC CLAIM: Callback handlers for buttons
         TEST TYPE: Handler Existence
         """
-        file_path = SRC_ROOT / "telegram" / "telegram_bot_fixed.py"
+        file_path = SRC_ROOT / "clients" / "telegram_bot_fixed.py"
         with open(file_path, 'r') as f:
             content = f.read()
         assert "callback" in content.lower() or "button" in content.lower(), \
@@ -74,7 +74,7 @@ class TestUINavigationGuide:
         DOC CLAIM: Main menu implementation
         TEST TYPE: Menu Existence
         """
-        file_path = SRC_ROOT / "telegram" / "telegram_bot_fixed.py"
+        file_path = SRC_ROOT / "clients" / "telegram_bot_fixed.py"
         with open(file_path, 'r') as f:
             content = f.read()
         assert "menu" in content.lower(), "Main menu not found"
@@ -84,7 +84,7 @@ class TestUINavigationGuide:
         DOC CLAIM: Keyboard implementation
         TEST TYPE: Keyboard Existence
         """
-        file_path = SRC_ROOT / "telegram" / "telegram_bot_fixed.py"
+        file_path = SRC_ROOT / "clients" / "telegram_bot_fixed.py"
         with open(file_path, 'r') as f:
             content = f.read()
         assert "keyboard" in content.lower() or "button" in content.lower(), \
@@ -97,7 +97,7 @@ class TestUINavigationGuide:
         DOC CLAIM: /start command
         TEST TYPE: Command Existence
         """
-        file_path = SRC_ROOT / "telegram" / "telegram_bot_fixed.py"
+        file_path = SRC_ROOT / "clients" / "telegram_bot_fixed.py"
         with open(file_path, 'r') as f:
             content = f.read()
         assert "start" in content.lower(), "/start command not found"
@@ -107,7 +107,7 @@ class TestUINavigationGuide:
         DOC CLAIM: /help command
         TEST TYPE: Command Existence
         """
-        file_path = SRC_ROOT / "telegram" / "telegram_bot_fixed.py"
+        file_path = SRC_ROOT / "clients" / "telegram_bot_fixed.py"
         with open(file_path, 'r') as f:
             content = f.read()
         assert "help" in content.lower(), "/help command not found"
@@ -117,7 +117,7 @@ class TestUINavigationGuide:
         DOC CLAIM: /status command
         TEST TYPE: Command Existence
         """
-        file_path = SRC_ROOT / "telegram" / "telegram_bot_fixed.py"
+        file_path = SRC_ROOT / "clients" / "telegram_bot_fixed.py"
         with open(file_path, 'r') as f:
             content = f.read()
         assert "status" in content.lower(), "/status command not found"
@@ -127,7 +127,7 @@ class TestUINavigationGuide:
         DOC CLAIM: Message formatting for UI
         TEST TYPE: Formatting Existence
         """
-        file_path = SRC_ROOT / "telegram" / "telegram_bot_fixed.py"
+        file_path = SRC_ROOT / "clients" / "telegram_bot_fixed.py"
         with open(file_path, 'r') as f:
             content = f.read()
         assert "format" in content.lower() or "html" in content.lower(), \
