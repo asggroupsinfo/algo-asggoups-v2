@@ -113,6 +113,54 @@ CREATE TABLE IF NOT EXISTS v3_signals_log (
     FOREIGN KEY (trade_id) REFERENCES combined_v3_trades(id)
 );
 
+-- Re-entry chains table for V3 (SL Hunt Recovery, TP Continuation, Exit Continuation)
+CREATE TABLE IF NOT EXISTS v3_reentry_chains (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    chain_id TEXT UNIQUE NOT NULL,
+    plugin_id TEXT NOT NULL DEFAULT 'combined_v3',
+    
+    -- Chain Info
+    symbol TEXT NOT NULL,
+    direction TEXT CHECK(direction IN ('BUY', 'SELL')),
+    original_trade_id INTEGER,
+    original_entry_price REAL,
+    original_entry_time TIMESTAMP,
+    
+    -- Chain Status
+    status TEXT CHECK(status IN ('ACTIVE', 'RECOVERY_MODE', 'STOPPED', 'COMPLETED')) DEFAULT 'ACTIVE',
+    current_level INTEGER DEFAULT 0,
+    max_level INTEGER DEFAULT 5,
+    
+    -- Re-entry Type
+    reentry_type TEXT CHECK(reentry_type IN ('SL_HUNT', 'TP_CONTINUATION', 'EXIT_CONTINUATION')),
+    
+    -- Recovery Details
+    last_sl_price REAL,
+    last_tp_price REAL,
+    recovery_threshold REAL DEFAULT 0.70,
+    recovery_window_minutes INTEGER DEFAULT 30,
+    
+    -- Chain Results
+    total_entries INTEGER DEFAULT 1,
+    total_profit_dollars REAL DEFAULT 0,
+    total_loss_dollars REAL DEFAULT 0,
+    
+    -- Timestamps
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    completed_at TIMESTAMP,
+    
+    -- Metadata
+    stop_reason TEXT,
+    metadata_json TEXT,
+    
+    FOREIGN KEY (original_trade_id) REFERENCES combined_v3_trades(id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_v3_reentry_chains_status ON v3_reentry_chains(status);
+CREATE INDEX IF NOT EXISTS idx_v3_reentry_chains_symbol ON v3_reentry_chains(symbol);
+CREATE INDEX IF NOT EXISTS idx_v3_reentry_chains_plugin_id ON v3_reentry_chains(plugin_id);
+
 -- Daily statistics for V3
 CREATE TABLE IF NOT EXISTS v3_daily_stats (
     date TEXT PRIMARY KEY,

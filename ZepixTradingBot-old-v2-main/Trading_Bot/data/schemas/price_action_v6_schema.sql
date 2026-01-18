@@ -194,6 +194,89 @@ CREATE TABLE IF NOT EXISTS v6_signals_log (
     skip_reason TEXT
 );
 
+-- Re-entry chains table for V6 (SL Hunt Recovery, TP Continuation, Exit Continuation)
+CREATE TABLE IF NOT EXISTS v6_reentry_chains (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    chain_id TEXT UNIQUE NOT NULL,
+    plugin_id TEXT NOT NULL,
+    
+    -- Chain Info
+    symbol TEXT NOT NULL,
+    direction TEXT CHECK(direction IN ('BUY', 'SELL')),
+    timeframe TEXT,
+    original_trade_id INTEGER,
+    original_entry_price REAL,
+    original_entry_time TIMESTAMP,
+    
+    -- Chain Status
+    status TEXT CHECK(status IN ('ACTIVE', 'RECOVERY_MODE', 'STOPPED', 'COMPLETED')) DEFAULT 'ACTIVE',
+    current_level INTEGER DEFAULT 0,
+    max_level INTEGER DEFAULT 3,
+    
+    -- Re-entry Type
+    reentry_type TEXT CHECK(reentry_type IN ('SL_HUNT', 'TP_CONTINUATION', 'EXIT_CONTINUATION')),
+    
+    -- Recovery Details
+    last_sl_price REAL,
+    last_tp_price REAL,
+    recovery_threshold REAL DEFAULT 0.70,
+    recovery_window_minutes INTEGER DEFAULT 30,
+    
+    -- Higher TF Trend at Chain Start
+    higher_tf TEXT,
+    higher_tf_bull_count INTEGER,
+    higher_tf_bear_count INTEGER,
+    higher_tf_aligned BOOLEAN,
+    
+    -- Chain Results
+    total_entries INTEGER DEFAULT 1,
+    total_profit_dollars REAL DEFAULT 0,
+    total_loss_dollars REAL DEFAULT 0,
+    
+    -- Timestamps
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    completed_at TIMESTAMP,
+    
+    -- Metadata
+    stop_reason TEXT,
+    metadata_json TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_v6_reentry_chains_status ON v6_reentry_chains(status);
+CREATE INDEX IF NOT EXISTS idx_v6_reentry_chains_symbol ON v6_reentry_chains(symbol);
+CREATE INDEX IF NOT EXISTS idx_v6_reentry_chains_plugin_id ON v6_reentry_chains(plugin_id);
+CREATE INDEX IF NOT EXISTS idx_v6_reentry_chains_timeframe ON v6_reentry_chains(timeframe);
+
+-- Profit bookings table for V6
+CREATE TABLE IF NOT EXISTS v6_profit_bookings (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    trade_id INTEGER NOT NULL,
+    plugin_id TEXT NOT NULL,
+    chain_id TEXT,
+    
+    -- Booking Info
+    order_type TEXT CHECK(order_type IN ('ORDER_A', 'ORDER_B')),
+    booking_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    closed_percentage REAL NOT NULL,
+    closed_volume REAL NOT NULL,
+    
+    -- Results
+    profit_pips REAL,
+    profit_dollars REAL,
+    
+    -- Booking Reason
+    reason TEXT,
+    
+    -- Higher TF Trend at Booking
+    higher_tf_bull_count INTEGER,
+    higher_tf_bear_count INTEGER,
+    trend_aligned BOOLEAN
+);
+
+CREATE INDEX IF NOT EXISTS idx_v6_profit_bookings_plugin_id ON v6_profit_bookings(plugin_id);
+CREATE INDEX IF NOT EXISTS idx_v6_profit_bookings_chain_id ON v6_profit_bookings(chain_id);
+
 -- Daily statistics for V6
 CREATE TABLE IF NOT EXISTS v6_daily_stats (
     date TEXT PRIMARY KEY,
