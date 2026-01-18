@@ -1,7 +1,7 @@
 # PLUGIN SYSTEM
 
 **Files:**
-- `src/core/plugin_system/plugin_registry.py` (375 lines)
+- `src/core/plugin_system/plugin_registry.py` (468 lines)
 - `src/core/plugin_system/base_plugin.py` (121 lines)
 - `src/core/plugin_router.py` (286 lines)
 

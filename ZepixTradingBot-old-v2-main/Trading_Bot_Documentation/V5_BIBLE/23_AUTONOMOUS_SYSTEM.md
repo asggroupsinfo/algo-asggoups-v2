@@ -1,7 +1,7 @@
 # AUTONOMOUS SYSTEM
 
 **File:** `src/managers/autonomous_system_manager.py`  
-**Lines:** 1190  
+**Lines:** 1551  
 **Purpose:** Central manager for all autonomous trading operations
 
 ---
@@ -639,9 +639,100 @@ def reset_daily_stats(self):
 
 ---
 
+## PLUGIN-SPECIFIC RE-ENTRY CHAIN METHODS (Lines 1360-1550)
+
+### V5.1 Addition: Database-Isolated Re-Entry Chain Management
+
+These methods provide plugin-specific database queries for re-entry chains, ensuring V3 and V6 plugins use their isolated databases.
+
+### Get Re-Entry Chains by Plugin (Lines 1360-1409)
+
+```python
+async def get_reentry_chains_by_plugin(self, plugin_id: str) -> list:
+    """
+    Get active re-entry chains for a specific plugin from the appropriate database.
+    
+    V3 plugins query v3_reentry_chains from zepix_combined_v3.db
+    V6 plugins query v6_reentry_chains from zepix_price_action.db
+    
+    Args:
+        plugin_id: Plugin identifier (e.g., 'combined_v3', 'price_action_5m')
+        
+    Returns:
+        List of active re-entry chain records
+    """
+    # Routes to correct database based on plugin_id
+    if 'v3' in plugin_id.lower() or 'combined' in plugin_id.lower():
+        db_path = 'data/zepix_combined_v3.db'
+        table_name = 'v3_reentry_chains'
+    else:
+        db_path = 'data/zepix_price_action.db'
+        table_name = 'v6_reentry_chains'
+    
+    # Query with plugin_id filter
+    cursor.execute(f'''
+        SELECT * FROM {table_name}
+        WHERE plugin_id = ? AND status IN ('ACTIVE', 'RECOVERY_MODE')
+        ORDER BY created_at DESC
+    ''', (plugin_id,))
+```
+
+### Save Re-Entry Chain (Lines 1411-1482)
+
+```python
+async def save_reentry_chain(self, chain_data: dict) -> bool:
+    """
+    Save a re-entry chain to the appropriate plugin-specific database.
+    
+    Args:
+        chain_data: Dictionary with chain details including plugin_id
+        
+    Returns:
+        True if saved successfully
+    """
+    # Routes to correct database based on plugin_id
+    # Inserts chain with all required fields
+```
+
+### Update Re-Entry Chain Status (Lines 1484-1546)
+
+```python
+async def update_reentry_chain_status(
+    self, 
+    chain_id: str, 
+    plugin_id: str, 
+    status: str,
+    stop_reason: str = None
+) -> bool:
+    """
+    Update the status of a re-entry chain.
+    
+    Args:
+        chain_id: Chain identifier
+        plugin_id: Plugin identifier
+        status: New status ('ACTIVE', 'RECOVERY_MODE', 'STOPPED', 'COMPLETED')
+        stop_reason: Optional reason for stopping
+        
+    Returns:
+        True if updated successfully
+    """
+```
+
+### Get Daily Recovery Count (Lines 1548-1550)
+
+```python
+async def get_daily_recovery_count(self) -> int:
+    """Get the count of recovery attempts today"""
+    return self.daily_stats.get("recovery_attempts", 0)
+```
+
+---
+
 ## RELATED FILES
 
 - `src/core/trading_engine.py` - Uses AutonomousSystemManager
 - `src/managers/reentry_manager.py` - Re-entry chain management
 - `src/managers/profit_booking_manager.py` - Profit booking chains
 - `src/managers/recovery_window_monitor.py` - Recovery monitoring
+- `data/schemas/combined_v3_schema.sql` - V3 re-entry chains table
+- `data/schemas/price_action_v6_schema.sql` - V6 re-entry chains table

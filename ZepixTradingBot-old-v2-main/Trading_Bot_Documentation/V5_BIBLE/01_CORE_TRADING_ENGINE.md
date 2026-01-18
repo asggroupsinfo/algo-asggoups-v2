@@ -1,7 +1,7 @@
 # CORE TRADING ENGINE
 
 **File:** `src/core/trading_engine.py`  
-**Lines:** 2320  
+**Lines:** 2439  
 **Purpose:** Central orchestration hub for all trading operations
 
 ---

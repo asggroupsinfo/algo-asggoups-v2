@@ -1,7 +1,7 @@
 # SERVICE API
 
 **File:** `src/core/plugin_system/service_api.py`  
-**Lines:** 1312  
+**Lines:** 1716  
 **Purpose:** Unified service layer providing single point of entry for all plugin operations
 
 ---

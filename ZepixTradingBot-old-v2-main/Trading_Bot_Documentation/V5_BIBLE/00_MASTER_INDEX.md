@@ -1,9 +1,9 @@
 # ZEPIX V5 DOCUMENTATION BIBLE - MASTER INDEX
 
-**Version:** 5.0.0  
-**Generated:** 2026-01-15  
-**Total Python Files Scanned:** 85  
-**Total Lines of Code:** ~45,000+  
+**Version:** 5.1.0  
+**Generated:** 2026-01-18  
+**Total Python Files Scanned:** 139  
+**Total Lines of Code:** ~69,581  
 
 ---
 
@@ -83,18 +83,21 @@ The Zepix V5 Hybrid Plugin Architecture represents a complete migration from a m
 
 | Component | File | Lines |
 |-----------|------|-------|
-| Trading Engine | `src/core/trading_engine.py` | 2320 |
-| Plugin Registry | `src/core/plugin_system/plugin_registry.py` | 375 |
-| Service API | `src/core/plugin_system/service_api.py` | 1312 |
-| Shadow Mode Manager | `src/core/shadow_mode_manager.py` | 411 |
-| Config Manager | `src/core/config_manager.py` | 622 |
-| V3 Combined Plugin | `src/logic_plugins/v3_combined/plugin.py` | 1836 |
-| V6 Price Action 5m | `src/logic_plugins/v6_price_action_5m/plugin.py` | 524 |
-| Re-Entry Manager | `src/managers/reentry_manager.py` | 562 |
+| Trading Engine | `src/core/trading_engine.py` | 2439 |
+| Plugin Registry | `src/core/plugin_system/plugin_registry.py` | 468 |
+| Service API | `src/core/plugin_system/service_api.py` | 1716 |
+| Shadow Mode Manager | `src/core/shadow_mode_manager.py` | 476 |
+| Config Manager | `src/core/config_manager.py` | 707 |
+| V3 Combined Plugin | `src/logic_plugins/v3_combined/plugin.py` | 2033 |
+| V6 Price Action 1m | `src/logic_plugins/v6_price_action_1m/plugin.py` | 508 |
+| V6 Price Action 5m | `src/logic_plugins/v6_price_action_5m/plugin.py` | 532 |
+| V6 Price Action 15m | `src/logic_plugins/v6_price_action_15m/plugin.py` | 524 |
+| V6 Price Action 1h | `src/logic_plugins/v6_price_action_1h/plugin.py` | 515 |
+| Re-Entry Manager | `src/managers/reentry_manager.py` | 560 |
 | Dual Order Manager | `src/managers/dual_order_manager.py` | 346 |
-| Profit Booking Manager | `src/managers/profit_booking_manager.py` | 1087 |
-| Autonomous System Manager | `src/managers/autonomous_system_manager.py` | 1190 |
-| Multi-Telegram Manager | `src/telegram/multi_telegram_manager.py` | 477 |
+| Profit Booking Manager | `src/managers/profit_booking_manager.py` | 1378 |
+| Autonomous System Manager | `src/managers/autonomous_system_manager.py` | 1551 |
+| Multi-Telegram Manager | `src/telegram/multi_telegram_manager.py` | 528 |
 
 ### Signal Flow
 
@@ -160,14 +163,14 @@ TradingView Alert
 
 | Category | Files | Lines | Percentage |
 |----------|-------|-------|------------|
-| Core | 15 | ~8,000 | 18% |
-| Logic Plugins | 15 | ~6,000 | 13% |
-| Managers | 15 | ~8,500 | 19% |
-| Telegram | 15 | ~5,000 | 11% |
-| Services | 10 | ~4,000 | 9% |
-| Utilities | 15 | ~5,500 | 12% |
-| Other | 15 | ~8,000 | 18% |
-| **Total** | **85** | **~45,000** | **100%** |
+| Core | 32 | ~18,890 | 27% |
+| Logic Plugins | 17 | ~6,232 | 9% |
+| Managers | 15 | ~7,820 | 11% |
+| Telegram | 17 | ~8,988 | 13% |
+| Services | 5 | ~1,860 | 3% |
+| Utilities | 12 | ~3,230 | 5% |
+| Other (clients, api, menu, modules, processors, monitoring, models) | 41 | ~21,246 | 31% |
+| **Total** | **139** | **~69,581** | **100%** |
 
 ### Test Coverage
 
@@ -252,6 +255,7 @@ Level 4: 16 orders -> $7 profit target each (MAX)
 
 | Version | Date | Changes |
 |---------|------|---------|
+| 5.1.0 | 2026-01-18 | Documentation Overhaul - Updated file counts (139 files, ~69,581 lines), added V6 re-entry system integration |
 | 5.0.0 | 2026-01-15 | Complete V5 Hybrid Plugin Architecture |
 | 4.0.0 | 2025-12-01 | V4 Legacy System |
 | 3.0.0 | 2025-06-01 | V3 Combined Logic |
