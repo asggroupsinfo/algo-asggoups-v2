@@ -6,7 +6,7 @@ echo ========================================
 echo.
 
 REM Start the bot
-python scripts/start_bot_standalone.py
+python scripts/start_full_bot.py
 
 echo.
 echo ========================================

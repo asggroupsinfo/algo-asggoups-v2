@@ -157,7 +157,7 @@ def start_webhook_server(trading_engine):
         uvicorn.run(
             app,
             host="0.0.0.0",
-            port=5000,
+            port=80,
             log_level="info"
         )
     
@@ -177,7 +177,7 @@ def send_startup_notification(telegram_bot, session_manager):
         "• Trading Engine: Ready\n"
         "• Session Manager: Active\n"
         "• Plugin System: Loaded\n"
-        "• Webhook Server: http://0.0.0.0:5000\n\n"
+        "• Webhook Server: http://0.0.0.0:80\n\n"
         f"🕐 **Current Session:** {session_info.get('session_name', 'Unknown')}\n"
         f"💱 **Allowed Symbols:** {', '.join(session_info.get('allowed_symbols', []))}\n\n"
         "📡 Bot is ready for commands!"
@@ -221,10 +221,10 @@ def main():
             print(f"⚠️ Trading Engine async init error: {e} (continuing)")
         
         # Start webhook server
-        print("\nStarting Webhook Server on port 5000...")
+        print("\nStarting Webhook Server on port 80...")
         webhook_thread = start_webhook_server(trading_engine)
         time.sleep(2)  # Wait for server to start
-        print("✅ Webhook Server started: http://0.0.0.0:5000")
+        print("✅ Webhook Server started: http://0.0.0.0:80")
         
         # Start Telegram polling
         print("\nStarting Telegram Bot polling...")
@@ -240,9 +240,9 @@ def main():
         print("  🚀 ZEPIX TRADING BOT V5 IS NOW RUNNING")
         print("=" * 70)
         print("\nEndpoints:")
-        print("  - Webhook: http://localhost:5000/webhook")
-        print("  - Health: http://localhost:5000/health")
-        print("  - V3 Webhook: http://localhost:5000/webhook/v3")
+        print("  - Webhook: http://localhost:80/webhook")
+        print("  - Health: http://localhost:80/health")
+        print("  - V3 Webhook: http://localhost:80/webhook/v3")
         print("\nTelegram Bot: @Algo_Asg_Controller_bot")
         print("\nPress Ctrl+C to stop the bot")
         print("=" * 70)

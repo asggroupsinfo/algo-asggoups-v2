@@ -12,6 +12,9 @@ from datetime import datetime, timedelta
 from src.models import Trade, ReEntryChain, ProfitBookingChain
 import asyncio
 import time
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class AutonomousSystemManager:
@@ -884,7 +887,7 @@ class AutonomousSystemManager:
                     f"Chain: {chain_id}\n"
                     f"Resumed to Level: {chain.current_level}\n"
                     f"Status: ACTIVE ✅\n"
-                    f"Recovery Profit: ${recovery_trade.profit:.2f if hasattr(recovery_trade, 'profit') else 0:.2f}"
+                    f"Recovery Profit: ${getattr(recovery_trade, 'profit', 0):.2f}"
                 )
                 self.telegram_bot.send_message(message)
             

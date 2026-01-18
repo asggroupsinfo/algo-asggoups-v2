@@ -214,3 +214,45 @@ class BaseTelegramBot:
             "message_count": self._message_count,
             "last_message_time": self._last_message_time.isoformat() if self._last_message_time else None
         }
+
+    def start_simple_polling(self, welcome_message: str):
+        """
+        Start a simple background thread to poll for /start commands.
+        This ensures Notification and Analytics bots respond to users.
+        """
+        import threading
+        import time
+        
+        if not self._is_active:
+            return
+
+        def _poll():
+            offset = 0
+            logger.info(f"[{self.bot_name}] Starting simple polling for /start...")
+            while True:
+                try:
+                    url = f"{self.base_url}/getUpdates"
+                    params = {"offset": offset, "timeout": 30, "allowed_updates": ["message"]}
+                    resp = self.session.get(url, params=params, timeout=35)
+                    
+                    if resp.status_code == 200:
+                        data = resp.json()
+                        if data.get("ok"):
+                            for result in data.get("result", []):
+                                offset = result["update_id"] + 1
+                                message = result.get("message", {})
+                                text = message.get("text", "")
+                                chat_id = message.get("chat", {}).get("id")
+                                
+                                if text == "/start" and chat_id:
+                                    logger.info(f"[{self.bot_name}] Received /start from {chat_id}")
+                                    self.send_message(welcome_message, chat_id=chat_id)
+                                    
+                except Exception as e:
+                    logger.error(f"[{self.bot_name}] Polling error: {e}")
+                    time.sleep(5)
+                
+                time.sleep(1)
+
+        t = threading.Thread(target=_poll, daemon=True)
+        t.start()

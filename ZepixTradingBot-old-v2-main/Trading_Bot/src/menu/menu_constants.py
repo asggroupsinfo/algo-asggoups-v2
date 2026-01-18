@@ -395,7 +395,8 @@ REPLY_MENU_MAP = {
     # Added Keys for New Buttons
     "📋 Sessions": "action_session_menu",
     "⏰ Clock System": "action_clock_system",
-    "🔊 Voice Test": "action_voice_test"
+    "🔊 Voice Test": "action_voice_test",
+    "⚙️ Strategy": "menu_strategy"
 }
 
 # Reverse mapping for validation

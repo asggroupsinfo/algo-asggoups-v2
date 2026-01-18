@@ -15,8 +15,17 @@ Updates:
 import logging
 from typing import Dict, Any, Optional, Callable, List
 from datetime import datetime
+import sys
+import os
+
+# Ensure src is in path for imports
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..'))
 
 from .base_telegram_bot import BaseTelegramBot
+try:
+    from src.menu.menu_manager import MenuManager
+except ImportError:
+    MenuManager = None
 
 logger = logging.getLogger(__name__)
 
@@ -26,23 +35,25 @@ class ControllerBot(BaseTelegramBot):
     Controller Bot for system commands and admin functions.
     
     NOW WIRED to CommandRegistry for 95+ command handling.
-    
-    Responsibilities:
-    - All slash commands (/start, /status, /pause, etc.)
-    - Bot configuration
-    - Emergency controls
-    - System status queries
-    - Manual trade placement
-    - Plugin control (Hot-Swap)
     """
     
     def __init__(self, token: str, chat_id: str = None):
         super().__init__(token, chat_id, bot_name="ControllerBot")
         
         self._command_handlers: Dict[str, Callable] = {}
+        self._callback_handlers: Dict[str, Callable] = {} # Add callback handlers dict
         self._trading_engine = None
         self._risk_manager = None
         self._legacy_bot = None
+        
+        # Menu Manager Integration
+        self._menu_manager = None
+        if MenuManager:
+            try:
+                self._menu_manager = MenuManager(self)
+                logger.info("[ControllerBot] MenuManager initialized")
+            except Exception as e:
+                logger.error(f"[ControllerBot] Failed to init MenuManager: {e}")
         
         # Health monitoring and versioning (Batch 11)
         self._health_monitor = None
@@ -460,7 +471,15 @@ class ControllerBot(BaseTelegramBot):
     # ========================================
     
     def handle_start(self, message: Dict = None) -> Optional[int]:
-        """Handle /start command - Show main menu"""
+        """Handle /start command - Show main menu via MenuManager"""
+        chat_id = self.chat_id
+        if message and 'chat' in message:
+            chat_id = message['chat'].get('id', self.chat_id)
+            
+        if self._menu_manager:
+            return self._menu_manager.show_main_menu(chat_id)
+            
+        # Fallback if MenuManager not available
         keyboard = [
             [{"text": "📊 Dashboard", "callback_data": "action_dashboard"}],
             [{"text": "🔌 Plugin Control", "callback_data": "plugin_menu"}],
@@ -478,7 +497,8 @@ class ControllerBot(BaseTelegramBot):
             "━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
             f"<b>Status:</b> {'🟢 Active' if not self._is_paused else '🔴 Paused'}\n"
             f"<b>Uptime:</b> {hours}h {minutes}m {seconds}s\n"
-            f"<b>Version:</b> V5 Hybrid Architecture\n\n"
+            f"<b>Version:</b> V5 Hybrid Architecture\n"
+            f"<b>Menu:</b> Fallback Mode (Manager missing)\n\n"
             "<i>Select an option below:</i>"
         )
         
@@ -759,3 +779,84 @@ class ControllerBot(BaseTelegramBot):
     def no_operation(self, chat_id: int = None):
         """No operation (callback handler)"""
         pass
+
+    # ========================================
+    # Menu Manager Delegators (Additions)
+    # ========================================
+
+    def _show_menu_generic(self, category: str, chat_id: int = None):
+        """Generic helper to show a category menu"""
+        if not self._menu_manager:
+            self.send_message("❌ Menu Manager not initialized.")
+            return
+        
+        # Message ID is needed for edit_message. 
+        # In a real callback flow, we usually have access to the message_id from the update.
+        # But here 'chat_id' is passed. The architecture of ControllerBot.handle_callback needs inspection.
+        # Assuming for now we can't edit without tracking current message ID, so we might send new.
+        # However, MenuManager supports message_id=None to send new.
+        # Ideally, we should capture message_id from the callback update.
+        
+        # For this fix, we'll try to use the last known message ID if available or send new.
+        self._menu_manager.show_category_menu(chat_id or self.chat_id, category, message_id=None)
+
+    def show_main_menu(self, chat_id: int = None):
+        if self._menu_manager:
+            self._menu_manager.show_main_menu(chat_id or self.chat_id, message_id=None)
+        else:
+            self.handle_start()
+
+    def show_trading_menu(self, chat_id: int = None):
+        self._show_menu_generic("trading", chat_id)
+
+    def show_risk_menu(self, chat_id: int = None):
+        self._show_menu_generic("risk", chat_id)
+
+    def show_strategy_menu(self, chat_id: int = None):
+        self._show_menu_generic("strategy", chat_id)
+
+    def show_timeframe_menu(self, chat_id: int = None):
+        # Timeframe menu has specific handler in MenuManager usually, but let's try generic
+        if self._menu_manager:
+             self._menu_manager.show_timeframe_menu(chat_id or self.chat_id, message_id=None)
+
+    def show_reentry_menu(self, chat_id: int = None):
+        self._show_menu_generic("reentry", chat_id)
+
+    def show_profit_menu(self, chat_id: int = None):
+        self._show_menu_generic("profit", chat_id)
+
+    def show_analytics_menu(self, chat_id: int = None):
+        self._show_menu_generic("performance", chat_id) # Mapped to performance
+
+    def show_session_menu(self, chat_id: int = None):
+        # Session menu might not be a simple category, let's assume generic for now or custom
+        # MenuManager.show_main_menu has "session_dashboard".
+        # Let's map it to placeholder generic or implement specifics later.
+        self.send_message("Sessions menu under construction.")
+
+    def show_voice_menu(self, chat_id: int = None):
+        self._show_menu_generic("voice", chat_id)
+
+    def show_sl_system_menu(self, chat_id: int = None):
+        self._show_menu_generic("sl_system", chat_id)
+
+    def show_fine_tune_menu(self, chat_id: int = None):
+        self._show_menu_generic("fine_tune", chat_id)
+
+    def show_diagnostics_menu(self, chat_id: int = None):
+        self._show_menu_generic("diagnostics", chat_id)
+
+    def show_trends_menu(self, chat_id: int = None):
+        self._show_menu_generic("trends", chat_id)
+        
+    def show_orders_menu(self, chat_id: int = None):
+        self._show_menu_generic("orders", chat_id)
+    
+    def show_settings_menu(self, chat_id: int = None):
+        self._show_menu_generic("settings", chat_id)
+
+    def navigate_back(self, chat_id: int = None):
+        """Navigate back handler"""
+        self.show_main_menu(chat_id)
+

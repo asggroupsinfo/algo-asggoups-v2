@@ -1,0 +1,31 @@
+🚀 LIVE SIMULATION TEST SUITE (PROOF OF SEPARATION)
+==================================================
+✅ Config Loaded
+✅ MultiTelegramManager Initialized
+
+[TEST 1] VERIFYING BOT TOKENS
+   Controller Token: ...x8bjqwwo
+   Notification Token: ...GlUKK4vM
+   Analytics Token: ...hDJ2L1Ys
+   ✅ SUCCESS: All 3 bots use DIFFERENT tokens.
+
+[TEST 2] INJECTING SIMULATED TRAFFIC
+
+   [A] CONTROLLER BOT (Menu Test)
+      ✅ Menu Sent! Message ID: 30
+      ✅ Sent via Token: ...x8bjqwwo
+
+   [B] V3 TRADE ALERT (Notification Bot)
+      ✅ V3 Alert Sent! Message ID: 10
+      ✅ Sent via Token: ...GlUKK4vM
+
+   [C] V6 TRADE ALERT (Notification Bot)
+      ✅ V6 Alert Sent! Message ID: 11
+      ✅ Sent via Token: ...GlUKK4vM
+
+   [D] ANALYTICS REPORT (Analytics Bot)
+      ✅ Report Sent! Message ID: 9
+      ✅ Sent via Token: ...hDJ2L1Ys
+
+==================================================
+✅ SIMULATION COMPLETE. CHECK TELEGRAM NOW.

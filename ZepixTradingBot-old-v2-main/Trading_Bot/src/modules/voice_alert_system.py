@@ -115,6 +115,14 @@ class VoiceAlertSystem:
         if not self.is_processing:
             asyncio.create_task(self.process_alert_queue())
     
+    def speak(self, text: str):
+        """
+        Syntactic sugar/alias for send_voice_alert (backward compatibility).
+        Used by NotificationBot.
+        """
+        # Call send_voice_alert synchronously (it just queues the alert)
+        asyncio.create_task(self.send_voice_alert(text, AlertPriority.HIGH))
+
     def _get_channels_for_priority(self, priority: AlertPriority) -> List[str]:
         """
         Determine delivery channels based on priority.

@@ -126,6 +126,15 @@ class MultiTelegramManager:
             logger.info("[MultiTelegramManager] Running in SINGLE BOT MODE")
         else:
             logger.info(f"[MultiTelegramManager] Running in MULTI-BOT MODE ({len(unique_tokens)} unique tokens)")
+            # Start simple polling for dedicated bots to handle /start
+            if self.notification_token and self.notification_bot:
+                self.notification_bot.start_simple_polling(
+                    "🔔 <b>Notification Bot Active</b>\n\nI am purely for sending trade alerts. I do not accept commands."
+                )
+            if self.analytics_token and self.analytics_bot:
+                self.analytics_bot.start_simple_polling(
+                    "📊 <b>Analytics Bot Active</b>\n\nI provide reports and statistics. Use the Controller Bot for commands."
+                )
     
     def _initialize_router(self):
         """Initialize message router"""

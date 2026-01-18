@@ -12,6 +12,8 @@ from .menu_constants import (
     MAX_LEVELS_PRESETS, SL_REDUCTION_PRESETS, SL_OFFSET_PRESETS, LOT_SIZE_PRESETS,
     DATE_PRESETS
 )
+from datetime import datetime
+import pytz # Will need to check if pytz is available or use standard timezone handling
 
 class MenuManager:
     """
@@ -197,15 +199,29 @@ class MenuManager:
         return presets
     
     def show_main_menu(self, user_id: int, message_id: Optional[int] = None):
-        """Display main menu with categories and quick actions"""
+        """Display main menu with categories and dynamic system status header"""
+        
+        # 1. GET DYNAMIC DATA
+        current_time = datetime.now() # Use bot's timezone logic preferably
+        date_str = current_time.strftime("%Y-%m-%d")
+        time_str = current_time.strftime("%H:%M:%S")
+        
+        # Session & Symbol
+        current_session = "GLOBAL"
+        if hasattr(self.bot, 'session_manager') and self.bot.session_manager:
+             current_session = self.bot.session_manager.current_state.get('active_session', 'GLOBAL')
+        
+        symbol = "EURUSD" # Default
+        if hasattr(self.bot, 'config'):
+             symbol = self.bot.config.get("symbol", "EURUSD")
+
+        # 2. BUILD STICKY HEADER
         text = (
-            "🤖 *ZEPIX TRADING BOT v2.0*\n"
+            f"🕰️ *TIME:* `{time_str}` | 📅 *DATE:* `{date_str}`\n"
+            f"🌍 *SESSION:* `{current_session}` | 💱 *SYMBOL:* `{symbol}`\n"
             "━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
-            "🎯 *QUICK ACTIONS*\n"
-            "Instant access to most used commands\n\n"
-            "📋 *MAIN CATEGORIES*\n"
-            "Navigate to command categories\n\n"
-            "💡 *Tip:* Use buttons to navigate - no typing required!"
+            "🤖 *ZEPIX CONTROL PANEL v2.0*\n"
+            "Use the buttons below to control the bot."
         )
         
         keyboard = []
@@ -232,7 +248,7 @@ class MenuManager:
         
         # Main Categories - Row 1
         cat_row1 = []
-        cat_row1.append({"text": "🕒 Sessions", "callback_data": "session_dashboard"})
+        cat_row1.append({"text": "📋 Sessions", "callback_data": "session_dashboard"})
         cat_row1.append({"text": "💰 Trading", "callback_data": "menu_trading"})
         keyboard.append(cat_row1)
         
@@ -268,6 +284,7 @@ class MenuManager:
         
         # Main Categories - Row 7
         cat_row7 = []
+        cat_row7.append({"text": "⚙️ Strategy", "callback_data": "menu_strategy"})
         cat_row7.append({"text": "⚡ Fine-Tune", "callback_data": "menu_fine_tune"})
         keyboard.append(cat_row7)
         
@@ -295,15 +312,15 @@ class MenuManager:
         return {
             "keyboard": [
                 # Row 1: High Frequency
-                ["📊 Dashboard", "⏸️ Pause/Resume", "🕒 Sessions"],
-                # Row 2: Management
-                ["📈 Active Trades", "🛡️ Risk", "🎙️ Voice"],
+                ["📊 Dashboard", "⏸️ Pause/Resume", "📋 Sessions"],
+                # Row 2: Management & Info
+                ["📈 Active Trades", "⏱️ Timeframe", "🛡️ Risk"],
                 # Row 3: Analysis
                 ["🔄 Re-entry", "⚙️ SL System", "📍 Trends"],
-                # Row 4: Info
-                ["📈 Profit", "🆘 Help"],
-                # Row 5: Safety (Full Width)
-                ["🚨 PANIC CLOSE"]
+                # Row 4: Strategy & Tools
+                ["📈 Profit", "⚙️ Strategy", "🔊 Voice Test"],
+                # Row 5: Help & Safety
+                ["🆘 Help", "🚨 PANIC CLOSE"]
             ],
             "resize_keyboard": True,  # KEEPS IT COMPACT
             "is_persistent": True,

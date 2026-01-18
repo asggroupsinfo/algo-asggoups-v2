@@ -48,6 +48,29 @@ class NotificationBot(BaseTelegramBot):
         self._voice_alerts_enabled = voice_system is not None
         logger.info(f"[NotificationBot] Voice alerts: {'enabled' if self._voice_alerts_enabled else 'disabled'}")
     
+    async def send_notification(self, notification_type: str, message: str, **kwargs) -> Optional[int]:
+        """
+        Async handler for Router notifications.
+        Delegates to specialized Sync methods for Rich Formatting + Voice.
+        """
+        trade_data = kwargs.get('trade_data')
+        
+        if notification_type == 'trade_opened' and trade_data:
+            # Delegate to send_entry_alert (Sync)
+            return self.send_entry_alert(trade_data)
+            
+        elif notification_type in ['trade_closed', 'position_closed'] and trade_data:
+             return self.send_exit_alert(trade_data)
+             
+        elif notification_type == 'profit_booked' and isinstance(kwargs.get('booking_data'), dict):
+             return self.send_profit_booking_alert(kwargs['booking_data'])
+             
+        elif notification_type == 'error_alert' and isinstance(kwargs.get('error_data'), dict):
+             return self.send_error_alert(kwargs['error_data'])
+             
+        # Fallback: Just send the text message
+        return self.send_message(message)
+    
     def send_entry_alert(self, trade_data: Dict) -> Optional[int]:
         """
         Send entry notification for new trade

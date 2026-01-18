@@ -1,0 +1,15 @@
+🕵️‍♂️ DETAILED TELEGRAM DIAGNOSTIC TOOL 🕵️‍♂️
+=========================================
+✅ Controller Bot: IDENTITY CONFIRMED (@Algo_Asg_Controller_bot, ID: 8598624206)
+✅ Controller Bot: No Webhook (Polling Allowed)
+✅ Controller Bot: MESSAGE DELIVERED to 2139792302
+✅ Notification Bot: IDENTITY CONFIRMED (@AlgoAsg_Alerts_bot, ID: 8311364103)
+✅ Notification Bot: No Webhook (Polling Allowed)
+✅ Notification Bot: MESSAGE DELIVERED to 2139792302
+✅ Analytics Bot: IDENTITY CONFIRMED (@AlgoAsg_Analytics_bot, ID: 8513021073)
+✅ Analytics Bot: No Webhook (Polling Allowed)
+✅ Analytics Bot: MESSAGE DELIVERED to 2139792302
+
+--- DIAGNOSIS SUMMARY ---
+✅ ALL SYSTEMS GO: No conflicting webhooks found.
+   If bots don't reply, restart the main application.

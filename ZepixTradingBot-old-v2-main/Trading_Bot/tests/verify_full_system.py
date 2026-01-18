@@ -301,7 +301,13 @@ async def verify_11_features():
             mock_mt5.prices["XAUUSD"] = 2500.0
             bad_trade = MockTrade(777, "XAUUSD", "BUY", 2510.0)
             
-            await rw_mon.start_sl_hunt_monitoring(bad_trade, 2500.0, "BUY")
+            await rw_mon.start_monitoring(
+                order_id=int(bad_trade.ticket),
+                symbol=bad_trade.symbol,
+                direction="BUY",
+                sl_price=2500.0,
+                original_order=bad_trade
+            )
             
             mock_mt5.prices["XAUUSD"] = 2503.0
             await asyncio.sleep(0.05)

@@ -161,7 +161,12 @@ class TradingEngine:
     
     def _init_telegram_manager(self):
         """Initialize the 3-bot Telegram system if config available"""
-        telegram_config = self.config.get("telegram", {})
+        telegram_config = self.config.get("telegram")
+        if not telegram_config:
+            # Fallback to root config if tokens are present there
+            if self.config.get("telegram_token"):
+                telegram_config = self.config
+        
         if telegram_config:
             try:
                 self.telegram_manager = MultiTelegramManager(telegram_config)

@@ -340,5 +340,65 @@ The V5 Hybrid Plugin Architecture has moved from "Ghost State" to "Actual Implem
 
 ---
 
+
+## SECTION 8: INTELLIGENT TRADING & TELEGRAM SEPARATION (MANDATE 23 - VERIFIED)
+
+**Status:** ✅ COMPLETED & VERIFIED
+**Date:** 2026-01-17
+
+This section covers the successful implementation and verification of Mandate 23.
+
+### 8.1 Intelligent Logic V3/V6
+**Status:** VERIFIED
+**Details:**
+- Intelligent entry using Pine Script data (Pine Supremacy) implemented.
+- Smart TP Management (Partial close, trailing) implemented.
+- SL Hunting with Re-entry implemented.
+- Risk-based lot sizing integrated.
+- 35/35 Live Simulation tests PASSED.
+
+### 8.2 Telegram Bot Separation (3-Bot System)
+**Status:** ✅ VERIFIED & FIXED (Polling Enabled)
+**Details:**
+- **Issue:** Bots were merged due to startup script skipping initialization + polling inactive.
+- **Fix:** Fixed `trading_engine.py` config logic, updated startup scripts, enabled `start_simple_polling`.
+- **Result:** Logs confirm 3 separate bots (Controller, Notification, Analytics) initializing with dedicated tokens.
+- **Notification Bot:** Verified via `debug_telegram_status.py`. **PROOF OF LIFE DELIVERED.**
+- **Analytics Bot:** Verified via `debug_telegram_status.py`. **PROOF OF LIFE DELIVERED.**
+- **Proof:** `proof_log.txt` confirms "MESSAGE DELIVERED" for all 3 bots.
+
+### 8.3 Operational Workflow
+**Status:** OPTIMIZED
+**Details:**
+- `START_BOT.bat` now points to `start_full_bot.py`.
+- Bot runs on Port 80 by default.
+- Full initialization chain (MT5 -> Engine -> Telegram -> Plugins) verified.
+
+---
+
+## SECTION 9: TELEGRAM MENU UPGRADE (MANDATE 24)
+
+**Status:** ✅ COMPLETED & VERIFIED
+**Date:** 2026-01-17
+
+This section covers the successful wiring of the 95+ command menu system.
+
+### 9.1 Missing Menu Resolution
+**Status:** FIXED
+**Issue:** Legacy bot (`TelegramBotFixed`) used a hardcoded keyboard, hiding commands. "Strategy" category was missing.
+**Fix:**
+- Integrated `MenuManager` and restored "Strategy" category (7 commands).
+- Added "Timeframe" shortcut to persistent menu.
+- Synchronized all button labels with command map.
+- `/start` now shows 100% of commands via Dual Menu.
+
+### 9.2 Verification
+**Status:** PASS
+**Proof:** `Visual_Proof_Menu_Structure.md` confirms 97 commands visible.
+**Action:** Restart bot to see the new menu.
+
+---
+
 *This roadmap is a living document. Update as implementation progresses.*
-*Last Updated: 2026-01-15*
+*Last Updated: 2026-01-17*
+

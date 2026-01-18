@@ -15,6 +15,7 @@ from src.managers.timeframe_trend_manager import TimeframeTrendManager
 from src.clients.menu_callback_handler import MenuCallbackHandler
 from src.menu.fine_tune_menu_handler import FineTuneMenuHandler
 from src.menu.menu_constants import REPLY_MENU_MAP
+from src.menu.menu_manager import MenuManager
 
 if TYPE_CHECKING:
     from src.core.trading_engine import TradingEngine
@@ -35,6 +36,14 @@ class TelegramBot:
         self.polling_thread = None
         self.http409_count = 0  # Track consecutive 409 errors
         self.polling_enabled = True  # ENABLED - polling now works with proper webhook cleanup and DEBUG logging
+        
+        # Initialize MenuManager
+        self.menu_manager = None
+        try:
+            self.menu_manager = MenuManager(self)
+            print("✅ TelegramBot: MenuManager initialized")
+        except Exception as e:
+            print(f"⚠️ TelegramBot: Failed to init MenuManager: {e}")
         
         self.command_handlers = {
             "/start": self.handle_start,
@@ -642,17 +651,62 @@ class TelegramBot:
             return False
 
     def handle_start(self, message):
-        # LOCAL IMPORTS to prevent NameErrors
-        import json
-        import requests
-        import traceback
-        
+        """Handle /start command - Show main menu via MenuManager"""
         # Safe ID extraction
         try:
-            user_id = message["from"]["id"]
+            if isinstance(message, dict):
+                user_id = message.get("from", {}).get("id") or message.get("chat", {}).get("id")
+            else:
+                # Handle python-telegram-bot object
+                user_id = message.from_user.id
         except:
             user_id = self.chat_id
 
+        # 1. SEND PERSISTENT REPLY KEYBOARD (Zero-Typing UI)
+        try:
+            # Import JSON locally just in case
+            import json
+            import requests # Explicit import
+            
+            # Define Persistent Keyboard (from menu_constants if available, else hardcoded)
+            reply_keyboard = [
+                [{"text": "📊 Dashboard"}, {"text": "⏸️ Pause/Resume"}, {"text": "📈 Active Trades"}],
+                [{"text": "🛡️ Risk"}, {"text": "🔄 Re-entry"}, {"text": "⚙️ SL System"}],
+                [{"text": "📍 Trends"}, {"text": "📈 Profit"}, {"text": "🆘 Help"}],
+                [{"text": "📋 Sessions"}, {"text": "⏰ Clock System"}, {"text": "🔊 Voice Test"}],
+                [{"text": "🚨 PANIC CLOSE"}]
+            ]
+            
+            payload = {
+                "chat_id": user_id,
+                "text": "👇 **Control Panel Updated** - Use buttons below or menu above.",
+                "parse_mode": "Markdown",
+                "reply_markup": json.dumps({
+                    "keyboard": reply_keyboard,
+                    "resize_keyboard": True,
+                    "is_persistent": True,
+                    "input_field_placeholder": "Zepix Control Panel"
+                })
+            }
+            requests.post(f"{self.base_url}/sendMessage", data=payload, timeout=5)
+            print(f"[SUCCESS] Persistent Menu sent to {user_id}")
+        except Exception as e:
+            print(f"⚠️ Failed to send persistent menu: {e}")
+
+        # 2. SHOW INLINE INTERACTIVE MENU (MenuManager)
+        if self.menu_manager:
+            try:
+                self.menu_manager.show_main_menu(user_id)
+                print(f"[SUCCESS] Inline Menu sent to {user_id}")
+                return
+            except Exception as e:
+                print(f"❌ MenuManager failed: {e}")
+        
+        # LEGACY FALLBACK (Keep original logic just in case)
+        # LOCAL IMPORTS to prevent NameErrors
+        import json
+        import requests
+        
         try:
             # 1. VISUAL PROOF OF UPDATE
             # Manually send to user_id to ensure delivery
@@ -675,14 +729,15 @@ class TelegramBot:
                 "resize_keyboard": True,
                 "is_persistent": True,
                 "video_chat_allowed": False, # Explicitly disable
-                "input_field_placeholder": "v3.0 Control Panel"
+                "input_field_placeholder": "🔥 V5 LIVE: Zepix Control Panel"
             }
 
-            # 3. FORCE SEND
+            # 3. FORCE SEND (WITH TRACER)
             url = f"{self.base_url}/sendMessage"
             payload = {
                 "chat_id": user_id,
-                "text": "👇 **Control Panel Updated (v3.0)**",
+                "text": "👇 **V5.1 LIVE DIAGNOSTIC**\nIf you see this, the Bot is UPDATED.\n\n" + 
+                        f"🕰️ *Server Time:* `{datetime.now().strftime('%H:%M:%S')}`",
                 "parse_mode": "Markdown",
                 "reply_markup": json.dumps(keyboard_payload)
             }
@@ -706,35 +761,6 @@ class TelegramBot:
                 requests.post(f"{self.base_url}/sendMessage", data={"chat_id": user_id, "text": error_msg})
             except:
                 pass
-            
-            # If menu failed to send, try fallback with buttons
-            if result is None:
-                print("WARNING: Menu system returned None, trying fallback with buttons")
-                self._send_start_fallback_with_buttons(user_id)
-                
-        except Exception as e:
-            # Fallback to menu with buttons if menu system fails
-            print(f"Menu system error: {e}")
-            import traceback
-            traceback.print_exc()
-            try:
-                user_id = message.get("from", {}).get("id") if isinstance(message, dict) else self.chat_id
-                self._send_start_fallback_with_buttons(user_id)
-            except Exception as fallback_error:
-                print(f"Fallback also failed: {fallback_error}")
-                # Last resort: send text message
-                rr_ratio = self.config.get("rr_ratio", 1.0)
-                welcome_msg = (
-                    "🤖 <b>Zepix Trading Bot v2.0</b>\n"
-                    "✅ Bot is active with enhanced features\n"
-                    f"📊 1:{rr_ratio} Risk-Reward System Active\n\n"
-                    "<b>📋 TOTAL COMMANDS: 72</b>\n\n"
-                    "Use /dashboard for interactive controls.\n"
-                    "Type /help to see all commands.\n\n"
-                    "<b>🆕 NEW: Zero-Typing Menu System</b>\n"
-                    "Use buttons above to navigate - no typing required!"
-                )
-                self.send_message(welcome_msg, add_menu_button=True)
     
     def _send_start_fallback_with_buttons(self, user_id: int):
         """Send fallback start message with menu buttons"""
