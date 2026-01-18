@@ -1356,4 +1356,196 @@ class AutonomousSystemManager:
             f"✅ Exit continuation monitoring started: {trade.symbol} "
             f"(Reason: {reason}, Exit Price: {current_price:.5f})"
         )
+    
+    async def get_reentry_chains_by_plugin(self, plugin_id: str) -> list:
+        """
+        Get active re-entry chains for a specific plugin from the appropriate database.
+        
+        V3 plugins query v3_reentry_chains from zepix_combined_v3.db
+        V6 plugins query v6_reentry_chains from zepix_price_action.db
+        
+        Args:
+            plugin_id: Plugin identifier (e.g., 'combined_v3', 'price_action_5m')
+            
+        Returns:
+            List of active re-entry chain records
+        """
+        import sqlite3
+        from pathlib import Path
+        
+        try:
+            base_path = Path(__file__).parent.parent.parent / 'data'
+            
+            if 'v3' in plugin_id.lower() or 'combined' in plugin_id.lower():
+                db_path = base_path / 'zepix_combined_v3.db'
+                table_name = 'v3_reentry_chains'
+            else:
+                db_path = base_path / 'zepix_price_action.db'
+                table_name = 'v6_reentry_chains'
+            
+            if not db_path.exists():
+                logger.warning(f"Database not found: {db_path}")
+                return []
+            
+            conn = sqlite3.connect(str(db_path))
+            conn.row_factory = sqlite3.Row
+            cursor = conn.cursor()
+            
+            cursor.execute(f'''
+                SELECT * FROM {table_name}
+                WHERE plugin_id = ? AND status IN ('ACTIVE', 'RECOVERY_MODE')
+                ORDER BY created_at DESC
+            ''', (plugin_id,))
+            
+            rows = cursor.fetchall()
+            chains = [dict(row) for row in rows]
+            conn.close()
+            
+            logger.debug(f"Found {len(chains)} active chains for plugin {plugin_id}")
+            return chains
+            
+        except Exception as e:
+            logger.error(f"Error querying re-entry chains for {plugin_id}: {e}")
+            return []
+    
+    async def save_reentry_chain(self, chain_data: dict) -> bool:
+        """
+        Save a re-entry chain to the appropriate plugin-specific database.
+        
+        Args:
+            chain_data: Dictionary with chain details including plugin_id
+            
+        Returns:
+            True if saved successfully
+        """
+        import sqlite3
+        from pathlib import Path
+        import uuid
+        from datetime import datetime
+        
+        try:
+            plugin_id = chain_data.get('plugin_id', '')
+            base_path = Path(__file__).parent.parent.parent / 'data'
+            
+            if 'v3' in plugin_id.lower() or 'combined' in plugin_id.lower():
+                db_path = base_path / 'zepix_combined_v3.db'
+                table_name = 'v3_reentry_chains'
+            else:
+                db_path = base_path / 'zepix_price_action.db'
+                table_name = 'v6_reentry_chains'
+            
+            if not db_path.exists():
+                logger.warning(f"Database not found: {db_path}")
+                return False
+            
+            conn = sqlite3.connect(str(db_path))
+            cursor = conn.cursor()
+            
+            chain_id = chain_data.get('chain_id', str(uuid.uuid4()))
+            now = datetime.now().isoformat()
+            
+            cursor.execute(f'''
+                INSERT OR REPLACE INTO {table_name}
+                (chain_id, plugin_id, symbol, direction, original_trade_id,
+                 original_entry_price, original_entry_time, status, current_level,
+                 max_level, reentry_type, last_sl_price, last_tp_price,
+                 recovery_threshold, recovery_window_minutes, created_at, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ''', (
+                chain_id,
+                plugin_id,
+                chain_data.get('symbol', ''),
+                chain_data.get('direction', ''),
+                chain_data.get('original_trade_id'),
+                chain_data.get('original_entry_price'),
+                chain_data.get('original_entry_time', now),
+                chain_data.get('status', 'ACTIVE'),
+                chain_data.get('current_level', 0),
+                chain_data.get('max_level', 5 if 'v3' in plugin_id.lower() else 3),
+                chain_data.get('reentry_type', 'SL_HUNT'),
+                chain_data.get('last_sl_price'),
+                chain_data.get('last_tp_price'),
+                chain_data.get('recovery_threshold', 0.70),
+                chain_data.get('recovery_window_minutes', 30),
+                now,
+                now
+            ))
+            
+            conn.commit()
+            conn.close()
+            
+            logger.info(f"Saved re-entry chain {chain_id} for plugin {plugin_id}")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error saving re-entry chain: {e}")
+            return False
+    
+    async def update_reentry_chain_status(
+        self, 
+        chain_id: str, 
+        plugin_id: str, 
+        status: str,
+        stop_reason: str = None
+    ) -> bool:
+        """
+        Update the status of a re-entry chain.
+        
+        Args:
+            chain_id: Chain identifier
+            plugin_id: Plugin identifier
+            status: New status ('ACTIVE', 'RECOVERY_MODE', 'STOPPED', 'COMPLETED')
+            stop_reason: Optional reason for stopping
+            
+        Returns:
+            True if updated successfully
+        """
+        import sqlite3
+        from pathlib import Path
+        from datetime import datetime
+        
+        try:
+            base_path = Path(__file__).parent.parent.parent / 'data'
+            
+            if 'v3' in plugin_id.lower() or 'combined' in plugin_id.lower():
+                db_path = base_path / 'zepix_combined_v3.db'
+                table_name = 'v3_reentry_chains'
+            else:
+                db_path = base_path / 'zepix_price_action.db'
+                table_name = 'v6_reentry_chains'
+            
+            if not db_path.exists():
+                logger.warning(f"Database not found: {db_path}")
+                return False
+            
+            conn = sqlite3.connect(str(db_path))
+            cursor = conn.cursor()
+            
+            now = datetime.now().isoformat()
+            completed_at = now if status in ('STOPPED', 'COMPLETED') else None
+            
+            cursor.execute(f'''
+                UPDATE {table_name}
+                SET status = ?, updated_at = ?, completed_at = ?, stop_reason = ?
+                WHERE chain_id = ? AND plugin_id = ?
+            ''', (status, now, completed_at, stop_reason, chain_id, plugin_id))
+            
+            conn.commit()
+            affected = cursor.rowcount
+            conn.close()
+            
+            if affected > 0:
+                logger.info(f"Updated chain {chain_id} status to {status}")
+                return True
+            else:
+                logger.warning(f"Chain {chain_id} not found for plugin {plugin_id}")
+                return False
+            
+        except Exception as e:
+            logger.error(f"Error updating re-entry chain status: {e}")
+            return False
+    
+    async def get_daily_recovery_count(self) -> int:
+        """Get the count of recovery attempts today"""
+        return self.daily_stats.get("recovery_attempts", 0)
 
