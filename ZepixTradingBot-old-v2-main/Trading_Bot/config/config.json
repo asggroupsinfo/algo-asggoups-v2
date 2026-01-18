@@ -55,7 +55,8 @@
     "plugin_system": {
         "enabled": true,
         "plugin_dir": "src/logic_plugins",
-        "auto_load": true
+        "auto_load": true,
+        "use_delegation": true
     },
     "plugins": {
         "_template": {
