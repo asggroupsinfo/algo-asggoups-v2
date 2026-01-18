@@ -55,12 +55,43 @@
     "plugin_system": {
         "enabled": true,
         "plugin_dir": "src/logic_plugins",
-        "auto_load": true
+        "auto_load": true,
+        "use_delegation": true
     },
     "plugins": {
         "_template": {
             "enabled": false,
             "config_path": "src/logic_plugins/_template/config.json"
+        },
+        "v3_combined": {
+            "enabled": true,
+            "priority": 1,
+            "shadow_mode": false,
+            "config_path": "src/logic_plugins/v3_combined/config.json"
+        },
+        "v6_price_action_1m": {
+            "enabled": true,
+            "priority": 2,
+            "shadow_mode": true,
+            "config_path": "src/logic_plugins/v6_price_action_1m/config.json"
+        },
+        "v6_price_action_5m": {
+            "enabled": true,
+            "priority": 2,
+            "shadow_mode": true,
+            "config_path": "src/logic_plugins/v6_price_action_5m/config.json"
+        },
+        "v6_price_action_15m": {
+            "enabled": true,
+            "priority": 2,
+            "shadow_mode": true,
+            "config_path": "src/logic_plugins/v6_price_action_15m/config.json"
+        },
+        "v6_price_action_1h": {
+            "enabled": true,
+            "priority": 2,
+            "shadow_mode": true,
+            "config_path": "src/logic_plugins/v6_price_action_1h/config.json"
         }
     },
     "combinedlogic-1": {

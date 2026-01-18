@@ -44,12 +44,14 @@ class DatabaseService:
         'v6_price_action_5m': 'data/zepix_price_action.db',
         'v6_price_action_15m': 'data/zepix_price_action.db',
         'v6_price_action_1h': 'data/zepix_price_action.db',
+        'central_system': 'data/zepix_bot.db',
     }
     
     # Schema files per plugin type
     SCHEMA_FILES = {
         'v3_combined': 'data/schemas/combined_v3_schema.sql',
         'price_action': 'data/schemas/price_action_v6_schema.sql',
+        'central_system': 'data/schemas/central_system_schema.sql',
     }
     
     def __init__(self, base_path: str = '.'):
@@ -73,8 +75,10 @@ class DatabaseService:
         """Get schema file path for a plugin"""
         if plugin_id == 'v3_combined':
             schema_file = self.SCHEMA_FILES.get('v3_combined')
-        elif plugin_id.startswith('price_action'):
+        elif plugin_id.startswith('v6_price_action') or plugin_id.startswith('price_action'):
             schema_file = self.SCHEMA_FILES.get('price_action')
+        elif plugin_id == 'central_system':
+            schema_file = self.SCHEMA_FILES.get('central_system')
         else:
             return None
         
