@@ -61,6 +61,11 @@ class TradingEngine:
         self.alert_processor.trend_manager = self.trend_manager
         self.reentry_manager = ReEntryManager(config, mt5_client)
         
+        # V6 Trend Pulse Manager (separate from V3 TimeframeTrendManager)
+        # Uses SQL database (market_trends table) instead of JSON file
+        from src.core.trend_pulse_manager import TrendPulseManager
+        self.trend_pulse_manager = TrendPulseManager(database=self.db)
+        
         # NEW: Dual order and profit booking managers
         self.profit_booking_manager = ProfitBookingManager(
             config, mt5_client, self.pip_calculator, risk_manager, self.db
@@ -572,6 +577,54 @@ class TradingEngine:
                 v3_alert = ZepixV3Alert(**data)
                 logger.info(f"Trend Pulse: {v3_alert.changed_timeframes}")
                 return True
+            
+            # V6 TREND_PULSE: Update market_trends table (SQL database)
+            elif alert_type == "TREND_PULSE":
+                """
+                V6 Trend Pulse Alert Handler
+                Updates market_trends table with current bull/bear counts per timeframe
+                This is SEPARATE from V3 trend_pulse_v3 which uses JSON file
+                """
+                try:
+                    from src.core.zepix_v6_alert import TrendPulseAlert
+                    
+                    # Parse V6 Trend Pulse alert
+                    pulse_alert = TrendPulseAlert(
+                        type=data.get('type', 'TREND_PULSE'),
+                        symbol=data.get('symbol', data.get('ticker', '')),
+                        tf=str(data.get('tf', data.get('timeframe', ''))),
+                        bull_count=int(data.get('bull_count', 0)),
+                        bear_count=int(data.get('bear_count', 0)),
+                        changes=data.get('changes', ''),
+                        state=data.get('state', data.get('market_state', 'UNKNOWN'))
+                    )
+                    
+                    # Update V6 database via TrendPulseManager
+                    if hasattr(self, 'trend_pulse_manager') and self.trend_pulse_manager:
+                        await self.trend_pulse_manager.update_pulse(
+                            symbol=pulse_alert.symbol,
+                            timeframe=pulse_alert.tf,
+                            bull_count=pulse_alert.bull_count,
+                            bear_count=pulse_alert.bear_count,
+                            market_state=pulse_alert.state,
+                            changes=pulse_alert.changes
+                        )
+                        
+                        logger.info(
+                            f"[V6_TREND_PULSE] {pulse_alert.symbol} {pulse_alert.tf}m: "
+                            f"Bull={pulse_alert.bull_count}, Bear={pulse_alert.bear_count}, "
+                            f"State={pulse_alert.state}, Changes={pulse_alert.changes}"
+                        )
+                    else:
+                        logger.warning("[V6_TREND_PULSE] TrendPulseManager not initialized!")
+                    
+                    return True
+                    
+                except Exception as e:
+                    logger.error(f"[V6_TREND_PULSE] Error processing alert: {e}")
+                    import traceback
+                    traceback.print_exc()
+                    return False
             
             # LEGACY ALERTS (existing code)
             alert = Alert(**data)

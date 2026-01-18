@@ -281,27 +281,25 @@ class V6PriceAction15mPlugin(BaseLogicPlugin, ISignalProcessor, IOrderExecutor):
             self.logger.debug(f"[15M] Market state check skipped: {e}")
         
         if self.REQUIRE_PULSE_ALIGNMENT:
-            bull_count, bear_count = alert.get_pulse_counts()
-            
-            if alert.alignment == "0/0" or (bull_count == 0 and bear_count == 0):
-                self.logger.warning(f"[15M] No MTF alignment data in payload, proceeding with caution")
-            else:
-                if alert.direction.upper() == "BUY":
-                    is_aligned = bull_count >= 3
-                else:
-                    is_aligned = bear_count >= 3
+            try:
+                higher_tf_result = await self.service_api.check_higher_tf_trend(
+                    symbol=alert.ticker,
+                    signal_tf=self.TIMEFRAME,
+                    direction=alert.direction
+                )
                 
-                if not is_aligned:
+                if not higher_tf_result.get("aligned", True):
                     self.logger.info(
-                        f"[15M Skip] Payload alignment weak: {alert.alignment} "
-                        f"(need 3+ for {alert.direction})"
+                        f"[15M Skip] Higher TF ({higher_tf_result.get('higher_tf', '60')}m) misaligned: "
+                        f"{higher_tf_result.get('reason', 'Unknown')}"
                     )
-                    return {"valid": False, "reason": "alignment_weak"}
+                    return {"valid": False, "reason": "higher_tf_misaligned"}
                 
                 self.logger.debug(
-                    f"[15M] Using payload alignment: {alert.alignment} "
-                    f"(Bull={bull_count}, Bear={bear_count})"
+                    f"[15M] Higher TF check passed: {higher_tf_result.get('reason', 'Aligned')}"
                 )
+            except Exception as e:
+                self.logger.warning(f"[15M] Higher TF check failed, proceeding with caution: {e}")
         
         self.logger.info(
             f"[15M Valid] Conf={alert.conf_score}, Direction={alert.direction}"

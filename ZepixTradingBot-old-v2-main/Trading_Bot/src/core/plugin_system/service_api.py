@@ -1498,6 +1498,109 @@ class ServiceAPI:
             return await self._trend_service.get_pulse_data(symbol, timeframe)
         return {}
     
+    async def check_higher_tf_trend(
+        self,
+        symbol: str,
+        signal_tf: str,
+        direction: str
+    ) -> Dict[str, Any]:
+        """
+        Check if signal aligns with higher timeframe trend from database.
+        
+        V6 Timeframe Hierarchy:
+        - 1M entry → Check 5M trend
+        - 5M entry → Check 15M trend
+        - 15M entry → Check 1H (60M) trend
+        - 1H entry → Check 4H (240M) trend
+        - 4H entry → No higher TF (approved by default)
+        
+        Args:
+            symbol: Trading symbol (e.g., "XAUUSD")
+            signal_tf: Signal timeframe ("1", "5", "15", "60", "240")
+            direction: Trade direction ("BUY" or "SELL")
+        
+        Returns:
+            Dict with:
+                - aligned: bool - True if higher TF supports direction
+                - higher_tf: str - The higher timeframe checked
+                - bull_count: int - Bull count from higher TF
+                - bear_count: int - Bear count from higher TF
+                - reason: str - Explanation of result
+        """
+        HIGHER_TF_MAP = {
+            "1": "5",
+            "5": "15",
+            "15": "60",
+            "60": "240",
+            "240": None
+        }
+        
+        higher_tf = HIGHER_TF_MAP.get(signal_tf)
+        
+        if higher_tf is None:
+            return {
+                "aligned": True,
+                "higher_tf": None,
+                "bull_count": 0,
+                "bear_count": 0,
+                "reason": f"{signal_tf}m is highest TF - no higher TF check needed"
+            }
+        
+        try:
+            if hasattr(self._engine, 'trend_pulse_manager') and self._engine.trend_pulse_manager:
+                pulse_data = await self._engine.trend_pulse_manager.get_pulse(symbol, higher_tf)
+                
+                if pulse_data is None:
+                    return {
+                        "aligned": True,
+                        "higher_tf": higher_tf,
+                        "bull_count": 0,
+                        "bear_count": 0,
+                        "reason": f"No {higher_tf}m trend data available - proceeding with caution"
+                    }
+                
+                bull_count = pulse_data.bull_count
+                bear_count = pulse_data.bear_count
+                
+                if direction.upper() == "BUY":
+                    is_aligned = bull_count > bear_count
+                    reason = f"{higher_tf}m trend: Bull={bull_count} > Bear={bear_count}" if is_aligned else f"{higher_tf}m trend: Bull={bull_count} <= Bear={bear_count}"
+                else:
+                    is_aligned = bear_count > bull_count
+                    reason = f"{higher_tf}m trend: Bear={bear_count} > Bull={bull_count}" if is_aligned else f"{higher_tf}m trend: Bear={bear_count} <= Bull={bull_count}"
+                
+                self._logger.info(
+                    f"[HIGHER_TF_CHECK] {symbol} {signal_tf}m {direction}: "
+                    f"Checking {higher_tf}m - {reason} - {'ALIGNED' if is_aligned else 'MISALIGNED'}"
+                )
+                
+                return {
+                    "aligned": is_aligned,
+                    "higher_tf": higher_tf,
+                    "bull_count": bull_count,
+                    "bear_count": bear_count,
+                    "reason": reason
+                }
+            else:
+                self._logger.warning("[HIGHER_TF_CHECK] TrendPulseManager not available")
+                return {
+                    "aligned": True,
+                    "higher_tf": higher_tf,
+                    "bull_count": 0,
+                    "bear_count": 0,
+                    "reason": "TrendPulseManager not initialized - proceeding with caution"
+                }
+                
+        except Exception as e:
+            self._logger.error(f"[HIGHER_TF_CHECK] Error: {e}")
+            return {
+                "aligned": True,
+                "higher_tf": higher_tf,
+                "bull_count": 0,
+                "bear_count": 0,
+                "reason": f"Error checking higher TF: {e}"
+            }
+    
     async def update_trend(
         self,
         symbol: str,
