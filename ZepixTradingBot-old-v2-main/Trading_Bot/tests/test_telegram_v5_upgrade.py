@@ -335,5 +335,211 @@ class TestServiceAPIV6Methods:
         assert hasattr(ServiceAPI, 'send_v6_signal_notification')
 
 
+class TestNotificationPreferences:
+    """Tests for Notification Preferences System (Batch 1)"""
+    
+    @staticmethod
+    def _get_notification_preferences_class():
+        """Helper to import NotificationPreferences avoiding telegram package conflict"""
+        import importlib.util
+        import os
+        spec = importlib.util.spec_from_file_location(
+            "notification_preferences",
+            os.path.join(os.path.dirname(__file__), '..', 'src', 'telegram', 'notification_preferences.py')
+        )
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        return module.NotificationPreferences
+    
+    def test_notification_preferences_init(self):
+        """Test NotificationPreferences initialization"""
+        NotificationPreferences = self._get_notification_preferences_class()
+        
+        # Create with temp config path to avoid file system issues
+        import tempfile
+        with tempfile.NamedTemporaryFile(suffix='.json', delete=False) as f:
+            prefs = NotificationPreferences(config_path=f.name)
+        
+        assert prefs is not None
+        assert prefs.is_enabled() == True  # Default is enabled
+    
+    def test_notification_preferences_category_toggle(self):
+        """Test NotificationPreferences category toggle"""
+        NotificationPreferences = self._get_notification_preferences_class()
+        
+        import tempfile
+        with tempfile.NamedTemporaryFile(suffix='.json', delete=False) as f:
+            prefs = NotificationPreferences(config_path=f.name)
+        
+        # Test category toggle
+        initial = prefs.is_category_enabled("trade_entry")
+        prefs.toggle_category("trade_entry")
+        assert prefs.is_category_enabled("trade_entry") != initial
+    
+    def test_notification_preferences_plugin_filter(self):
+        """Test NotificationPreferences plugin filter"""
+        NotificationPreferences = self._get_notification_preferences_class()
+        
+        import tempfile
+        with tempfile.NamedTemporaryFile(suffix='.json', delete=False) as f:
+            prefs = NotificationPreferences(config_path=f.name)
+        
+        # Test plugin filter
+        prefs.set_plugin_filter("v3_only")
+        assert prefs.get_plugin_filter() == "v3_only"
+        
+        prefs.set_plugin_filter("v6_only")
+        assert prefs.get_plugin_filter() == "v6_only"
+        
+        prefs.set_plugin_filter("all")
+        assert prefs.get_plugin_filter() == "all"
+    
+    def test_notification_preferences_priority_level(self):
+        """Test NotificationPreferences priority level"""
+        NotificationPreferences = self._get_notification_preferences_class()
+        
+        import tempfile
+        with tempfile.NamedTemporaryFile(suffix='.json', delete=False) as f:
+            prefs = NotificationPreferences(config_path=f.name)
+        
+        # Test priority level
+        prefs.set_priority_level("critical_only")
+        assert prefs.get_priority_level() == "critical_only"
+        
+        prefs.set_priority_level("high_and_above")
+        assert prefs.get_priority_level() == "high_and_above"
+    
+    def test_notification_preferences_v6_timeframe_filter(self):
+        """Test NotificationPreferences V6 timeframe filter"""
+        NotificationPreferences = self._get_notification_preferences_class()
+        
+        import tempfile
+        with tempfile.NamedTemporaryFile(suffix='.json', delete=False) as f:
+            prefs = NotificationPreferences(config_path=f.name)
+        
+        # Test V6 timeframe filter
+        prefs.set_v6_timeframe_enabled("15m", False)
+        assert prefs.is_v6_timeframe_enabled("15m") == False
+        
+        prefs.set_v6_timeframe_enabled("15m", True)
+        assert prefs.is_v6_timeframe_enabled("15m") == True
+    
+    def test_notification_preferences_should_send(self):
+        """Test NotificationPreferences should_send_notification"""
+        NotificationPreferences = self._get_notification_preferences_class()
+        
+        import tempfile
+        with tempfile.NamedTemporaryFile(suffix='.json', delete=False) as f:
+            prefs = NotificationPreferences(config_path=f.name)
+        
+        # Test should_send_notification
+        assert prefs.should_send_notification("trade_entry") == True
+        
+        # Disable category and test
+        prefs.set_category_enabled("trade_entry", False)
+        assert prefs.should_send_notification("trade_entry") == False
+    
+    def test_notification_preferences_reset(self):
+        """Test NotificationPreferences reset to defaults"""
+        NotificationPreferences = self._get_notification_preferences_class()
+        
+        import tempfile
+        with tempfile.NamedTemporaryFile(suffix='.json', delete=False) as f:
+            prefs = NotificationPreferences(config_path=f.name)
+        
+        # Change some settings
+        prefs.set_plugin_filter("v3_only")
+        prefs.set_priority_level("critical_only")
+        
+        # Reset to defaults
+        prefs.reset_to_defaults()
+        
+        assert prefs.get_plugin_filter() == "all"
+        assert prefs.get_priority_level() == "all"
+
+
+class TestNotificationPreferencesMenuHandler:
+    """Tests for Notification Preferences Menu Handler (Batch 1)"""
+    
+    def test_notification_prefs_menu_handler_init(self):
+        """Test NotificationPreferencesMenuHandler initialization"""
+        from menu.notification_preferences_menu import NotificationPreferencesMenuHandler
+        
+        mock_bot = Mock()
+        handler = NotificationPreferencesMenuHandler(mock_bot)
+        
+        assert handler.bot == mock_bot
+    
+    def test_notification_prefs_menu_handler_has_required_methods(self):
+        """Test NotificationPreferencesMenuHandler has all required methods"""
+        from menu.notification_preferences_menu import NotificationPreferencesMenuHandler
+        
+        mock_bot = Mock()
+        handler = NotificationPreferencesMenuHandler(mock_bot)
+        
+        # Check required methods exist
+        assert hasattr(handler, 'show_main_menu')
+        assert hasattr(handler, 'show_categories_menu')
+        assert hasattr(handler, 'show_plugin_filter_menu')
+        assert hasattr(handler, 'show_priority_menu')
+        assert hasattr(handler, 'show_quiet_hours_menu')
+        assert hasattr(handler, 'show_v6_timeframes_menu')
+        assert hasattr(handler, 'handle_callback')
+    
+    def test_notification_prefs_menu_handler_callback_returns_false_for_invalid(self):
+        """Test NotificationPreferencesMenuHandler callback handling returns False for invalid callbacks"""
+        from menu.notification_preferences_menu import NotificationPreferencesMenuHandler
+        
+        mock_bot = Mock()
+        handler = NotificationPreferencesMenuHandler(mock_bot)
+        
+        # Test callback handling returns False for invalid callbacks
+        assert handler.handle_callback("invalid_callback", 123, 456) == False
+
+
+class TestMenuManagerNotificationPrefsIntegration:
+    """Tests for MenuManager Notification Preferences Integration (Batch 1)"""
+    
+    def test_menu_manager_has_notification_prefs_handler(self):
+        """Test MenuManager has NotificationPreferencesMenuHandler"""
+        from menu.menu_manager import MenuManager
+        
+        mock_bot = Mock()
+        mock_bot.config = {}
+        manager = MenuManager(mock_bot)
+        
+        assert hasattr(manager, '_notification_prefs_handler')
+        assert manager._notification_prefs_handler is not None
+    
+    def test_menu_manager_has_notification_prefs_methods(self):
+        """Test MenuManager has notification preferences menu methods"""
+        from menu.menu_manager import MenuManager
+        
+        mock_bot = Mock()
+        mock_bot.config = {}
+        manager = MenuManager(mock_bot)
+        
+        assert hasattr(manager, 'show_notification_prefs_menu')
+        assert hasattr(manager, 'handle_notification_prefs_callback')
+        assert hasattr(manager, 'is_notification_prefs_callback')
+    
+    def test_menu_manager_is_notification_prefs_callback(self):
+        """Test MenuManager.is_notification_prefs_callback correctly identifies notification prefs callbacks"""
+        from menu.menu_manager import MenuManager
+        
+        mock_bot = Mock()
+        mock_bot.config = {}
+        manager = MenuManager(mock_bot)
+        
+        # Notification prefs callbacks should return True
+        assert manager.is_notification_prefs_callback("notif_main") == True
+        assert manager.is_notification_prefs_callback("notif_categories") == True
+        assert manager.is_notification_prefs_callback("menu_notifications") == True
+        
+        # Non-notification prefs callbacks should return False
+        assert manager.is_notification_prefs_callback("menu_main") == False
+        assert manager.is_notification_prefs_callback("v6_toggle_system") == False
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])

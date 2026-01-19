@@ -15,6 +15,7 @@ from .menu_constants import (
 from .v6_control_menu_handler import V6ControlMenuHandler
 from .analytics_menu_handler import AnalyticsMenuHandler
 from .dual_order_menu_handler import DualOrderMenuHandler, ReentryMenuHandler
+from .notification_preferences_menu import NotificationPreferencesMenuHandler
 from datetime import datetime
 import pytz # Will need to check if pytz is available or use standard timezone handling
 import logging
@@ -46,6 +47,10 @@ class MenuManager:
         # Re-entry Menu Handler (Telegram V5 Upgrade)
         self._reentry_handler = ReentryMenuHandler(telegram_bot)
         logger.info("[MenuManager] ReentryMenuHandler initialized")
+        
+        # Notification Preferences Menu Handler (Telegram V5 Upgrade - Batch 1)
+        self._notification_prefs_handler = NotificationPreferencesMenuHandler(telegram_bot)
+        logger.info("[MenuManager] NotificationPreferencesMenuHandler initialized")
     
     def _get_tier_buttons_with_current(self, command: str) -> List[Dict[str, str]]:
         """
@@ -1147,4 +1152,43 @@ class MenuManager:
         """
         reentry_prefixes = ["menu_reentry", "reentry_"]
         return any(callback_data.startswith(prefix) for prefix in reentry_prefixes)
+    
+    # ==================== NOTIFICATION PREFERENCES MENU (Batch 1) ====================
+    
+    def show_notification_prefs_menu(self, user_id: int, message_id: int = None):
+        """
+        Show notification preferences menu.
+        
+        Args:
+            user_id: Telegram user ID
+            message_id: Message ID to edit (optional)
+        """
+        self._notification_prefs_handler.show_main_menu(user_id, message_id)
+    
+    def handle_notification_prefs_callback(self, callback_data: str, user_id: int, message_id: int = None) -> bool:
+        """
+        Handle notification preferences menu callback.
+        
+        Args:
+            callback_data: Callback data from button press
+            user_id: Telegram user ID
+            message_id: Message ID to edit
+        
+        Returns:
+            True if handled, False otherwise
+        """
+        return self._notification_prefs_handler.handle_callback(callback_data, user_id, message_id)
+    
+    def is_notification_prefs_callback(self, callback_data: str) -> bool:
+        """
+        Check if callback is a notification preferences callback.
+        
+        Args:
+            callback_data: Callback data to check
+        
+        Returns:
+            True if notification preferences callback, False otherwise
+        """
+        notif_prefixes = ["notif_", "menu_notifications"]
+        return any(callback_data.startswith(prefix) for prefix in notif_prefixes)
 
