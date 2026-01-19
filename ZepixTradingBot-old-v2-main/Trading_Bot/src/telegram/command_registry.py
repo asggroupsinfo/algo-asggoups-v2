@@ -115,6 +115,18 @@ class CommandRegistry:
         "/logic3": CommandDefinition("/logic3", CommandCategory.STRATEGY, "Toggle Logic 3 (1h)", "handle_logic3"),
         "/v3": CommandDefinition("/v3", CommandCategory.STRATEGY, "V3 Combined settings", "handle_v3"),
         "/v6": CommandDefinition("/v6", CommandCategory.STRATEGY, "V6 Price Action settings", "handle_v6"),
+        "/v6_status": CommandDefinition("/v6_status", CommandCategory.STRATEGY, "V6 system status", "handle_v6_status"),
+        "/v6_control": CommandDefinition("/v6_control", CommandCategory.STRATEGY, "V6 control menu", "handle_v6_control"),
+        
+        # V6 Timeframe Commands (Telegram V5 Upgrade)
+        "/tf15m_on": CommandDefinition("/tf15m_on", CommandCategory.STRATEGY, "Enable V6 15M timeframe", "handle_v6_tf15m_on"),
+        "/tf15m_off": CommandDefinition("/tf15m_off", CommandCategory.STRATEGY, "Disable V6 15M timeframe", "handle_v6_tf15m_off"),
+        "/tf30m_on": CommandDefinition("/tf30m_on", CommandCategory.STRATEGY, "Enable V6 30M timeframe", "handle_v6_tf30m_on"),
+        "/tf30m_off": CommandDefinition("/tf30m_off", CommandCategory.STRATEGY, "Disable V6 30M timeframe", "handle_v6_tf30m_off"),
+        "/tf1h_on": CommandDefinition("/tf1h_on", CommandCategory.STRATEGY, "Enable V6 1H timeframe", "handle_v6_tf1h_on"),
+        "/tf1h_off": CommandDefinition("/tf1h_off", CommandCategory.STRATEGY, "Disable V6 1H timeframe", "handle_v6_tf1h_off"),
+        "/tf4h_on": CommandDefinition("/tf4h_on", CommandCategory.STRATEGY, "Enable V6 4H timeframe", "handle_v6_tf4h_on"),
+        "/tf4h_off": CommandDefinition("/tf4h_off", CommandCategory.STRATEGY, "Disable V6 4H timeframe", "handle_v6_tf4h_off"),
         "/signals": CommandDefinition("/signals", CommandCategory.STRATEGY, "Signal settings", "handle_signals"),
         "/filters": CommandDefinition("/filters", CommandCategory.STRATEGY, "Signal filters", "handle_filters"),
         "/multiplier": CommandDefinition("/multiplier", CommandCategory.STRATEGY, "Lot multiplier", "handle_multiplier"),
@@ -234,6 +246,31 @@ class CommandRegistry:
         "plugin_v6_enable": "enable_v6_plugin",
         "plugin_v6_disable": "disable_v6_plugin",
         "plugin_status": "show_plugin_status",
+        
+        # V6 Control Menu callbacks (Telegram V5 Upgrade)
+        "menu_v6": "show_v6_control_menu",
+        "v6_toggle_system": "toggle_v6_system",
+        "v6_toggle_15m": "toggle_v6_timeframe_15m",
+        "v6_toggle_30m": "toggle_v6_timeframe_30m",
+        "v6_toggle_1h": "toggle_v6_timeframe_1h",
+        "v6_toggle_4h": "toggle_v6_timeframe_4h",
+        "v6_enable_all": "enable_all_v6_timeframes",
+        "v6_disable_all": "disable_all_v6_timeframes",
+        "v6_view_stats": "show_v6_stats",
+        "v6_config_menu": "show_v6_config_menu",
+        "v6_config_15m": "show_v6_config_15m",
+        "v6_config_30m": "show_v6_config_30m",
+        "v6_config_1h": "show_v6_config_1h",
+        "v6_config_4h": "show_v6_config_4h",
+        
+        # Analytics callbacks (Telegram V5 Upgrade)
+        "menu_analytics": "show_analytics_menu",
+        "analytics_daily": "show_daily_analytics",
+        "analytics_weekly": "show_weekly_analytics",
+        "analytics_monthly": "show_monthly_analytics",
+        "analytics_by_pair": "show_analytics_by_pair",
+        "analytics_by_logic": "show_analytics_by_logic",
+        "analytics_export": "export_analytics",
         
         # Risk callbacks
         "risk_tier_1": "set_risk_tier_1",
