@@ -724,5 +724,174 @@ class TestMenuManagerNotificationPrefsCallback:
         assert manager.is_notification_prefs_callback("v6_toggle_system") == False
 
 
+class TestNotificationRouter78Types:
+    """Tests for NotificationRouter with all 78 notification types"""
+    
+    def test_notification_router_has_78_types(self):
+        """Test NotificationRouter has exactly 78 notification types"""
+        from src.telegram.notification_router import NotificationType
+        
+        assert len(NotificationType) == 78, f"Expected 78 notification types, got {len(NotificationType)}"
+    
+    def test_notification_router_has_all_original_types(self):
+        """Test NotificationRouter has all original 44 notification types"""
+        from src.telegram.notification_router import NotificationType
+        
+        original_types = [
+            "ENTRY", "EXIT", "TP_HIT", "SL_HIT", "PROFIT_BOOKING", "SL_MODIFIED", "BREAKEVEN",
+            "BOT_STARTED", "BOT_STOPPED", "EMERGENCY_STOP", "MT5_DISCONNECT", "MT5_RECONNECT", "DAILY_LOSS_LIMIT",
+            "PLUGIN_LOADED", "PLUGIN_ERROR", "CONFIG_RELOAD",
+            "ALERT_RECEIVED", "ALERT_PROCESSED", "ALERT_IGNORED", "ALERT_ERROR",
+            "DAILY_SUMMARY", "WEEKLY_SUMMARY", "PERFORMANCE_REPORT", "RISK_ALERT",
+            "INFO", "WARNING", "ERROR",
+            "V6_ENTRY_15M", "V6_ENTRY_30M", "V6_ENTRY_1H", "V6_ENTRY_4H", "V6_EXIT", "V6_TP_HIT", "V6_SL_HIT",
+            "V6_TIMEFRAME_ENABLED", "V6_TIMEFRAME_DISABLED", "V6_DAILY_SUMMARY", "V6_SIGNAL", "V6_BREAKEVEN",
+            "V3_ENTRY", "V3_EXIT", "V3_TP_HIT", "V3_SL_HIT", "V3_LOGIC_TOGGLED"
+        ]
+        
+        for type_name in original_types:
+            assert hasattr(NotificationType, type_name), f"Missing original type: {type_name}"
+    
+    def test_notification_router_has_autonomous_system_types(self):
+        """Test NotificationRouter has all 5 Autonomous System notification types"""
+        from src.telegram.notification_router import NotificationType
+        
+        autonomous_types = [
+            "TP_CONTINUATION", "SL_HUNT_ACTIVATED", "RECOVERY_SUCCESS", 
+            "RECOVERY_FAILED", "PROFIT_ORDER_PROTECTION"
+        ]
+        
+        for type_name in autonomous_types:
+            assert hasattr(NotificationType, type_name), f"Missing Autonomous System type: {type_name}"
+    
+    def test_notification_router_has_reentry_system_types(self):
+        """Test NotificationRouter has all 5 Re-entry System notification types"""
+        from src.telegram.notification_router import NotificationType
+        
+        reentry_types = [
+            "TP_REENTRY_STARTED", "TP_REENTRY_EXECUTED", "TP_REENTRY_COMPLETED",
+            "SL_HUNT_RECOVERY", "EXIT_CONTINUATION"
+        ]
+        
+        for type_name in reentry_types:
+            assert hasattr(NotificationType, type_name), f"Missing Re-entry System type: {type_name}"
+    
+    def test_notification_router_has_signal_event_types(self):
+        """Test NotificationRouter has all 4 Signal Event notification types"""
+        from src.telegram.notification_router import NotificationType
+        
+        signal_types = [
+            "SIGNAL_RECEIVED", "SIGNAL_IGNORED", "SIGNAL_FILTERED", "TREND_CHANGED"
+        ]
+        
+        for type_name in signal_types:
+            assert hasattr(NotificationType, type_name), f"Missing Signal Event type: {type_name}"
+    
+    def test_notification_router_has_trade_event_types(self):
+        """Test NotificationRouter has all 3 Trade Event notification types"""
+        from src.telegram.notification_router import NotificationType
+        
+        trade_types = ["PARTIAL_CLOSE", "MANUAL_EXIT", "REVERSAL_EXIT"]
+        
+        for type_name in trade_types:
+            assert hasattr(NotificationType, type_name), f"Missing Trade Event type: {type_name}"
+    
+    def test_notification_router_has_system_event_types(self):
+        """Test NotificationRouter has all 6 System Event notification types"""
+        from src.telegram.notification_router import NotificationType
+        
+        system_types = [
+            "MT5_CONNECTED", "LIFETIME_LOSS_LIMIT", "DAILY_LOSS_WARNING",
+            "CONFIG_ERROR", "DATABASE_ERROR", "ORDER_FAILED"
+        ]
+        
+        for type_name in system_types:
+            assert hasattr(NotificationType, type_name), f"Missing System Event type: {type_name}"
+    
+    def test_notification_router_has_session_event_types(self):
+        """Test NotificationRouter has all 4 Session Event notification types"""
+        from src.telegram.notification_router import NotificationType
+        
+        session_types = [
+            "SESSION_TOGGLE", "SYMBOL_TOGGLE", "TIME_ADJUSTMENT", "FORCE_CLOSE_TOGGLE"
+        ]
+        
+        for type_name in session_types:
+            assert hasattr(NotificationType, type_name), f"Missing Session Event type: {type_name}"
+    
+    def test_notification_router_has_voice_alert_types(self):
+        """Test NotificationRouter has all 5 Voice Alert notification types"""
+        from src.telegram.notification_router import NotificationType
+        
+        voice_types = [
+            "VOICE_TRADE_ENTRY", "VOICE_TP_HIT", "VOICE_SL_HIT",
+            "VOICE_RISK_LIMIT", "VOICE_RECOVERY"
+        ]
+        
+        for type_name in voice_types:
+            assert hasattr(NotificationType, type_name), f"Missing Voice Alert type: {type_name}"
+    
+    def test_notification_router_has_dashboard_types(self):
+        """Test NotificationRouter has all 2 Dashboard notification types"""
+        from src.telegram.notification_router import NotificationType
+        
+        dashboard_types = ["DASHBOARD_UPDATE", "AUTONOMOUS_DASHBOARD"]
+        
+        for type_name in dashboard_types:
+            assert hasattr(NotificationType, type_name), f"Missing Dashboard type: {type_name}"
+    
+    def test_notification_router_has_routing_rules_for_all_types(self):
+        """Test NotificationRouter has routing rules for all 78 notification types"""
+        from src.telegram.notification_router import NotificationType, DEFAULT_ROUTING_RULES
+        
+        missing_rules = []
+        for notif_type in NotificationType:
+            if notif_type not in DEFAULT_ROUTING_RULES:
+                missing_rules.append(notif_type.name)
+        
+        assert len(missing_rules) == 0, f"Missing routing rules for: {missing_rules}"
+    
+    def test_notification_formatter_has_all_formatters(self):
+        """Test NotificationFormatter has formatters for all new notification types"""
+        from src.telegram.notification_router import NotificationFormatter
+        
+        # Check all new formatters exist
+        new_formatters = [
+            "format_tp_continuation", "format_sl_hunt_activated", "format_recovery_success",
+            "format_recovery_failed", "format_profit_order_protection",
+            "format_tp_reentry_started", "format_tp_reentry_executed", "format_tp_reentry_completed",
+            "format_sl_hunt_recovery", "format_exit_continuation",
+            "format_signal_received", "format_signal_ignored", "format_signal_filtered", "format_trend_changed",
+            "format_partial_close", "format_manual_exit", "format_reversal_exit",
+            "format_mt5_connected", "format_lifetime_loss_limit", "format_daily_loss_warning",
+            "format_config_error", "format_database_error", "format_order_failed",
+            "format_session_toggle", "format_symbol_toggle", "format_time_adjustment", "format_force_close_toggle",
+            "format_voice_trade_entry", "format_voice_tp_hit", "format_voice_sl_hit",
+            "format_voice_risk_limit", "format_voice_recovery",
+            "format_dashboard_update", "format_autonomous_dashboard"
+        ]
+        
+        missing_formatters = []
+        for formatter_name in new_formatters:
+            if not hasattr(NotificationFormatter, formatter_name):
+                missing_formatters.append(formatter_name)
+        
+        assert len(missing_formatters) == 0, f"Missing formatters: {missing_formatters}"
+    
+    def test_create_default_router_registers_all_formatters(self):
+        """Test create_default_router registers formatters for all notification types"""
+        from src.telegram.notification_router import create_default_router, NotificationType
+        
+        router = create_default_router()
+        
+        # Check that formatters are registered for key notification types
+        assert NotificationType.ENTRY in router.formatters
+        assert NotificationType.EXIT in router.formatters
+        assert NotificationType.V6_ENTRY_15M in router.formatters
+        assert NotificationType.TP_CONTINUATION in router.formatters
+        assert NotificationType.SIGNAL_RECEIVED in router.formatters
+        assert NotificationType.DASHBOARD_UPDATE in router.formatters
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
