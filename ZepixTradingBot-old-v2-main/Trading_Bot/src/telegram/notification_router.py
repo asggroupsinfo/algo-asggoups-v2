@@ -648,6 +648,42 @@ class NotificationFormatter:
         return message
     
     @staticmethod
+    def format_tp_hit(data: Dict) -> str:
+        """Format TP_HIT notification"""
+        symbol = data.get("symbol", "UNKNOWN")
+        profit = data.get("profit", 0.0)
+        tp_level = data.get("tp_level", 1)
+        entry_price = data.get("entry_price", 0.0)
+        exit_price = data.get("exit_price", 0.0)
+        
+        return (
+            f"<b>TAKE PROFIT HIT</b>\n"
+            f"{'=' * 24}\n\n"
+            f"  Symbol: {symbol}\n"
+            f"  TP Level: {tp_level}\n"
+            f"  Entry: {entry_price}\n"
+            f"  Exit: {exit_price}\n"
+            f"  Profit: ${profit:.2f}\n"
+        )
+    
+    @staticmethod
+    def format_sl_hit(data: Dict) -> str:
+        """Format SL_HIT notification"""
+        symbol = data.get("symbol", "UNKNOWN")
+        loss = data.get("loss", 0.0)
+        entry_price = data.get("entry_price", 0.0)
+        exit_price = data.get("exit_price", 0.0)
+        
+        return (
+            f"<b>STOP LOSS HIT</b>\n"
+            f"{'=' * 24}\n\n"
+            f"  Symbol: {symbol}\n"
+            f"  Entry: {entry_price}\n"
+            f"  Exit: {exit_price}\n"
+            f"  Loss: ${abs(loss):.2f}\n"
+        )
+    
+    @staticmethod
     def format_daily_summary(data: Dict) -> str:
         """Format daily summary notification"""
         date = data.get("date", datetime.now().strftime("%Y-%m-%d"))
@@ -1584,6 +1620,8 @@ def create_default_router(
     # Register default formatters
     router.register_formatter(NotificationType.ENTRY, NotificationFormatter.format_entry)
     router.register_formatter(NotificationType.EXIT, NotificationFormatter.format_exit)
+    router.register_formatter(NotificationType.TP_HIT, NotificationFormatter.format_tp_hit)
+    router.register_formatter(NotificationType.SL_HIT, NotificationFormatter.format_sl_hit)
     router.register_formatter(NotificationType.DAILY_SUMMARY, NotificationFormatter.format_daily_summary)
     router.register_formatter(NotificationType.EMERGENCY_STOP, NotificationFormatter.format_emergency)
     router.register_formatter(NotificationType.ERROR, NotificationFormatter.format_error)
