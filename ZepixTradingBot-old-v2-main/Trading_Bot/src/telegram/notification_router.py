@@ -69,6 +69,27 @@ class NotificationType(Enum):
     INFO = "info"
     WARNING = "warning"
     ERROR = "error"
+    
+    # V6 Price Action Events (NEW - Telegram V5 Upgrade)
+    V6_ENTRY_15M = "v6_entry_15m"
+    V6_ENTRY_30M = "v6_entry_30m"
+    V6_ENTRY_1H = "v6_entry_1h"
+    V6_ENTRY_4H = "v6_entry_4h"
+    V6_EXIT = "v6_exit"
+    V6_TP_HIT = "v6_tp_hit"
+    V6_SL_HIT = "v6_sl_hit"
+    V6_TIMEFRAME_ENABLED = "v6_timeframe_enabled"
+    V6_TIMEFRAME_DISABLED = "v6_timeframe_disabled"
+    V6_DAILY_SUMMARY = "v6_daily_summary"
+    V6_SIGNAL = "v6_signal"
+    V6_BREAKEVEN = "v6_breakeven"
+    
+    # V3 Combined Events (for parity)
+    V3_ENTRY = "v3_entry"
+    V3_EXIT = "v3_exit"
+    V3_TP_HIT = "v3_tp_hit"
+    V3_SL_HIT = "v3_sl_hit"
+    V3_LOGIC_TOGGLED = "v3_logic_toggled"
 
 
 class TargetBot(Enum):
@@ -135,6 +156,27 @@ DEFAULT_ROUTING_RULES: Dict[NotificationType, Dict] = {
     NotificationType.INFO: {"target": TargetBot.CONTROLLER, "priority": NotificationPriority.INFO, "voice": False},
     NotificationType.WARNING: {"target": TargetBot.NOTIFICATION, "priority": NotificationPriority.MEDIUM, "voice": False},
     NotificationType.ERROR: {"target": TargetBot.NOTIFICATION, "priority": NotificationPriority.HIGH, "voice": False},
+    
+    # V6 Price Action Events (NEW - Telegram V5 Upgrade)
+    NotificationType.V6_ENTRY_15M: {"target": TargetBot.NOTIFICATION, "priority": NotificationPriority.HIGH, "voice": True},
+    NotificationType.V6_ENTRY_30M: {"target": TargetBot.NOTIFICATION, "priority": NotificationPriority.HIGH, "voice": True},
+    NotificationType.V6_ENTRY_1H: {"target": TargetBot.NOTIFICATION, "priority": NotificationPriority.HIGH, "voice": True},
+    NotificationType.V6_ENTRY_4H: {"target": TargetBot.NOTIFICATION, "priority": NotificationPriority.HIGH, "voice": True},
+    NotificationType.V6_EXIT: {"target": TargetBot.NOTIFICATION, "priority": NotificationPriority.HIGH, "voice": True},
+    NotificationType.V6_TP_HIT: {"target": TargetBot.NOTIFICATION, "priority": NotificationPriority.HIGH, "voice": True},
+    NotificationType.V6_SL_HIT: {"target": TargetBot.NOTIFICATION, "priority": NotificationPriority.HIGH, "voice": True},
+    NotificationType.V6_TIMEFRAME_ENABLED: {"target": TargetBot.CONTROLLER, "priority": NotificationPriority.MEDIUM, "voice": False},
+    NotificationType.V6_TIMEFRAME_DISABLED: {"target": TargetBot.CONTROLLER, "priority": NotificationPriority.MEDIUM, "voice": False},
+    NotificationType.V6_DAILY_SUMMARY: {"target": TargetBot.ANALYTICS, "priority": NotificationPriority.LOW, "voice": False},
+    NotificationType.V6_SIGNAL: {"target": TargetBot.NOTIFICATION, "priority": NotificationPriority.HIGH, "voice": False},
+    NotificationType.V6_BREAKEVEN: {"target": TargetBot.NOTIFICATION, "priority": NotificationPriority.MEDIUM, "voice": False},
+    
+    # V3 Combined Events (for parity)
+    NotificationType.V3_ENTRY: {"target": TargetBot.NOTIFICATION, "priority": NotificationPriority.HIGH, "voice": True},
+    NotificationType.V3_EXIT: {"target": TargetBot.NOTIFICATION, "priority": NotificationPriority.HIGH, "voice": True},
+    NotificationType.V3_TP_HIT: {"target": TargetBot.NOTIFICATION, "priority": NotificationPriority.HIGH, "voice": True},
+    NotificationType.V3_SL_HIT: {"target": TargetBot.NOTIFICATION, "priority": NotificationPriority.HIGH, "voice": True},
+    NotificationType.V3_LOGIC_TOGGLED: {"target": TargetBot.CONTROLLER, "priority": NotificationPriority.MEDIUM, "voice": False},
 }
 
 
@@ -564,6 +606,231 @@ class NotificationFormatter:
         )
         
         return message
+    
+    # ========================================
+    # V6 Price Action Formatters (NEW - Telegram V5 Upgrade)
+    # ========================================
+    
+    @staticmethod
+    def format_v6_entry(data: Dict) -> str:
+        """Format V6 Price Action entry notification with timeframe badge"""
+        timeframe = data.get("timeframe", "N/A")
+        symbol = data.get("symbol", "N/A")
+        direction = data.get("direction", "N/A")
+        entry_price = data.get("entry_price", 0)
+        
+        # Timeframe-specific badges
+        tf_badges = {
+            "15m": "15M",
+            "30m": "30M",
+            "1h": "1H",
+            "4h": "4H",
+        }
+        tf_badge = tf_badges.get(timeframe.lower(), timeframe.upper())
+        
+        direction_emoji = "" if direction.upper() == "BUY" else ""
+        
+        message = (
+            f"{direction_emoji} <b>V6 ENTRY</b> | {tf_badge}\n"
+            f"{'=' * 24}\n\n"
+            f"<b>Symbol:</b> {symbol}\n"
+            f"<b>Direction:</b> {direction}\n"
+            f"<b>Entry Price:</b> {entry_price}\n"
+            f"<b>Timeframe:</b> {tf_badge}\n"
+        )
+        
+        if data.get("sl"):
+            message += f"<b>Stop Loss:</b> {data.get('sl')}\n"
+        if data.get("tp"):
+            message += f"<b>Take Profit:</b> {data.get('tp')}\n"
+        if data.get("lot_size"):
+            message += f"<b>Lot Size:</b> {data.get('lot_size')}\n"
+        if data.get("pattern"):
+            message += f"<b>Pattern:</b> {data.get('pattern')}\n"
+        
+        message += f"\n<b>Time:</b> {datetime.now().strftime('%H:%M:%S')}"
+        
+        return message
+    
+    @staticmethod
+    def format_v6_exit(data: Dict) -> str:
+        """Format V6 Price Action exit notification"""
+        timeframe = data.get("timeframe", "N/A")
+        symbol = data.get("symbol", "N/A")
+        direction = data.get("direction", "N/A")
+        profit = data.get("pnl", data.get("profit", 0))
+        exit_reason = data.get("exit_reason", "N/A")
+        
+        tf_badges = {"15m": "15M", "30m": "30M", "1h": "1H", "4h": "4H"}
+        tf_badge = tf_badges.get(timeframe.lower(), timeframe.upper()) if timeframe else "V6"
+        
+        result_emoji = "" if profit >= 0 else ""
+        
+        message = (
+            f"{result_emoji} <b>V6 EXIT</b> | {tf_badge}\n"
+            f"{'=' * 24}\n\n"
+            f"<b>Symbol:</b> {symbol}\n"
+            f"<b>Direction:</b> {direction} -> CLOSED\n\n"
+            f"<b>Entry:</b> {data.get('entry_price', 'N/A')}\n"
+            f"<b>Exit:</b> {data.get('exit_price', 'N/A')}\n"
+            f"<b>Hold Time:</b> {data.get('duration', data.get('hold_time', 'N/A'))}\n\n"
+            f"<b>P&L:</b> ${profit:+.2f}"
+        )
+        
+        if data.get("pips"):
+            message += f" ({data.get('pips'):+.1f} pips)"
+        
+        message += (
+            f"\n<b>Reason:</b> {exit_reason}\n"
+            f"<b>Time:</b> {datetime.now().strftime('%H:%M:%S')}"
+        )
+        
+        return message
+    
+    @staticmethod
+    def format_v6_tp_hit(data: Dict) -> str:
+        """Format V6 take profit hit notification"""
+        timeframe = data.get("timeframe", "N/A")
+        symbol = data.get("symbol", "N/A")
+        profit = data.get("pnl", data.get("profit", 0))
+        tp_level = data.get("tp_level", 1)
+        
+        tf_badges = {"15m": "15M", "30m": "30M", "1h": "1H", "4h": "4H"}
+        tf_badge = tf_badges.get(timeframe.lower(), timeframe.upper()) if timeframe else "V6"
+        
+        message = (
+            f" <b>V6 TP{tp_level} HIT</b> | {tf_badge}\n"
+            f"{'=' * 24}\n\n"
+            f"<b>Symbol:</b> {symbol}\n"
+            f"<b>TP Level:</b> {tp_level}\n"
+            f"<b>Profit:</b> ${profit:+.2f}\n"
+        )
+        
+        if data.get("pips"):
+            message += f"<b>Pips:</b> {data.get('pips'):+.1f}\n"
+        
+        message += f"<b>Time:</b> {datetime.now().strftime('%H:%M:%S')}"
+        
+        return message
+    
+    @staticmethod
+    def format_v6_sl_hit(data: Dict) -> str:
+        """Format V6 stop loss hit notification"""
+        timeframe = data.get("timeframe", "N/A")
+        symbol = data.get("symbol", "N/A")
+        loss = data.get("pnl", data.get("loss", 0))
+        
+        tf_badges = {"15m": "15M", "30m": "30M", "1h": "1H", "4h": "4H"}
+        tf_badge = tf_badges.get(timeframe.lower(), timeframe.upper()) if timeframe else "V6"
+        
+        message = (
+            f" <b>V6 SL HIT</b> | {tf_badge}\n"
+            f"{'=' * 24}\n\n"
+            f"<b>Symbol:</b> {symbol}\n"
+            f"<b>Loss:</b> ${loss:.2f}\n"
+        )
+        
+        if data.get("pips"):
+            message += f"<b>Pips:</b> {data.get('pips'):.1f}\n"
+        
+        message += f"<b>Time:</b> {datetime.now().strftime('%H:%M:%S')}"
+        
+        return message
+    
+    @staticmethod
+    def format_v6_timeframe_toggle(data: Dict) -> str:
+        """Format V6 timeframe enabled/disabled notification"""
+        timeframe = data.get("timeframe", "N/A")
+        enabled = data.get("enabled", False)
+        
+        tf_badges = {"15m": "15M", "30m": "30M", "1h": "1H", "4h": "4H"}
+        tf_badge = tf_badges.get(timeframe.lower(), timeframe.upper()) if timeframe else timeframe
+        
+        status_emoji = "" if enabled else ""
+        action = "ENABLED" if enabled else "DISABLED"
+        
+        message = (
+            f"{status_emoji} <b>V6 {tf_badge} {action}</b>\n"
+            f"{'=' * 24}\n\n"
+            f"<b>Timeframe:</b> {tf_badge}\n"
+            f"<b>Status:</b> {action}\n"
+            f"<b>Time:</b> {datetime.now().strftime('%H:%M:%S')}"
+        )
+        
+        return message
+    
+    @staticmethod
+    def format_v6_daily_summary(data: Dict) -> str:
+        """Format V6 daily summary notification"""
+        date = data.get("date", datetime.now().strftime("%Y-%m-%d"))
+        
+        message = (
+            f" <b>V6 DAILY SUMMARY</b> | {date}\n"
+            f"{'=' * 24}\n\n"
+            f"<b>By Timeframe:</b>\n"
+        )
+        
+        # Per-timeframe stats
+        for tf in ["15m", "30m", "1h", "4h"]:
+            tf_data = data.get(tf, {})
+            trades = tf_data.get("trades", 0)
+            pnl = tf_data.get("pnl", 0)
+            win_rate = tf_data.get("win_rate", 0)
+            
+            if trades > 0:
+                emoji = "" if pnl >= 0 else ""
+                message += f"  {tf.upper()}: {trades} trades, {emoji}${pnl:+.2f} ({win_rate:.0f}% WR)\n"
+            else:
+                message += f"  {tf.upper()}: No trades\n"
+        
+        # Totals
+        total_trades = data.get("total_trades", 0)
+        total_pnl = data.get("total_pnl", 0)
+        total_win_rate = data.get("total_win_rate", 0)
+        
+        total_emoji = "" if total_pnl >= 0 else ""
+        
+        message += (
+            f"\n<b>V6 Total:</b>\n"
+            f"  Trades: {total_trades}\n"
+            f"  {total_emoji} P&L: ${total_pnl:+.2f}\n"
+            f"  Win Rate: {total_win_rate:.1f}%"
+        )
+        
+        return message
+    
+    @staticmethod
+    def format_v6_signal(data: Dict) -> str:
+        """Format V6 signal received notification"""
+        timeframe = data.get("timeframe", "N/A")
+        symbol = data.get("symbol", "N/A")
+        direction = data.get("direction", "N/A")
+        pattern = data.get("pattern", "N/A")
+        
+        tf_badges = {"15m": "15M", "30m": "30M", "1h": "1H", "4h": "4H"}
+        tf_badge = tf_badges.get(timeframe.lower(), timeframe.upper()) if timeframe else "V6"
+        
+        direction_emoji = "" if direction.upper() == "BUY" else ""
+        
+        message = (
+            f" <b>V6 SIGNAL</b> | {tf_badge}\n"
+            f"{'=' * 24}\n\n"
+            f"<b>Symbol:</b> {symbol}\n"
+            f"<b>Direction:</b> {direction_emoji} {direction}\n"
+            f"<b>Timeframe:</b> {tf_badge}\n"
+            f"<b>Pattern:</b> {pattern}\n"
+        )
+        
+        if data.get("entry"):
+            message += f"<b>Entry:</b> {data.get('entry')}\n"
+        if data.get("sl"):
+            message += f"<b>SL:</b> {data.get('sl')}\n"
+        if data.get("tp"):
+            message += f"<b>TP:</b> {data.get('tp')}\n"
+        
+        message += f"<b>Time:</b> {datetime.now().strftime('%H:%M:%S')}"
+        
+        return message
 
 
 def create_default_router(
@@ -597,5 +864,18 @@ def create_default_router(
     router.register_formatter(NotificationType.DAILY_SUMMARY, NotificationFormatter.format_daily_summary)
     router.register_formatter(NotificationType.EMERGENCY_STOP, NotificationFormatter.format_emergency)
     router.register_formatter(NotificationType.ERROR, NotificationFormatter.format_error)
+    
+    # Register V6 formatters (NEW - Telegram V5 Upgrade)
+    router.register_formatter(NotificationType.V6_ENTRY_15M, NotificationFormatter.format_v6_entry)
+    router.register_formatter(NotificationType.V6_ENTRY_30M, NotificationFormatter.format_v6_entry)
+    router.register_formatter(NotificationType.V6_ENTRY_1H, NotificationFormatter.format_v6_entry)
+    router.register_formatter(NotificationType.V6_ENTRY_4H, NotificationFormatter.format_v6_entry)
+    router.register_formatter(NotificationType.V6_EXIT, NotificationFormatter.format_v6_exit)
+    router.register_formatter(NotificationType.V6_TP_HIT, NotificationFormatter.format_v6_tp_hit)
+    router.register_formatter(NotificationType.V6_SL_HIT, NotificationFormatter.format_v6_sl_hit)
+    router.register_formatter(NotificationType.V6_TIMEFRAME_ENABLED, NotificationFormatter.format_v6_timeframe_toggle)
+    router.register_formatter(NotificationType.V6_TIMEFRAME_DISABLED, NotificationFormatter.format_v6_timeframe_toggle)
+    router.register_formatter(NotificationType.V6_DAILY_SUMMARY, NotificationFormatter.format_v6_daily_summary)
+    router.register_formatter(NotificationType.V6_SIGNAL, NotificationFormatter.format_v6_signal)
     
     return router

@@ -821,13 +821,21 @@ class ControllerBot(BaseTelegramBot):
              self._menu_manager.show_timeframe_menu(chat_id or self.chat_id, message_id=None)
 
     def show_reentry_menu(self, chat_id: int = None):
-        self._show_menu_generic("reentry", chat_id)
+        """Show Re-entry System menu via MenuManager (Telegram V5 Upgrade)"""
+        if self._menu_manager and hasattr(self._menu_manager, 'show_reentry_menu'):
+            self._menu_manager.show_reentry_menu(chat_id or self.chat_id, message_id=None)
+        else:
+            self._show_menu_generic("reentry", chat_id)
 
     def show_profit_menu(self, chat_id: int = None):
         self._show_menu_generic("profit", chat_id)
 
     def show_analytics_menu(self, chat_id: int = None):
-        self._show_menu_generic("performance", chat_id) # Mapped to performance
+        """Show Analytics menu via MenuManager (Telegram V5 Upgrade)"""
+        if self._menu_manager and hasattr(self._menu_manager, 'show_analytics_menu'):
+            self._menu_manager.show_analytics_menu(chat_id or self.chat_id, message_id=None)
+        else:
+            self._show_menu_generic("performance", chat_id)
 
     def show_session_menu(self, chat_id: int = None):
         # Session menu might not be a simple category, let's assume generic for now or custom
@@ -859,4 +867,46 @@ class ControllerBot(BaseTelegramBot):
     def navigate_back(self, chat_id: int = None):
         """Navigate back handler"""
         self.show_main_menu(chat_id)
+    
+    # ========================================
+    # V5 Upgrade Menu Methods (Telegram V5 Upgrade)
+    # ========================================
+    
+    def show_v6_control_menu(self, chat_id: int = None):
+        """Show V6 Price Action control menu via MenuManager (Telegram V5 Upgrade)"""
+        if self._menu_manager and hasattr(self._menu_manager, 'show_v6_menu'):
+            self._menu_manager.show_v6_menu(chat_id or self.chat_id, message_id=None)
+        else:
+            self.send_message("V6 Price Action menu under construction.")
+    
+    def show_dual_order_menu(self, chat_id: int = None):
+        """Show Dual Order System menu via MenuManager (Telegram V5 Upgrade)"""
+        if self._menu_manager and hasattr(self._menu_manager, 'show_dual_order_menu'):
+            self._menu_manager.show_dual_order_menu(chat_id or self.chat_id, message_id=None)
+        else:
+            self.send_message("Dual Order System menu under construction.")
+    
+    def handle_v6_callback(self, callback_data: str, chat_id: int = None, message_id: int = None) -> bool:
+        """Handle V6 menu callback via MenuManager (Telegram V5 Upgrade)"""
+        if self._menu_manager and hasattr(self._menu_manager, 'handle_v6_callback'):
+            return self._menu_manager.handle_v6_callback(callback_data, chat_id or self.chat_id, message_id)
+        return False
+    
+    def handle_analytics_callback(self, callback_data: str, chat_id: int = None, message_id: int = None) -> bool:
+        """Handle Analytics menu callback via MenuManager (Telegram V5 Upgrade)"""
+        if self._menu_manager and hasattr(self._menu_manager, 'handle_analytics_callback'):
+            return self._menu_manager.handle_analytics_callback(callback_data, chat_id or self.chat_id, message_id)
+        return False
+    
+    def handle_dual_order_callback(self, callback_data: str, chat_id: int = None, message_id: int = None) -> bool:
+        """Handle Dual Order menu callback via MenuManager (Telegram V5 Upgrade)"""
+        if self._menu_manager and hasattr(self._menu_manager, 'handle_dual_order_callback'):
+            return self._menu_manager.handle_dual_order_callback(callback_data, chat_id or self.chat_id, message_id)
+        return False
+    
+    def handle_reentry_callback(self, callback_data: str, chat_id: int = None, message_id: int = None) -> bool:
+        """Handle Re-entry menu callback via MenuManager (Telegram V5 Upgrade)"""
+        if self._menu_manager and hasattr(self._menu_manager, 'handle_reentry_callback'):
+            return self._menu_manager.handle_reentry_callback(callback_data, chat_id or self.chat_id, message_id)
+        return False
 

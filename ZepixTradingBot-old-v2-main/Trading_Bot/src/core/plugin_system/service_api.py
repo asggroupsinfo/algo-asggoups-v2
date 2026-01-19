@@ -1679,6 +1679,269 @@ class ServiceAPI:
             self._logger.info(log_msg)
     
     # =========================================================================
+    # V6 NOTIFICATION METHODS (NEW - Telegram V5 Upgrade)
+    # =========================================================================
+    
+    async def send_v6_entry_notification(
+        self,
+        timeframe: str,
+        symbol: str,
+        direction: str,
+        entry_price: float,
+        sl: float = None,
+        tp: float = None,
+        lot_size: float = None,
+        pattern: str = None
+    ) -> bool:
+        """
+        Send V6 entry notification with timeframe badge.
+        
+        Args:
+            timeframe: Timeframe (15m, 30m, 1h, 4h)
+            symbol: Trading symbol
+            direction: BUY or SELL
+            entry_price: Entry price
+            sl: Stop loss price
+            tp: Take profit price
+            lot_size: Lot size
+            pattern: Price action pattern name
+        
+        Returns:
+            True if sent successfully
+        """
+        try:
+            # Map timeframe to notification type
+            tf_map = {
+                "15m": "v6_entry_15m",
+                "30m": "v6_entry_30m",
+                "1h": "v6_entry_1h",
+                "4h": "v6_entry_4h"
+            }
+            notification_type = tf_map.get(timeframe.lower(), "v6_entry_15m")
+            
+            data = {
+                "timeframe": timeframe,
+                "symbol": symbol,
+                "direction": direction,
+                "entry_price": entry_price,
+                "sl": sl,
+                "tp": tp,
+                "lot_size": lot_size,
+                "pattern": pattern
+            }
+            
+            return await self.send_telegram_notification(notification_type, "", trade_data=data)
+        except Exception as e:
+            self._logger.error(f"[ServiceAPI] V6 entry notification error: {e}")
+            return False
+    
+    async def send_v6_exit_notification(
+        self,
+        timeframe: str,
+        symbol: str,
+        direction: str,
+        entry_price: float,
+        exit_price: float,
+        pnl: float,
+        exit_reason: str,
+        duration: str = None,
+        pips: float = None
+    ) -> bool:
+        """
+        Send V6 exit notification.
+        
+        Args:
+            timeframe: Timeframe (15m, 30m, 1h, 4h)
+            symbol: Trading symbol
+            direction: BUY or SELL
+            entry_price: Entry price
+            exit_price: Exit price
+            pnl: Profit/loss amount
+            exit_reason: Reason for exit (TP, SL, Manual, etc.)
+            duration: Trade duration
+            pips: Pips gained/lost
+        
+        Returns:
+            True if sent successfully
+        """
+        try:
+            data = {
+                "timeframe": timeframe,
+                "symbol": symbol,
+                "direction": direction,
+                "entry_price": entry_price,
+                "exit_price": exit_price,
+                "pnl": pnl,
+                "exit_reason": exit_reason,
+                "duration": duration,
+                "pips": pips
+            }
+            
+            return await self.send_telegram_notification("v6_exit", "", trade_data=data)
+        except Exception as e:
+            self._logger.error(f"[ServiceAPI] V6 exit notification error: {e}")
+            return False
+    
+    async def send_v6_tp_notification(
+        self,
+        timeframe: str,
+        symbol: str,
+        pnl: float,
+        tp_level: int = 1,
+        pips: float = None
+    ) -> bool:
+        """
+        Send V6 take profit hit notification.
+        
+        Args:
+            timeframe: Timeframe (15m, 30m, 1h, 4h)
+            symbol: Trading symbol
+            pnl: Profit amount
+            tp_level: TP level (1, 2, 3)
+            pips: Pips gained
+        
+        Returns:
+            True if sent successfully
+        """
+        try:
+            data = {
+                "timeframe": timeframe,
+                "symbol": symbol,
+                "pnl": pnl,
+                "tp_level": tp_level,
+                "pips": pips
+            }
+            
+            return await self.send_telegram_notification("v6_tp_hit", "", trade_data=data)
+        except Exception as e:
+            self._logger.error(f"[ServiceAPI] V6 TP notification error: {e}")
+            return False
+    
+    async def send_v6_sl_notification(
+        self,
+        timeframe: str,
+        symbol: str,
+        pnl: float,
+        pips: float = None
+    ) -> bool:
+        """
+        Send V6 stop loss hit notification.
+        
+        Args:
+            timeframe: Timeframe (15m, 30m, 1h, 4h)
+            symbol: Trading symbol
+            pnl: Loss amount (negative)
+            pips: Pips lost
+        
+        Returns:
+            True if sent successfully
+        """
+        try:
+            data = {
+                "timeframe": timeframe,
+                "symbol": symbol,
+                "pnl": pnl,
+                "pips": pips
+            }
+            
+            return await self.send_telegram_notification("v6_sl_hit", "", trade_data=data)
+        except Exception as e:
+            self._logger.error(f"[ServiceAPI] V6 SL notification error: {e}")
+            return False
+    
+    async def send_v6_timeframe_toggle_notification(
+        self,
+        timeframe: str,
+        enabled: bool
+    ) -> bool:
+        """
+        Send V6 timeframe enabled/disabled notification.
+        
+        Args:
+            timeframe: Timeframe (15m, 30m, 1h, 4h)
+            enabled: True if enabled, False if disabled
+        
+        Returns:
+            True if sent successfully
+        """
+        try:
+            notification_type = "v6_timeframe_enabled" if enabled else "v6_timeframe_disabled"
+            data = {
+                "timeframe": timeframe,
+                "enabled": enabled
+            }
+            
+            return await self.send_telegram_notification(notification_type, "", trade_data=data)
+        except Exception as e:
+            self._logger.error(f"[ServiceAPI] V6 timeframe toggle notification error: {e}")
+            return False
+    
+    async def send_v6_daily_summary(
+        self,
+        summary_data: Dict[str, Any]
+    ) -> bool:
+        """
+        Send V6 daily summary notification.
+        
+        Args:
+            summary_data: Dict with per-timeframe stats:
+                - 15m: {trades, pnl, win_rate}
+                - 30m: {trades, pnl, win_rate}
+                - 1h: {trades, pnl, win_rate}
+                - 4h: {trades, pnl, win_rate}
+                - total_trades, total_pnl, total_win_rate
+        
+        Returns:
+            True if sent successfully
+        """
+        try:
+            return await self.send_telegram_notification("v6_daily_summary", "", trade_data=summary_data)
+        except Exception as e:
+            self._logger.error(f"[ServiceAPI] V6 daily summary notification error: {e}")
+            return False
+    
+    async def send_v6_signal_notification(
+        self,
+        timeframe: str,
+        symbol: str,
+        direction: str,
+        pattern: str,
+        entry: float = None,
+        sl: float = None,
+        tp: float = None
+    ) -> bool:
+        """
+        Send V6 signal received notification.
+        
+        Args:
+            timeframe: Timeframe (15m, 30m, 1h, 4h)
+            symbol: Trading symbol
+            direction: BUY or SELL
+            pattern: Price action pattern name
+            entry: Suggested entry price
+            sl: Suggested stop loss
+            tp: Suggested take profit
+        
+        Returns:
+            True if sent successfully
+        """
+        try:
+            data = {
+                "timeframe": timeframe,
+                "symbol": symbol,
+                "direction": direction,
+                "pattern": pattern,
+                "entry": entry,
+                "sl": sl,
+                "tp": tp
+            }
+            
+            return await self.send_telegram_notification("v6_signal", "", trade_data=data)
+        except Exception as e:
+            self._logger.error(f"[ServiceAPI] V6 signal notification error: {e}")
+            return False
+    
+    # =========================================================================
     # CONFIGURATION METHODS
     # =========================================================================
     
