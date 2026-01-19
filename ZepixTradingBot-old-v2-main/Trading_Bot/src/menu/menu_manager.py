@@ -12,8 +12,12 @@ from .menu_constants import (
     MAX_LEVELS_PRESETS, SL_REDUCTION_PRESETS, SL_OFFSET_PRESETS, LOT_SIZE_PRESETS,
     DATE_PRESETS
 )
+from .v6_control_menu_handler import V6ControlMenuHandler
 from datetime import datetime
 import pytz # Will need to check if pytz is available or use standard timezone handling
+import logging
+
+logger = logging.getLogger(__name__)
 
 class MenuManager:
     """
@@ -24,6 +28,10 @@ class MenuManager:
         self.bot = telegram_bot
         self.context = ContextManager()
         self.executor = CommandExecutor(telegram_bot, context_manager=self.context)
+        
+        # V6 Control Menu Handler (Telegram V5 Upgrade)
+        self._v6_handler = V6ControlMenuHandler(telegram_bot)
+        logger.info("[MenuManager] V6ControlMenuHandler initialized")
     
     def _get_tier_buttons_with_current(self, command: str) -> List[Dict[str, str]]:
         """
@@ -287,6 +295,12 @@ class MenuManager:
         cat_row7.append({"text": "⚙️ Strategy", "callback_data": "menu_strategy"})
         cat_row7.append({"text": "⚡ Fine-Tune", "callback_data": "menu_fine_tune"})
         keyboard.append(cat_row7)
+        
+        # Main Categories - Row 8 (V6 Price Action - Telegram V5 Upgrade)
+        cat_row8 = []
+        cat_row8.append({"text": "📊 V6 Price Action", "callback_data": "menu_v6"})
+        cat_row8.append({"text": "📈 Analytics", "callback_data": "menu_analytics"})
+        keyboard.append(cat_row8)
         
         keyboard.append([])  # Empty row for spacing
         
@@ -955,4 +969,45 @@ class MenuManager:
         
         print(f"[CUSTOM INPUT] Prompt shown, waiting for user text input", flush=True)
         return None
+    
+    # =========================================================================
+    # V6 CONTROL MENU METHODS (Telegram V5 Upgrade)
+    # =========================================================================
+    
+    def show_v6_menu(self, user_id: int, message_id: int):
+        """
+        Show V6 Price Action control menu.
+        
+        Args:
+            user_id: Telegram user ID
+            message_id: Message ID to edit
+        """
+        self._v6_handler.show_v6_main_menu(user_id, message_id)
+    
+    def handle_v6_callback(self, callback_data: str, user_id: int, message_id: int) -> bool:
+        """
+        Handle V6 menu callback.
+        
+        Args:
+            callback_data: Callback data from button press
+            user_id: Telegram user ID
+            message_id: Message ID to edit
+        
+        Returns:
+            True if handled, False otherwise
+        """
+        return self._v6_handler.handle_callback(callback_data, user_id, message_id)
+    
+    def is_v6_callback(self, callback_data: str) -> bool:
+        """
+        Check if callback is a V6 menu callback.
+        
+        Args:
+            callback_data: Callback data to check
+        
+        Returns:
+            True if V6 callback, False otherwise
+        """
+        v6_prefixes = ["menu_v6", "v6_toggle", "v6_enable", "v6_disable", "v6_view", "v6_config", "v6_adj", "v6_set"]
+        return any(callback_data.startswith(prefix) for prefix in v6_prefixes)
 
