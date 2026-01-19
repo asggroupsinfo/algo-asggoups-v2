@@ -548,7 +548,7 @@ class TestControllerBot105Commands:
         """Read controller_bot.py source code for analysis"""
         import os
         controller_path = os.path.join(os.path.dirname(__file__), '..', 'src', 'telegram', 'controller_bot.py')
-        with open(controller_path, 'r') as f:
+        with open(controller_path, 'r', encoding='utf-8') as f:
             return f.read()
     
     def test_controller_bot_has_all_105_handlers_wired(self):
