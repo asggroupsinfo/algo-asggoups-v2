@@ -7,7 +7,7 @@ Implements the 4-step wizard for placing trades.
 3. Lot Size Selection
 4. Confirmation
 
-Version: 1.1.0 (Robust Implementation)
+Version: 1.2.0 (Breadcrumb Support)
 Created: 2026-01-21
 Part of: TELEGRAM_V5_ZERO_TYPING_UI
 """
@@ -41,19 +41,38 @@ class TradingFlow(BaseFlow):
         state.step = 0
         await self.show_step(update, context, 0)
 
+    def _get_breadcrumb(self, step: int, direction: str) -> str:
+        """Generate breadcrumb trail"""
+        crumbs = [
+            ("Symbol", step > 0, step == 0),
+            ("Lot", step > 1, step == 1),
+            ("Confirm", step > 2, step == 2)
+        ]
+
+        trail = f"**{direction}**: "
+        for label, completed, active in crumbs:
+            if completed:
+                trail += f"✅ {label} → "
+            elif active:
+                trail += f"▶️ {label} → "
+            else:
+                trail += f"⏸️ {label} → "
+
+        return trail.rstrip(" → ")
+
     async def show_step(self, update: Update, context: ContextTypes.DEFAULT_TYPE, step: int):
         chat_id = update.effective_chat.id
         state = self.state_manager.get_state(chat_id)
         direction = state.get_data("direction", "TRADE")
 
-        # Ensure header is built
         header = self.header.build_header(style='compact')
+        breadcrumb = self._get_breadcrumb(step, direction)
 
         if step == 0:
             # Step 1: Symbol Selection
             text = (
                 f"{header}\n"
-                f"📊 **{direction} WIZARD (Step 1/3)**\n"
+                f"{breadcrumb}\n"
                 f"━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
                 f"Select a symbol to trade:"
             )
@@ -73,8 +92,9 @@ class TradingFlow(BaseFlow):
             symbol = state.get_data("symbol")
             text = (
                 f"{header}\n"
-                f"📊 **{direction} {symbol} (Step 2/3)**\n"
+                f"{breadcrumb}\n"
                 f"━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+                f"Symbol: **{symbol}**\n\n"
                 f"Select lot size:"
             )
 
@@ -93,7 +113,7 @@ class TradingFlow(BaseFlow):
 
             text = (
                 f"{header}\n"
-                f"⚠️ **CONFIRM ORDER**\n"
+                f"{breadcrumb}\n"
                 f"━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
                 f"**Type:** {direction}\n"
                 f"**Symbol:** {symbol}\n"

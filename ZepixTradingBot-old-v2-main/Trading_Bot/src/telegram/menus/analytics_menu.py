@@ -5,7 +5,7 @@ Implements the Analytics submenu.
 src/telegram/menus/analytics_menu.py
 """
 
-from telegram import InlineKeyboardMarkup
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from ..core.base_menu_builder import BaseMenuBuilder
 from ..core.button_builder import ButtonBuilder as Btn
 
@@ -23,7 +23,14 @@ class AnalyticsMenu(BaseMenuBuilder):
             Btn.create_button("♟️ Strategy", "analytics_strategy_report"),
             Btn.create_button("🎯 TP Stats", "analytics_tp_report"),
             Btn.create_button("💰 Profit", "analytics_profit_stats"),
-            Btn.create_button("💾 Export", "analytics_export")
+            Btn.create_button("💾 Export", "analytics_export"),
+            # New Commands
+            Btn.create_button("🎯 Win Rate", "analytics_winrate"),
+            Btn.create_button("💰 Avg Profit", "analytics_avgprofit"),
+            Btn.create_button("📉 Avg Loss", "analytics_avgloss"),
+            Btn.create_button("🏆 Best Day", "analytics_bestday"),
+            Btn.create_button("❌ Worst Day", "analytics_worstday"),
+            Btn.create_button("📊 Correlation", "analytics_correlation")
         ]
 
         # Grid layout (2 cols)

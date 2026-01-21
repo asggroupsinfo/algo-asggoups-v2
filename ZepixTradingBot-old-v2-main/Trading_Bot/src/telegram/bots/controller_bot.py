@@ -24,9 +24,10 @@ from .base_bot import BaseIndependentBot
 from src.telegram.core.callback_router import CallbackRouter
 from src.telegram.core.sticky_header_builder import StickyHeaderBuilder
 from src.telegram.core.conversation_state_manager import state_manager
-from src.telegram.interceptors.command_interceptor import CommandInterceptor
+from src.telegram.core.plugin_interceptor import CommandInterceptor
 from src.telegram.interceptors.plugin_context_manager import PluginContextManager
-from src.telegram.headers.header_refresh_manager import HeaderRefreshManager
+from src.telegram.core.header_manager import HeaderManager
+from src.telegram.core.command_registry import CommandRegistry
 
 # Import All Menus
 from src.telegram.menus.main_menu import MainMenu
@@ -79,7 +80,8 @@ class ControllerBot(BaseIndependentBot):
         self.sticky_header = StickyHeaderBuilder()
         self.callback_router = CallbackRouter(self)
         self.state_manager = state_manager
-        self.header_refresh_manager = HeaderRefreshManager(self) # Phase 4
+        self.header_refresh_manager = HeaderManager(self) # Phase 4
+        self.command_registry = CommandRegistry(self) # Phase 5
 
         # --- Plugin Selection System (Phase 3) ---
         self.command_interceptor = CommandInterceptor(self)
@@ -163,6 +165,9 @@ class ControllerBot(BaseIndependentBot):
             # Inject dependencies into V6 Menu Builder
             if self.v6_menu_builder:
                 self.v6_menu_builder.set_dependencies(trading_engine)
+
+            # Register all commands in registry (Phase 5)
+            self.command_registry.register_all()
             
         logger.info("[ControllerBot] Dependencies injected and sub-managers exposed")
 
@@ -326,6 +331,24 @@ class ControllerBot(BaseIndependentBot):
 
     async def handle_analytics_export(self, update, context):
         await self.analytics_handler.handle_export(update, context)
+
+    async def handle_analytics_winrate(self, update, context):
+        await self.analytics_handler.handle_winrate(update, context)
+
+    async def handle_analytics_avgprofit(self, update, context):
+        await self.analytics_handler.handle_avgprofit(update, context)
+
+    async def handle_analytics_avgloss(self, update, context):
+        await self.analytics_handler.handle_avgloss(update, context)
+
+    async def handle_analytics_bestday(self, update, context):
+        await self.analytics_handler.handle_bestday(update, context)
+
+    async def handle_analytics_worstday(self, update, context):
+        await self.analytics_handler.handle_worstday(update, context)
+
+    async def handle_analytics_correlation(self, update, context):
+        await self.analytics_handler.handle_correlation(update, context)
 
     # --- Plugin Handlers ---
     async def handle_plugin_enable(self, update, context):
