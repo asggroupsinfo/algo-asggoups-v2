@@ -12,7 +12,7 @@ from telegram.ext import ContextTypes
 from typing import Optional, Dict, Any
 import logging
 
-from .plugin_context_manager import PluginContextManager
+from ..interceptors.plugin_context_manager import PluginContextManager
 from .conversation_state_manager import state_manager
 from .sticky_header_builder import StickyHeaderBuilder
 

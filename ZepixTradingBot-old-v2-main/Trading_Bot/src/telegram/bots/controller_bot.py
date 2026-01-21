@@ -24,9 +24,9 @@ from .base_bot import BaseIndependentBot
 from src.telegram.core.callback_router import CallbackRouter
 from src.telegram.core.sticky_header_builder import StickyHeaderBuilder
 from src.telegram.core.conversation_state_manager import state_manager
-from src.telegram.core.command_interceptor import CommandInterceptor
-from src.telegram.core.plugin_context_manager import PluginContextManager
-from src.telegram.core.header_refresh_manager import HeaderRefreshManager
+from src.telegram.interceptors.command_interceptor import CommandInterceptor
+from src.telegram.interceptors.plugin_context_manager import PluginContextManager
+from src.telegram.headers.header_refresh_manager import HeaderRefreshManager
 
 # Import All Menus
 from src.telegram.menus.main_menu import MainMenu

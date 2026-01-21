@@ -11,7 +11,7 @@ Part of: TELEGRAM_V5_STICKY_HEADER
 import asyncio
 import logging
 from typing import Dict
-from .sticky_header_builder import StickyHeaderBuilder
+from ..core.sticky_header_builder import StickyHeaderBuilder
 
 logger = logging.getLogger(__name__)
 
