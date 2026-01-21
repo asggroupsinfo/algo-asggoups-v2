@@ -3,7 +3,7 @@ Configuration Flow - Zero-Typing Settings Wizard
 
 Implements wizards for multi-step configuration.
 
-Version: 1.0.0
+Version: 1.1.0 (Global Breadcrumb Integration)
 Created: 2026-01-21
 Part of: TELEGRAM_V5_ZERO_TYPING_UI
 """
@@ -25,7 +25,8 @@ class ConfigurationFlow(BaseFlow):
         await self.show_step(update, context, 0)
 
     async def show_step(self, update: Update, context: ContextTypes.DEFAULT_TYPE, step: int):
-        text = "Configuration Wizard (Placeholder)"
+        breadcrumb = self._format_breadcrumb(["Setting", "Value", "Confirm"], step)
+        text = f"{breadcrumb}\n\nConfiguration Wizard (Placeholder)"
         keyboard = [[self.btn.create_button("Cancel", "flow_config_cancel")]]
 
         if update.callback_query:

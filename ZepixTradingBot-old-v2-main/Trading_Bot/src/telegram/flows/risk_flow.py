@@ -4,7 +4,7 @@ Risk Flow - Zero-Typing Risk Wizard
 Implements configuration wizards for Risk settings.
 1. Set Lot Size Flow
 
-Version: 1.1.0 (Robust Implementation)
+Version: 1.2.0 (Global Breadcrumb Integration)
 Created: 2026-01-21
 Part of: TELEGRAM_V5_ZERO_TYPING_UI
 """
@@ -32,11 +32,12 @@ class RiskFlow(BaseFlow):
     async def show_step(self, update: Update, context: ContextTypes.DEFAULT_TYPE, step: int):
         chat_id = update.effective_chat.id
         header = self.header.build_header(style='compact')
+        breadcrumb = self._format_breadcrumb(["Lot Size", "Confirm"], step)
 
         # Simple single-step selection for now
         text = (
             f"{header}\n"
-            f"📏 **SET DEFAULT LOT SIZE**\n"
+            f"{breadcrumb}\n"
             f"━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
             f"Select standard lot size:"
         )

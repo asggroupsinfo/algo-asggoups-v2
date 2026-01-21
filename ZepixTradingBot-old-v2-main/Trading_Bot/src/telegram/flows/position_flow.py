@@ -5,7 +5,7 @@ Implements wizards for closing and modifying positions.
 1. Close Selection (Partial/Full)
 2. Modify SL/TP
 
-Version: 1.0.0
+Version: 1.1.0 (Global Breadcrumb Integration)
 Created: 2026-01-21
 Part of: TELEGRAM_V5_ZERO_TYPING_UI
 """
@@ -28,8 +28,8 @@ class PositionFlow(BaseFlow):
         await self.show_step(update, context, 0)
 
     async def show_step(self, update: Update, context: ContextTypes.DEFAULT_TYPE, step: int):
-        # Implementation of position selection step
-        text = "Select position to close (Placeholder)"
+        breadcrumb = self._format_breadcrumb(["Select", "Confirm"], step)
+        text = f"{breadcrumb}\n\nSelect position to close (Placeholder)"
         keyboard = [[self.btn.create_button("Cancel", "flow_pos_cancel")]]
 
         if update.callback_query:
