@@ -1,6 +1,6 @@
 """
 Controller Bot - Independent V6 Architecture
-Version: 3.4.0 (Legacy Logic Restored)
+Version: 3.7.0 (Full Handler Coverage)
 Date: 2026-01-21
 
 Uses python-telegram-bot v20+ (Async)
@@ -23,6 +23,10 @@ from telegram.ext import ContextTypes, CommandHandler, CallbackQueryHandler
 from .base_bot import BaseIndependentBot
 from src.telegram.core.callback_router import CallbackRouter
 from src.telegram.core.sticky_header_builder import StickyHeaderBuilder
+from src.telegram.core.conversation_state_manager import state_manager
+from src.telegram.interceptors.command_interceptor import CommandInterceptor
+from src.telegram.interceptors.plugin_context_manager import PluginContextManager
+from src.telegram.headers.header_refresh_manager import HeaderRefreshManager
 
 # Import All Menus
 from src.telegram.menus.main_menu import MainMenu
@@ -45,6 +49,15 @@ from src.telegram.handlers.trading.orders_handler import OrdersHandler
 from src.telegram.handlers.trading.close_handler import CloseHandler
 from src.telegram.handlers.risk.risk_settings_handler import RiskSettingsHandler
 from src.telegram.handlers.risk.set_lot_handler import SetLotHandler
+from src.telegram.handlers.analytics.analytics_handler import AnalyticsHandler
+from src.telegram.handlers.plugins.plugin_handler import PluginHandler
+from src.telegram.handlers.system.session_handler import SessionHandler
+from src.telegram.handlers.system.voice_handler import VoiceHandler
+from src.telegram.handlers.system.settings_handler import SettingsHandler
+
+# Import Flows
+from src.telegram.flows.trading_flow import TradingFlow
+from src.telegram.flows.risk_flow import RiskFlow
 
 logger = logging.getLogger(__name__)
 
@@ -65,6 +78,12 @@ class ControllerBot(BaseIndependentBot):
         # --- V5 Foundation Components ---
         self.sticky_header = StickyHeaderBuilder()
         self.callback_router = CallbackRouter(self)
+        self.state_manager = state_manager
+        self.header_refresh_manager = HeaderRefreshManager(self) # Phase 4
+
+        # --- Plugin Selection System (Phase 3) ---
+        self.command_interceptor = CommandInterceptor(self)
+        self.plugin_context_manager = PluginContextManager
 
         # Initialize Menus
         self.main_menu = MainMenu(self)
@@ -87,6 +106,15 @@ class ControllerBot(BaseIndependentBot):
         self.close_handler = CloseHandler(self)
         self.risk_settings_handler = RiskSettingsHandler(self)
         self.set_lot_handler = SetLotHandler(self)
+        self.analytics_handler = AnalyticsHandler(self)
+        self.plugin_handler = PluginHandler(self)
+        self.session_handler = SessionHandler(self)
+        self.voice_handler = VoiceHandler(self)
+        self.settings_handler = SettingsHandler(self)
+
+        # Initialize Flows
+        self.trading_flow = TradingFlow(self)
+        self.risk_flow = RiskFlow(self)
 
         # Register Menus with Router (Key matches 'menu_KEY' callback)
         self.callback_router.register_menu("main", self.main_menu)
@@ -103,7 +131,7 @@ class ControllerBot(BaseIndependentBot):
         self.callback_router.register_menu("voice", self.voice_menu)
         self.callback_router.register_menu("settings", self.settings_menu)
 
-        logger.info("[ControllerBot] V5 Menu System & Handlers initialized")
+        logger.info("[ControllerBot] V5 Architecture (Full Stack) initialized")
 
         # --- Legacy / V6 Components (Optional) ---
         self.v6_menu_builder = None
@@ -117,6 +145,10 @@ class ControllerBot(BaseIndependentBot):
         """Inject trading engine and its sub-managers"""
         self.trading_engine = trading_engine
         
+        # Start header refresh
+        if self.header_refresh_manager:
+            self.header_refresh_manager.start()
+
         # Expose sub-managers for Menu system compatibility
         if trading_engine:
             self.mt5_client = getattr(trading_engine, 'mt5_client', None)
@@ -144,6 +176,10 @@ class ControllerBot(BaseIndependentBot):
         self.app.add_handler(CommandHandler("menu", self.handle_start))
         self.app.add_handler(CommandHandler("help", self.handle_help))
         self.app.add_handler(CommandHandler("status", self.handle_status))
+
+        # Action Commands (Wiring to Flows)
+        self.app.add_handler(CommandHandler("buy", self.handle_buy_command))
+        self.app.add_handler(CommandHandler("sell", self.handle_sell_command))
 
         # Legacy/Extra Commands (Keeping for compatibility)
         self.app.add_handler(CommandHandler("settings", self.handle_settings))
@@ -180,11 +216,27 @@ class ControllerBot(BaseIndependentBot):
         data = query.data
         logger.info(f"[ControllerBot] Callback: {data}")
         
-        # 1. Try V5 Router First
+        # 1. Intercept Plugin Selection (Phase 3)
+        if data.startswith("plugin_select_"):
+            result = await self.command_interceptor.handle_selection(update, context)
+            if result:
+                plugin_name = result['plugin'].upper()
+                await query.edit_message_text(f"✅ Context set to **{plugin_name}**\n\nPlease retry your command.", parse_mode='Markdown')
+            return
+
+        # 2. Check for Active Flows (Doc 4 Priority)
+        if data.startswith("flow_trade"):
+            if await self.trading_flow.handle_callback(update, context):
+                return
+        if data.startswith("flow_risk"):
+            if await self.risk_flow.handle_callback(update, context):
+                return
+
+        # 3. Try V5 Router
         if await self.callback_router.handle_callback(update, context):
             return
 
-        # 2. Fallback to Legacy Handlers if V5 Router didn't handle it
+        # 4. Fallback to Legacy Handlers
         try:
             await query.answer()
         except:
@@ -207,28 +259,100 @@ class ControllerBot(BaseIndependentBot):
             await query.edit_message_text(f"❓ Unknown option: {data}")
 
     # =========================================================================
-    # ACTION HANDLERS (Called by Router)
+    # ACTION HANDLERS (Called by Router/Commands)
     # =========================================================================
+
+    # --- Flow Triggers ---
+    async def handle_buy_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Trigger Buy Wizard (Intercepted)"""
+        # Phase 3: Intercept
+        if await self.command_interceptor.intercept(update, context, "/buy"):
+            return
+
+        await self.trading_flow.start_buy(update, context)
+
+    async def handle_sell_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Trigger Sell Wizard (Intercepted)"""
+        if await self.command_interceptor.intercept(update, context, "/sell"):
+            return
+
+        await self.trading_flow.start_sell(update, context)
+
+    async def handle_trading_buy_start(self, update, context):
+        """Callback Trigger for Buy Wizard"""
+        # Callbacks also need interception if no context
+        if await self.command_interceptor.intercept(update, context, "/buy"):
+            return
+        await self.trading_flow.start_buy(update, context)
+
+    async def handle_trading_sell_start(self, update, context):
+        """Callback Trigger for Sell Wizard"""
+        if await self.command_interceptor.intercept(update, context, "/sell"):
+            return
+        await self.trading_flow.start_sell(update, context)
+
+    async def handle_risk_setlot_start(self, update, context):
+        """Callback Trigger for Lot Wizard"""
+        if await self.command_interceptor.intercept(update, context, "/setlot"):
+            return
+        await self.risk_flow.start_set_lot(update, context)
 
     # --- Trading Handlers ---
     async def handle_trading_positions(self, update, context):
         await self.positions_handler.handle(update, context)
-        
+
     async def handle_trading_orders(self, update, context):
         await self.orders_handler.handle(update, context)
-        
+
     async def handle_trading_close(self, update, context):
         await self.close_handler.handle(update, context)
-        
+
     async def handle_trading_closeall(self, update, context):
         await self.close_handler.handle(update, context)
-        
+
     # --- Risk Handlers ---
     async def handle_risk_menu(self, update, context):
         await self.risk_settings_handler.handle(update, context)
-        
-    async def handle_risk_setlot_start(self, update, context):
-        await self.set_lot_handler.handle(update, context)
+
+    # --- Analytics Handlers ---
+    async def handle_analytics_daily(self, update, context):
+        await self.analytics_handler.handle_daily(update, context)
+
+    async def handle_analytics_weekly(self, update, context):
+        await self.analytics_handler.handle_weekly(update, context)
+
+    async def handle_analytics_compare(self, update, context):
+        await self.analytics_handler.handle_compare(update, context)
+
+    async def handle_analytics_export(self, update, context):
+        await self.analytics_handler.handle_export(update, context)
+
+    # --- Plugin Handlers ---
+    async def handle_plugin_enable(self, update, context):
+        await self.plugin_handler.handle_enable(update, context)
+
+    async def handle_plugin_disable(self, update, context):
+        await self.plugin_handler.handle_disable(update, context)
+
+    # --- Session Handlers ---
+    async def handle_session_london(self, update, context):
+        await self.session_handler.handle_london(update, context)
+
+    async def handle_session_newyork(self, update, context):
+        await self.session_handler.handle_newyork(update, context)
+
+    async def handle_session_tokyo(self, update, context):
+        await self.session_handler.handle_tokyo(update, context)
+
+    # --- Voice Handlers ---
+    async def handle_voice_test(self, update, context):
+        await self.voice_handler.handle_test(update, context)
+
+    async def handle_voice_mute(self, update, context):
+        await self.voice_handler.handle_mute(update, context)
+
+    async def handle_voice_unmute(self, update, context):
+        await self.voice_handler.handle_unmute(update, context)
     
     # =========================================================================
     # RESTORED LEGACY HANDLERS (Bridge Strategy)
@@ -334,8 +458,7 @@ class ControllerBot(BaseIndependentBot):
         await self.handle_status(update, context)
 
     # --- Analytics Placeholders ---
-    async def handle_analytics_daily(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-        await self.edit_message_with_header(update, "📊 <b>DAILY REPORT</b>\n\nPlaceholder: Daily stats here.", [[InlineKeyboardButton("⬅️ Back", callback_data="menu_analytics")]])
+    # Moved to AnalyticsHandler logic where applicable
 
     # --- Plugin Placeholders ---
     async def handle_plugin_status(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -384,6 +507,9 @@ class ControllerBot(BaseIndependentBot):
                 reply_markup=reply_markup,
                 parse_mode="HTML"
             )
+            # Register for refresh
+            if self.header_refresh_manager:
+                self.header_refresh_manager.register_message(update.effective_chat.id, query.message.message_id)
         except Exception as e:
             logger.error(f"[ControllerBot] Edit Error: {e}")
             if "message is not modified" not in str(e):
@@ -427,12 +553,18 @@ class ControllerBot(BaseIndependentBot):
                     ]
                 )
             
-            return await self.bot.send_message(
+            msg = await self.bot.send_message(
                 chat_id=target_chat,
                 text=text,
                 reply_markup=markup_obj,
                 parse_mode=parse_mode
             )
+
+            # Register for refresh
+            if msg and self.header_refresh_manager:
+                self.header_refresh_manager.register_message(target_chat, msg.message_id)
+
+            return msg
         except Exception as e:
             logger.error(f"[ControllerBot] Send Error: {e}")
             return None
@@ -469,7 +601,7 @@ class ControllerBot(BaseIndependentBot):
         await update.message.reply_text("ZepixTradingBot V6 (V5 Foundation)")
 
     async def handle_version(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-        await update.message.reply_text("Version: 3.4.0")
+        await update.message.reply_text("Version: 3.7.0")
 
     async def handle_dashboard(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         await self.handle_start(update, context)

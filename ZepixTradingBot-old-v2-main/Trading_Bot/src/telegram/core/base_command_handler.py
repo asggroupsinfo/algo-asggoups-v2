@@ -1,7 +1,7 @@
 """
 Base Command Handler - Abstract Base Class for Command Handlers
 
-Version: 1.1.0
+Version: 1.2.0 (Header Refresh Integration)
 Created: 2026-01-21
 Part of: TELEGRAM_V5_CORE
 """
@@ -12,7 +12,7 @@ from telegram.ext import ContextTypes
 from typing import Optional, Dict, Any
 import logging
 
-from .plugin_context_manager import PluginContextManager
+from ..interceptors.plugin_context_manager import PluginContextManager
 from .conversation_state_manager import state_manager
 from .sticky_header_builder import StickyHeaderBuilder
 
@@ -26,21 +26,19 @@ class BaseCommandHandler(ABC):
         self.plugin_context = PluginContextManager
         self.state_manager = state_manager
 
-        # Init header builder if not present on bot
+        # Init header builder
         if hasattr(self.bot, 'sticky_header'):
             self.sticky_header = self.bot.sticky_header
         else:
-            # Fallback for bots that haven't initialized it
-            logger.warning("[BaseCommandHandler] sticky_header not found on bot, creating local instance")
             self.sticky_header = StickyHeaderBuilder(
                 mt5_client=getattr(self.bot, 'mt5_client', None),
                 trading_engine=getattr(self.bot, 'trading_engine', None)
             )
 
-        # Handler Configuration (Override in Subclass)
+        # Handler Configuration
         self.command_name = None
         self.requires_plugin_selection = False
-        self.auto_plugin_context = None  # 'v3', 'v6', or None
+        self.auto_plugin_context = None
 
     async def handle(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """
@@ -60,7 +58,6 @@ class BaseCommandHandler(ABC):
 
             # 2. Check plugin selection requirement
             elif self.requires_plugin_selection:
-                # Check if context already exists
                 if not self.plugin_context.has_active_context(chat_id):
                     await self.show_plugin_selection(update, context)
                     return
@@ -74,10 +71,7 @@ class BaseCommandHandler(ABC):
 
     @abstractmethod
     async def execute(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-        """
-        Execute command logic.
-        MUST be implemented in subclass.
-        """
+        """Execute command logic."""
         pass
 
     async def show_plugin_selection(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -109,18 +103,22 @@ class BaseCommandHandler(ABC):
         )
 
     async def send_message_with_header(self, chat_id: int, content: str, keyboard=None, header_style='full'):
-        """Send message with sticky header"""
+        """Send message with sticky header and register for updates"""
         header = self.sticky_header.build_header(style=header_style)
         full_text = f"{header}\n{content}"
 
         reply_markup = InlineKeyboardMarkup(keyboard) if keyboard else None
 
-        await self.bot.send_message(
+        msg = await self.bot.send_message(
             chat_id=chat_id,
             text=full_text,
             parse_mode='Markdown',
             reply_markup=reply_markup
         )
+
+        # Register for refresh if manager exists
+        if msg and hasattr(self.bot, 'header_refresh_manager'):
+            self.bot.header_refresh_manager.register_message(chat_id, msg.message_id)
 
     async def edit_message_with_header(self, update: Update, content: str, keyboard=None, header_style='compact'):
         """Edit existing message with header"""
@@ -135,14 +133,18 @@ class BaseCommandHandler(ABC):
                     parse_mode='Markdown',
                     reply_markup=reply_markup
                 )
+                # Register for refresh
+                if hasattr(self.bot, 'header_refresh_manager'):
+                    self.bot.header_refresh_manager.register_message(
+                        update.effective_chat.id,
+                        update.callback_query.message.message_id
+                    )
             except Exception as e:
-                 # If edit fails (e.g. message too old), send new
                  logger.warning(f"Edit failed, sending new: {e}")
                  await self.send_message_with_header(
                      update.effective_chat.id, content, keyboard, header_style
                  )
         else:
-            # Fallback if no callback query (e.g. from command)
             await self.send_message_with_header(
                 update.effective_chat.id, content, keyboard, header_style
             )

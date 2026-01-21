@@ -142,7 +142,7 @@ class CallbackRouter:
 
         # Set context
         try:
-            from .plugin_context_manager import set_user_plugin
+            from ..interceptors.plugin_context_manager import set_user_plugin
             set_user_plugin(chat_id, plugin_type, command_name)
         except ImportError:
             pass
