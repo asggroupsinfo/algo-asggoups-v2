@@ -1,7 +1,7 @@
 """
 Base Flow - Abstract Base Class for Conversation Flows
 
-Version: 1.0.0
+Version: 1.1.0 (Standardized Breadcrumbs)
 Created: 2026-01-21
 Part of: TELEGRAM_V5_ZERO_TYPING_UI
 """
@@ -43,6 +43,21 @@ class BaseFlow(ABC):
 
         await self.process_step(update, context, state)
         return True
+
+    def _format_breadcrumb(self, steps: list, current: int) -> str:
+        """
+        Generate standardized breadcrumb trail.
+        Example: ✅ Symbol → ▶️ Lot → ⏸️ Confirm
+        """
+        crumbs = []
+        for i, label in enumerate(steps):
+            if i < current:
+                crumbs.append(f"✅ {label}")
+            elif i == current:
+                crumbs.append(f"▶️ {label}")
+            else:
+                crumbs.append(f"⏸️ {label}")
+        return " → ".join(crumbs)
 
     @abstractmethod
     async def show_step(self, update: Update, context: ContextTypes.DEFAULT_TYPE, step: int):
