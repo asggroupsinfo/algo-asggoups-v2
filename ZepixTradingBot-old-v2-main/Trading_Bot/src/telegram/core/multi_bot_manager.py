@@ -126,33 +126,41 @@ class MultiBotManager:
         # Store reference for potential future use
         self.trend_manager = trend_manager
     
-    def send_message(self, message: str, reply_markup: dict = None, parse_mode: str = "HTML"):
-        """Synchronous send_message wrapper for MenuManager compatibility"""
+    async def send_message(self, message: str, reply_markup: dict = None, parse_mode: str = "HTML"):
+        """Async send_message wrapper for proper async support"""
         if self.controller_bot:
-            # Use controller bot's send_message method
+            return await self.controller_bot.send_message(message, reply_markup=reply_markup, parse_mode=parse_mode)
+        return False
+
+    def send_message_sync(self, message: str, reply_markup: dict = None, parse_mode: str = "HTML"):
+        """Synchronous send_message wrapper for Legacy/MenuManager compatibility"""
+        if self.controller_bot:
+            # Use controller bot's send_message_sync method
             if hasattr(self.controller_bot, 'send_message_sync'):
                 return self.controller_bot.send_message_sync(message, reply_markup=reply_markup, parse_mode=parse_mode)
             else:
-                # Fallback: run async version synchronously
+                # Fallback: run async version as task (fire and forget)
                 loop = asyncio.get_event_loop()
                 if loop.is_running():
                     asyncio.create_task(self.controller_bot.send_message(message, reply_markup=reply_markup))
-                else:
-                    loop.run_until_complete(self.controller_bot.send_message(message, reply_markup=reply_markup))
+        return True
     
     def send_message_with_keyboard(self, message: str, reply_markup: dict):
         """Send message with keyboard for MenuManager compatibility"""
-        return self.send_message(message, reply_markup=reply_markup)
+        return self.send_message_sync(message, reply_markup=reply_markup)
     
     def edit_message(self, text: str, message_id: int, reply_markup: dict = None):
         """Edit message for MenuManager compatibility"""
-        if self.controller_bot and hasattr(self.controller_bot, 'edit_message'):
-            # Use controller bot's edit_message method
+        if self.controller_bot:
+            if hasattr(self.controller_bot, 'edit_message_sync'):
+                return self.controller_bot.edit_message_sync(text, message_id, reply_markup)
+
+            # Fallback
             loop = asyncio.get_event_loop()
             if loop.is_running():
-                asyncio.create_task(self.controller_bot.edit_message(text, message_id, reply_markup))
-            else:
-                loop.run_until_complete(self.controller_bot.edit_message(text, message_id, reply_markup))
+                if hasattr(self.controller_bot, 'edit_message'):
+                    asyncio.create_task(self.controller_bot.edit_message(text, message_id, reply_markup))
+        return True
             
     async def send_alert(self, message: str):
         """Public API: Send Alert"""

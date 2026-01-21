@@ -1,0 +1,101 @@
+2026-01-21 13:42:06 | INFO     | root | ✅ Enhanced error logging configured
+2026-01-21 13:42:06 | INFO     | root |    - Main log: logs/bot.log
+2026-01-21 13:42:06 | INFO     | root |    - Error log: logs/errors.log
+2026-01-21 13:42:07 | INFO     | Main | --------------------------------------------------
+2026-01-21 13:42:07 | INFO     | Main | 🚀 STARTING ZEPIX TRADING BOT V2.0
+2026-01-21 13:42:07 | INFO     | Main | --------------------------------------------------
+2026-01-21 13:42:07 | INFO     | Main | Loading Configuration...
+2026-01-21 13:42:07 | INFO     | Main | Initializing MT5 Client...
+2026-01-21 13:42:07 | INFO     | Main | ✅ MT5 Connection Successful
+2026-01-21 13:42:07 | INFO     | Main | Initializing Database & Session Manager...
+2026-01-21 13:42:07 | INFO     | src.managers.session_manager | Session Manager Initialized (Merged V5 Logic)
+2026-01-21 13:42:07 | INFO     | Main | Initializing Risk Manager...
+2026-01-21 13:42:07 | INFO     | Main | Initializing V6 Telegram System...
+2026-01-21 13:42:07 | INFO     | src.telegram.core.token_manager | [TokenManager] Initialized in MULTI-BOT mode. (3 unique tokens)
+2026-01-21 13:42:07 | INFO     | src.telegram.core.callback_router | [CallbackRouter] Registered menu: main
+2026-01-21 13:42:07 | INFO     | src.telegram.core.callback_router | [CallbackRouter] Registered menu: trading
+2026-01-21 13:42:07 | INFO     | src.telegram.core.callback_router | [CallbackRouter] Registered menu: risk
+2026-01-21 13:42:07 | INFO     | src.telegram.core.callback_router | [CallbackRouter] Registered menu: system
+2026-01-21 13:42:07 | INFO     | src.telegram.core.callback_router | [CallbackRouter] Registered menu: v3
+2026-01-21 13:42:07 | INFO     | src.telegram.core.callback_router | [CallbackRouter] Registered menu: v6
+2026-01-21 13:42:07 | INFO     | src.telegram.core.callback_router | [CallbackRouter] Registered menu: analytics
+2026-01-21 13:42:07 | INFO     | src.telegram.core.callback_router | [CallbackRouter] Registered menu: reentry
+2026-01-21 13:42:07 | INFO     | src.telegram.core.callback_router | [CallbackRouter] Registered menu: profit
+2026-01-21 13:42:07 | INFO     | src.telegram.core.callback_router | [CallbackRouter] Registered menu: plugin
+2026-01-21 13:42:07 | INFO     | src.telegram.core.callback_router | [CallbackRouter] Registered menu: session
+2026-01-21 13:42:07 | INFO     | src.telegram.core.callback_router | [CallbackRouter] Registered menu: voice
+2026-01-21 13:42:07 | INFO     | src.telegram.core.callback_router | [CallbackRouter] Registered menu: settings
+2026-01-21 13:42:07 | INFO     | src.telegram.bots.controller_bot | [ControllerBot] V5 Menu System initialized (13 Menus)
+2026-01-21 13:42:07 | INFO     | Main | Initializing Alert Processor...
+2026-01-21 13:42:07 | INFO     | Main | Initializing Trading Engine...
+2026-01-21 13:42:07 | WARNING  | src.managers.autonomous_system_manager | Warning: Could not initialize Fine-Tune managers: No module named 'MetaTrader5'
+2026-01-21 13:42:07 | INFO     | src.core.plugin_system.service_api | [ServiceAPI] Services initialized for plugin: core
+2026-01-21 13:42:07 | INFO     | src.core.plugin_system.plugin_registry | Plugin registry initialized
+2026-01-21 13:42:07 | INFO     | src.core.shadow_mode_manager | ShadowModeManager initialized
+2026-01-21 13:42:07 | INFO     | src.modules.windows_audio_player | WindowsAudioPlayer config | Rate: 150 | Volume: 1.0
+2026-01-21 13:42:07 | INFO     | src.modules.voice_alert_system | Windows audio player initialized successfully
+2026-01-21 13:42:07 | INFO     | src.modules.voice_alert_system | VoiceAlertSystem V2.0 initialized
+2026-01-21 13:42:07 | INFO     | src.modules.fixed_clock_system | FixedClockSystem initialized | Timezone: Asia/Kolkata
+2026-01-21 13:42:07 | INFO     | Main | Wiring Dependencies...
+2026-01-21 13:42:07 | INFO     | src.telegram.bots.controller_bot | [ControllerBot] Dependencies injected and sub-managers exposed
+2026-01-21 13:42:07 | INFO     | Main | Starting Subsystems...
+2026-01-21 13:42:07 | INFO     | Main | Initializing Error Handling System...
+2026-01-21 13:42:07 | INFO     | src.utils.auto_recovery | AutoRecoveryManager initialized
+2026-01-21 13:42:07 | INFO     | src.utils.admin_notifier | AdminErrorNotifier initialized for chat 2139792302
+2026-01-21 13:42:07 | INFO     | Main | ✅ Admin notifications enabled for chat 2139792302
+2026-01-21 13:42:07 | INFO     | src.utils.auto_recovery | ✅ Auto-recovery system started
+2026-01-21 13:42:07 | WARNING  | src.utils.auto_recovery | MT-001: MT5 disconnected, attempting recovery
+2026-01-21 13:42:07 | INFO     | Main | ✅ Error handling system initialized
+/app/ZepixTradingBot-old-v2-main/Trading_Bot/src/core/trading_engine.py:330: RuntimeWarning: coroutine 'MultiBotManager.send_message' was never awaited
+  self.telegram_bot.send_message("✅ MT5 Connection Established")
+RuntimeWarning: Enable tracemalloc to get the object allocation traceback
+2026-01-21 13:42:07 | INFO     | src.core.plugin_system.plugin_registry | Discovered 5 plugins: ['v6_price_action_1h', 'v6_price_action_1m', 'v3_combined', 'v6_price_action_5m', 'v6_price_action_15m']
+2026-01-21 13:42:07 | INFO     | src.core.plugin_system.plugin_registry | Discovered 5 plugins: ['v6_price_action_1h', 'v6_price_action_1m', 'v3_combined', 'v6_price_action_5m', 'v6_price_action_15m']
+2026-01-21 13:42:07 | INFO     | plugin.v6_price_action_1h | Initialized plugin: v6_price_action_1h
+2026-01-21 13:42:07 | INFO     | plugin.v6_price_action_1h | V6PriceAction1hPlugin initialized | Shadow Mode: False | Order Routing: ORDER_A_ONLY
+2026-01-21 13:42:07 | INFO     | src.core.plugin_system.plugin_registry | Loaded plugin: v6_price_action_1h
+2026-01-21 13:42:07 | INFO     | plugin.v6_price_action_1m | Initialized plugin: v6_price_action_1m
+2026-01-21 13:42:07 | INFO     | plugin.v6_price_action_1m | V6PriceAction1mPlugin initialized | Shadow Mode: False | Order Routing: ORDER_B_ONLY
+2026-01-21 13:42:07 | INFO     | src.core.plugin_system.plugin_registry | Loaded plugin: v6_price_action_1m
+2026-01-21 13:42:07 | INFO     | plugin.v3_combined | Initialized plugin: v3_combined
+2026-01-21 13:42:07 | INFO     | plugin.v3_combined | V3CombinedPlugin initialized | Shadow Mode: False | 12 signals ready | Re-entry enabled | Dual orders enabled | Profit booking enabled
+2026-01-21 13:42:07 | INFO     | src.core.plugin_system.plugin_registry | Loaded plugin: v3_combined
+2026-01-21 13:42:07 | INFO     | plugin.v6_price_action_5m | Initialized plugin: v6_price_action_5m
+2026-01-21 13:42:07 | INFO     | plugin.v6_price_action_5m | V6PriceAction5mPlugin initialized | Shadow Mode: False | Order Routing: DUAL_ORDERS
+2026-01-21 13:42:07 | INFO     | src.core.plugin_system.plugin_registry | Loaded plugin: v6_price_action_5m
+2026-01-21 13:42:07 | INFO     | plugin.v6_price_action_15m | Initialized plugin: v6_price_action_15m
+2026-01-21 13:42:07 | INFO     | plugin.v6_price_action_15m | V6PriceAction15mPlugin initialized | Shadow Mode: False | Order Routing: ORDER_A_ONLY
+2026-01-21 13:42:07 | INFO     | src.core.plugin_system.plugin_registry | Loaded plugin: v6_price_action_15m
+2026-01-21 13:42:07 | INFO     | src.core.plugin_system.plugin_registry | Loaded 5 plugins
+2026-01-21 13:42:07 | INFO     | src.core.trading_engine | 📋 [RE-ENTRY_CONFIG] Startup Configuration:
+  SL Hunt Enabled: True
+  TP Re-entry Enabled: True
+  Exit Continuation Enabled: True
+  Monitor Interval: 2s
+  SL Hunt Offset: 1.0 pips
+  TP Continuation Gap: 2.0 pips
+  Max Chain Levels: 5
+  SL Reduction Per Level: 0.3
+2026-01-21 13:42:07 | INFO     | src.services.price_monitor_service | ✅ Price Monitor Service started successfully - Task created: <Task pending name='Task-4' coro=<PriceMonitorService._monitor_loop() running at /app/ZepixTradingBot-old-v2-main/Trading_Bot/src/services/price_monitor_service.py:129>>, is_running: True
+2026-01-21 13:42:07 | INFO     | src.core.trading_engine | ✅ Price Monitor Service confirmed running after initialization
+2026-01-21 13:42:07 | INFO     | src.managers.profit_booking_manager | SUCCESS: Recovered 0 profit booking chains from database
+2026-01-21 13:42:07 | INFO     | Main | Starting V6 Telegram Bots...
+2026-01-21 13:42:07 | INFO     | src.telegram.core.multi_bot_manager | [MultiBotManager] Starting bots...
+2026-01-21 13:42:07 | INFO     | src.telegram.bots.base_bot | [ControllerBot] Initializing...
+2026-01-21 13:42:07 | INFO     | httpx | HTTP Request: POST https://api.telegram.org/bot8598624206:AAGWD7y35HUkrSDvSCrFuTL-FZZx8bjqwwo/getMe "HTTP/1.1 200 OK"
+2026-01-21 13:42:07 | INFO     | httpx | HTTP Request: POST https://api.telegram.org/bot8598624206:AAGWD7y35HUkrSDvSCrFuTL-FZZx8bjqwwo/getMe "HTTP/1.1 200 OK"
+2026-01-21 13:42:07 | INFO     | src.telegram.bots.base_bot | [ControllerBot] Initialized as @Algo_Asg_Controller_bot (ID: 8598624206)
+2026-01-21 13:42:07 | INFO     | src.telegram.bots.controller_bot | [ControllerBot] Handlers registered
+2026-01-21 13:42:07 | INFO     | telegram.ext.Application | Application started
+2026-01-21 13:42:07 | INFO     | src.telegram.bots.base_bot | [NotificationBot] Initializing...
+2026-01-21 13:42:08 | INFO     | httpx | HTTP Request: POST https://api.telegram.org/bot8311364103:AAHArQ0kHnS8e_hLGdBMzf9u8bLGlUKK4vM/getMe "HTTP/1.1 200 OK"
+2026-01-21 13:42:08 | INFO     | httpx | HTTP Request: POST https://api.telegram.org/bot8311364103:AAHArQ0kHnS8e_hLGdBMzf9u8bLGlUKK4vM/getMe "HTTP/1.1 200 OK"
+2026-01-21 13:42:08 | INFO     | src.telegram.bots.base_bot | [NotificationBot] Initialized as @AlgoAsg_Alerts_bot (ID: 8311364103)
+2026-01-21 13:42:08 | INFO     | telegram.ext.Application | Application started
+2026-01-21 13:42:08 | INFO     | src.telegram.bots.base_bot | [AnalyticsBot] Initializing...
+2026-01-21 13:42:08 | INFO     | httpx | HTTP Request: POST https://api.telegram.org/bot8513021073:AAHxk9Z9CxKpc2UKNVn1vhYUIGshDJ2L1Ys/getMe "HTTP/1.1 200 OK"
+2026-01-21 13:42:08 | INFO     | httpx | HTTP Request: POST https://api.telegram.org/bot8513021073:AAHxk9Z9CxKpc2UKNVn1vhYUIGshDJ2L1Ys/getMe "HTTP/1.1 200 OK"
+2026-01-21 13:42:08 | INFO     | src.telegram.bots.base_bot | [AnalyticsBot] Initialized as @AlgoAsg_Analytics_bot (ID: 8513021073)
+2026-01-21 13:42:08 | INFO     | telegram.ext.Application | Application started
+2026-01-21 13:42:08 | INFO     | Main | ✅ V6 BOT ARCHITECTURE ACTIVE. Waiting for signals...
+2026-01-21 13:42:08 | INFO     | Main | ✅ BOT STARTUP COMPLETE. Waiting for commands.
