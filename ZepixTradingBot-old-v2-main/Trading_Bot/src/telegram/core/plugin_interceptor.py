@@ -12,7 +12,7 @@ Part of: TELEGRAM_V5_PLUGIN_LAYER
 
 import logging
 from typing import Dict, Optional, Any, List
-from .plugin_context_manager import PluginContextManager
+from ..interceptors.plugin_context_manager import PluginContextManager
 from ..core.plugin_selection_menu import PluginSelectionMenu
 
 logger = logging.getLogger(__name__)
